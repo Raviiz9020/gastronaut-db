@@ -1,0 +1,321 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================
+    // Helper functions
+    // =========================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid));
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isVendor() {
+      return isSignedIn() && exists(/databases/$(database)/documents/vendors/$(request.auth.uid));
+    }
+
+    // =========================
+    // Order Counter
+    // =========================
+    match /counters/orderCounter {
+      allow read, write: if isSignedIn();
+    }
+
+    // =========================
+    // Super Admins
+    // =========================
+    match /superAdmins/{adminId} {
+      allow read, create: if request.auth.uid == adminId;
+      allow update, delete: if isSuperAdmin();
+    }
+
+    // =========================
+    // Customers
+    // =========================
+    //match /customers/{userId} {
+      //allow read, update, delete: if isOwner(userId) || isSuperAdmin();
+      //allow create: if isSignedIn();
+    //}
+    
+    // =========================
+// Customers
+// =========================
+match /customers/{userId} {
+  // Individual customer read/write access
+  allow read, update, delete: if isOwner(userId) || isSuperAdmin();
+  allow create: if isSignedIn();
+
+  // Super admin can list all customers for campaigns
+  allow get, list: if isSuperAdmin();
+}
+
+   //match /customers/{document=**} {
+    // allow read, list: if isSuperAdmin();
+   //}
+   
+   match /customers/{document=**} {
+  allow read, list: if request.auth == null; // server-side only
+  allow read, list: if isSignedIn();
+}
+
+    // =========================
+    // Expenses
+    // =========================
+    match /expenses/{expenseId} {
+      // Allow a vendor to CUD their own expenses. Allow Super Admin to read any expense.
+      allow read, update, delete: if (isSignedIn() && request.auth.uid == resource.data.vendorUsername) || isSuperAdmin();
+      // Allow a vendor to create an expense for themselves.
+      allow create: if isSignedIn() && request.resource.data.vendorUsername == request.auth.uid;
+    }
+
+    // =========================
+    // Expense Categories
+    // =========================
+    match /expense-categories/{docId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // =========================
+    // Vendors
+    // =========================
+  match /vendors/{vendorId} {
+  allow get, list: if true;
+  allow create: if request.auth.uid == vendorId;
+  allow update: if (isOwner(vendorId) && request.resource.data.authUid == resource.data.authUid) || 
+                   isSuperAdmin() ||
+                   (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalRatingSum', 'ratingCount']));
+  allow delete: if isSuperAdmin();
+}
+
+    // =========================
+    // Orders
+    // =========================
+    match /orders/{orderId} {
+      allow create: if isSignedIn() && request.resource.data.customerUsername == request.auth.uid;
+      //allow get, list: if isSignedIn() && (
+        //resource.data.customerUsername == request.auth.uid ||
+        //resource.data.vendorUsername   == request.auth.uid ||
+        //isSuperAdmin()
+      //);
+      
+       // UPDATED RULE HERE:
+  allow get, list: if isSignedIn() && (
+    resource.data.customerUsername == request.auth.uid ||
+    resource.data.vendorUsername   == request.auth.uid ||
+    // This part allows you to see orders assigned to your riders
+    exists(/databases/$(database)/documents/vendor_rider_map/$(request.auth.uid + "_" + resource.data.assignedDeliveryBoyId)) ||
+    isSuperAdmin()
+  );
+
+      
+      
+   allow update: if isSignedIn() && (
+        (resource.data.customerUsername == request.auth.uid && (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vendorRating', 'vendorFeedback', 'items','paymentStatus', 'paymentRequestedAt','paymentMethod']) ||
+          (resource.data.status == 'Order Placed' && 
+           request.resource.data.status == 'Cancelled' && 
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancellationReason']))
+        )) ||
+        (resource.data.vendorUsername == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'assignedDeliveryBoyId', 'assignedDeliveryBoyName', 'assignedDeliveryBoyContact', 'assignedDeliveryBoyAt','cancellationReason', 'subtotal','items', 'totalPrice', 'updatedAt','paymentStatus','paymentRequestedAt','paymentConfirmedAt','riderSettlementStatus', 'riderSettlementPaymentMode', 'riderSettlementMarkedAt', 'riderSettlementMarkedBy'])) ||
+        (resource.data.assignedDeliveryBoyId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancellationReason','riderSettlementStatus', 'riderSettlementConfirmedAt'])) ||
+        isSuperAdmin()
+      );
+      allow delete: if isSuperAdmin();
+    }
+
+    // =========================
+    // Menu Items
+    // =========================
+    match /menuItems/{menuId} {
+      allow read: if true;
+      allow get, list: if true;
+      
+       allow create, update: if isSignedIn() || isSuperAdmin();
+      allow create: if isSignedIn() && (request.auth.uid == resource.data.vendorUsername || isSuperAdmin());
+           
+      //allow update: if isSignedIn() || isSuperAdmin();
+      
+     // Allow updates for rating OR for owner edits.
+      allow update: if (
+        // Allow a customer to submit/update a rating
+        (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalRatingSum', 'ratingCount']))
+        ||
+        // Allow the vendor owner to edit details (but not ratings)
+        (isSignedIn() && isVendor() && resource.data.vendorUsername == request.auth.uid &&
+          request.resource.data.totalRatingSum == resource.data.totalRatingSum &&
+          request.resource.data.ratingCount == resource.data.ratingCount)
+      );
+
+      allow delete: if isSignedIn() && (request.auth.uid == resource.data.vendorUsername || isSuperAdmin());
+    }
+    
+    // Menu item rules
+
+    // =========================
+    // Special Menus
+    // =========================
+    match /specialMenus/{specialMenuId} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && (request.auth.uid == request.resource.data.vendorUsername || isSuperAdmin());
+      allow delete: if isSignedIn() && (request.auth.uid == resource.data.vendorUsername || isSuperAdmin());
+    }
+
+    // =========================
+    // Offers
+    // =========================
+// =========================
+// Offers
+// =========================
+match /offers/{offerId} {
+  allow read: if true;
+
+  // Vendor can create, update, and delete their own offers
+  // Super admin retains full access
+  allow create, update, delete: if isSignedIn() &&
+    (
+      // Vendor deleting or editing their own offer
+      (request.auth.uid == resource.data.vendorUsername) ||
+      // Vendor creating a new offer (checks new data)
+      (request.auth.uid == request.resource.data.vendorUsername) ||
+      // Super admin always allowed
+      isSuperAdmin()
+    );
+}
+
+    // =========================
+    // Reviews
+    // =========================
+    match /siteReviews/{reviewId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && (request.auth.uid == resource.data.customerUsername || isSuperAdmin());
+    }
+
+    // =========================
+    // Vendor Categories
+    // =========================
+    match /vendor-categories/{categoryId} {
+      allow read: if true;
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    // =========================
+    // Menu Categories
+    // =========================
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isSuperAdmin() || (isSignedIn() && request.resource.data.shopName == get(/databases/$(database)/documents/vendors/$(request.auth.uid)).data.shopName);
+    }
+
+    // =========================
+    // Delivery Team
+    // =========================
+    match /deliveryTeam/{deliveryBoyId} {
+      allow read: if isSignedIn() || isSuperAdmin();
+      allow write: if (isSignedIn() && isOwner(request.resource.data.vendorUsername)) || isSuperAdmin();
+    }
+    
+    // Email Campaigns: Only Super Admin can create, read, update, or delete campaigns
+match /emailCampaigns/{campaignId} {
+  allow read, create, update, delete: if isSignedIn() && isSuperAdmin();
+}
+
+// Email Templates: Only Super Admin can read and write
+match /emailTemplates/{templateId} {
+  allow read, write, delete: if isSignedIn() && isSuperAdmin();
+}
+
+ // =========================
+    // Rider Settings
+    // =========================
+match /riders/{riderUid} {
+      allow read, write: if request.auth != null && request.auth.uid == riderUid;
+    }
+
+    // 2. Orders Collection Rules (Supports collectionGroup)
+    // Allows riders to see and update orders that are assigned to their UID
+    match /{path=**}/orders/{orderId} {
+      allow read: if request.auth != null && 
+                  resource.data.assignedDeliveryBoyId == request.auth.uid;
+                  
+      allow update: if request.auth != null && 
+                    resource.data.assignedDeliveryBoyId == request.auth.uid;
+    }
+
+    // 3. Mapping Collection (The "Link" between Vendor and Rider)
+    match /vendor_rider_map/{mappingId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    
+     // =========================
+    // Rider Invitations
+    // =========================
+    match /invitations/{invitationId} {
+      // Any signed-in user (Rider or Vendor) can read invitations to check codes
+      allow read: if request.auth != null;
+      
+      // Only the Vendor can create an invitation for their own UID
+      allow create: if request.auth != null && request.resource.data.vendorId == request.auth.uid;
+      
+      // Only the Vendor can delete their invitation
+      allow update,delete: if request.auth != null && resource.data.vendorId == request.auth.uid;
+    }
+
+    // =========================
+    // Vendor-Rider Mapping
+    // =========================
+    match /vendor_rider_map/{mapId} {
+      // Both the Rider and the Vendor involved can read the mapping
+      allow read: if request.auth != null && (
+        resource.data.vendorId == request.auth.uid || 
+        resource.data.riderId == request.auth.uid
+      );
+      
+      // Riders can create a mapping request for themselves
+      allow create: if request.auth != null && request.resource.data.riderId == request.auth.uid;
+      
+      // Vendors can update (approve) or delete (reject/remove) mappings for their shop
+      allow update, delete: if request.auth != null && resource.data.vendorId == request.auth.uid;
+    }
+    
+      // =========================
+    // Riders
+    // =========================
+    match /riders/{riderId} {
+      // Allow riders to read/write their own data
+      // Allow super admins full access
+      // Allow vendors and customers to read rider info (for tracking)
+      allow read: if isOwner(riderId) || isSuperAdmin() || isVendor() || exists(/databases/$(database)/documents/customers/$(request.auth.uid));
+      allow create: if isSignedIn(); 
+      allow update, delete: if isOwner(riderId) || isSuperAdmin();
+    }
+    
+      // =========================
+    // Settings (for Android parity)
+    // =========================
+    match /settings/{docId} {
+      allow read: if true;
+      allow create, update, delete: if isSuperAdmin();
+      }
+
+    // =========================
+    // Site Settings
+    // =========================
+    match /site-settings/{docId} {
+      allow read: if true;
+      allow create, update, delete: if isSuperAdmin();
+    }
+  }
+}

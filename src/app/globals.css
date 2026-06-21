@@ -1,0 +1,122 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+  }
+
+  .dark {
+    --background: 224 71.4% 4.1%;
+    --foreground: 210 20% 98%;
+    --card: 224 71.4% 4.1%;
+    --card-foreground: 210 20% 98%;
+    --popover: 224 71.4% 4.1%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 48 96% 58%;
+    --primary-foreground: 30 96% 10%;
+    --secondary: 215 27.9% 16.9%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 215 27.9% 16.9%;
+    --muted-foreground: 217.9 10.6% 64.9%;
+    --accent: 35 94% 56%;
+    --accent-foreground: 210 20% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 215 27.9% 16.9%;
+    --input: 215 27.9% 16.9%;
+    --ring: 48 96% 58%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    background-image:
+      linear-gradient(hsl(var(--primary) / 0.03) 1px, transparent 1px),
+      linear-gradient(to right, hsl(var(--primary) / 0.03) 1px, hsl(var(--background)) 1px);
+    background-size: 4rem 4rem;
+  }
+}
+
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 8px hsl(var(--primary) / 0.75), 0 0 20px hsl(var(--primary) / 0.5);
+  }
+  .box-glow-primary {
+    box-shadow: 0 0 12px hsl(var(--primary) / 0.3), 0 0 30px hsl(var(--primary) / 0.2);
+  }
+  .box-glow-accent {
+    box-shadow: 0 0 12px hsl(var(--accent) / 0.3), 0 0 30px hsl(var(--accent) / 0.2);
+  }
+  
+  .hover\:animation-pause:hover {
+    animation-play-state: paused;
+  }
+  
+  .hide-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+
+  .suggestion-list-enter {
+    opacity: 0;
+    transform: scaleY(0.95) translateY(-10px);
+  }
+  .suggestion-list-enter-active {
+    opacity: 1;
+    transform: scaleY(1) translateY(0);
+    transition: all 150ms ease-out;
+  }
+  .suggestion-list-exit {
+    opacity: 1;
+    transform: scaleY(1) translateY(0);
+  }
+  .suggestion-list-exit-active {
+    opacity: 0;
+    transform: scaleY(0.95) translateY(-10px);
+    transition: all 150ms ease-in;
+  }
+}
+
+@layer utilities {
+  @keyframes firework {
+    0% { transform: translate(0, 0) scale(0.5); opacity: 1; }
+    100% { 
+      transform: translate(
+        calc(cos(var(--i) * 60deg) * 60px), 
+        calc(sin(var(--i) * 60deg) * 60px)
+      ) scale(0); 
+      opacity: 0; 
+    }
+  }
+  .animate-firework {
+    animation: firework 0.6s ease-out forwards;
+  }
+}

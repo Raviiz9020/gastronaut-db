@@ -1,0 +1,14 @@
+
+[
+    { "name": "Ingredients" },
+    { "name": "Packaging" },
+    { "name": "Rent" },
+    { "name": "Utilities (Gas, Electricity, Water)" },
+    { "name\
+": "Delivery Costs" },
+    { "name": "Marketing & Advertising" },
+    { "name": "Equipment" },
+    { "name": "Salaries/Wages" },
+    { "name": "Maintenance & Repairs" },
+    { "name": "Other" }
+]

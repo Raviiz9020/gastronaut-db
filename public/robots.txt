@@ -1,0 +1,11 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /super-admin/
+Disallow: /rider/
+Disallow: /track
+Disallow: /checkout
+Disallow: /customer-details
+
+Allow: /
+
+Sitemap: https://hyperdelivery.shop/sitemap.xml
