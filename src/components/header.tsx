@@ -178,7 +178,7 @@ export default function Header({ pageVendor }: HeaderProps) {
             </div>
             </Link>
             {!isAdminRoute && !pathname.startsWith('/rider') && (
-                <LocationPicker variant="full" className="hidden md:flex" />
+                <LocationPicker variant="full" className="flex max-w-[130px] sm:max-w-[150px] md:max-w-none" />
             )}
             <nav className="hidden md:flex items-center gap-4 landscape:hidden">
                 {navLinks.map(link => (

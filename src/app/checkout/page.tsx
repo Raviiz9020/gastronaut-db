@@ -245,7 +245,7 @@ export default function CheckoutPage() {
             upiId: order.upiId
         });
 
-        // Generate QR code for desktop view
+        // Generate QR code
         const upiUri = generateUpiUrl(order.upiId, order.shopName, order.totalPrice, order.orderId);
         try {
             const url = await QRCode.toDataURL(upiUri, { width: 300, margin: 2 });
@@ -255,11 +255,6 @@ export default function CheckoutPage() {
         }
 
         setIsQrModalOpen(true);
-
-        if (isMobile) {
-            // Trigger deep link on mobile immediately
-            window.location.href = upiUri;
-        }
     };
 
     const handleUpiPayClick = async (order: typeof placedOrders[0]) => {
@@ -552,8 +547,8 @@ export default function CheckoutPage() {
                                                             onClick={() => handleUpiPayClick(order)} 
                                                             className="w-full sm:w-auto rounded-xl bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center gap-1.5"
                                                         >
-                                                            {isMobile ? <Smartphone className="h-4 w-4" /> : <QrCode className="h-4 w-4" />}
-                                                            {isMobile ? "Pay via UPI App" : "Scan QR Code"}
+                                                            <QrCode className="h-4 w-4" />
+                                                            <span>Scan / Upload QR</span>
                                                         </Button>
                                                     )}
                                                 </div>
@@ -600,51 +595,68 @@ export default function CheckoutPage() {
 
                     {paymentTargetOrder && (
                         <div className="flex flex-col items-center justify-center p-4 gap-4 bg-muted/10 rounded-2xl border border-purple-500/5 my-4 animate-in fade-in duration-200">
-                            {isMobile ? (
-                                <div className="w-full py-2 text-center space-y-4">
-                                    <Button 
-                                        onClick={() => {
-                                            const upiUri = generateUpiUrl(paymentTargetOrder.upiId, paymentTargetOrder.vendorName, paymentTargetOrder.amount, paymentTargetOrder.id);
-                                            window.location.href = upiUri;
-                                        }}
-                                        className="w-full py-6 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20"
-                                    >
-                                        <Smartphone className="h-5 w-5" /> Open UPI App
-                                    </Button>
-                                    <p className="text-[11px] text-muted-foreground">
-                                        If your UPI app didn't open automatically, click the button above.
-                                    </p>
+                            <div className="flex flex-col items-center gap-3">
+                                <div 
+                                    onClick={() => {
+                                        if (!qrCodeUrl) return;
+                                        const a = document.createElement('a');
+                                        a.href = qrCodeUrl;
+                                        a.download = `QR_${paymentTargetOrder.id}.png`;
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        document.body.removeChild(a);
+                                        toast({ title: "QR Code Saved", description: "Saved to your device gallery." });
+                                    }}
+                                    className="relative bg-white p-3 rounded-2xl overflow-hidden border cursor-pointer hover:border-purple-500 hover:shadow-lg transition-all group"
+                                    title="Click to save QR Code"
+                                >
+                                    {qrCodeUrl ? (
+                                        <>
+                                            <Image src={qrCodeUrl} alt={`QR Code for ${paymentTargetOrder.vendorName}`} width={220} height={220} className="object-contain" />
+                                            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Download className="text-white h-8 w-8 mb-2" />
+                                                <span className="text-white font-bold text-sm bg-black/50 px-3 py-1 rounded-full">Save Image</span>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="w-56 h-56 flex items-center justify-center text-xs text-muted-foreground">Generating QR code...</div>
+                                    )}
                                 </div>
-                            ) : (
-                                <div className="flex flex-col items-center gap-3">
-                                    <div 
-                                        onClick={() => {
-                                            if (!qrCodeUrl) return;
-                                            const a = document.createElement('a');
-                                            a.href = qrCodeUrl;
-                                            a.download = `QR_${paymentTargetOrder.id}.png`;
-                                            document.body.appendChild(a);
-                                            a.click();
-                                            document.body.removeChild(a);
-                                            toast({ title: "QR Code Saved", description: "Saved to your device gallery." });
-                                        }}
-                                        className="relative bg-white p-3 rounded-2xl overflow-hidden border cursor-pointer hover:border-purple-500 hover:shadow-lg transition-all group"
-                                        title="Click to save QR Code"
-                                    >
-                                        {qrCodeUrl ? (
-                                            <>
-                                                <Image src={qrCodeUrl} alt={`QR Code for ${paymentTargetOrder.vendorName}`} width={220} height={220} className="object-contain" />
-                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <Download className="text-white h-8 w-8" />
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <div className="w-56 h-56 flex items-center justify-center text-xs text-muted-foreground">Generating QR code...</div>
-                                        )}
+                                <p className="text-[11px] text-muted-foreground text-center max-w-[220px]">
+                                    Click the QR code to save it.
+                                </p>
+                            </div>
+
+                            {/* Quick Launch Tray for Mobile */}
+                            {isMobile && (
+                                <div className="w-full flex flex-col items-center gap-2 mt-2 pt-4 border-t border-purple-500/10">
+                                    <p className="text-xs font-semibold text-primary">Saved the QR? Open your app to scan:</p>
+                                    <div className="flex justify-center gap-2 w-full">
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm"
+                                            className="flex-1 rounded-xl bg-white hover:bg-gray-50 border-gray-200 text-xs shadow-sm h-10"
+                                            onClick={() => window.location.href = 'gpay://'}
+                                        >
+                                            GPay
+                                        </Button>
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm"
+                                            className="flex-1 rounded-xl bg-white hover:bg-gray-50 border-gray-200 text-xs shadow-sm h-10"
+                                            onClick={() => window.location.href = 'phonepe://'}
+                                        >
+                                            PhonePe
+                                        </Button>
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm"
+                                            className="flex-1 rounded-xl bg-white hover:bg-gray-50 border-gray-200 text-xs shadow-sm h-10"
+                                            onClick={() => window.location.href = 'paytmmp://'}
+                                        >
+                                            Paytm
+                                        </Button>
                                     </div>
-                                    <p className="text-[11px] text-muted-foreground text-center max-w-[220px]">
-                                        Click to save QR code.<br/>Use your UPI app - open scan and upload the image for payment.
-                                    </p>
                                 </div>
                             )}
                             <div className="text-center space-y-2 mt-2">
