@@ -76,8 +76,12 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                     variant="ghost" 
                     className={cn("flex items-center gap-2 text-sm font-medium hover:bg-primary/5", className)}
                 >
-                    <MapPin className="h-4 w-4 text-primary" />
-                    <span className="truncate max-w-[150px]">
+                    <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
+                    {/* On mobile: show short label only. On md+: show full address */}
+                    <span className="md:hidden text-xs font-semibold">
+                        {userLocation ? 'Current' : 'Location'}
+                    </span>
+                    <span className="hidden md:inline truncate max-w-[150px]">
                         {userLocation ? userLocation.addressName : 'Set Location'}
                     </span>
                 </Button>

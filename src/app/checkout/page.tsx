@@ -426,23 +426,23 @@ export default function CheckoutPage() {
                                         <div>
                                             <RadioGroupItem value="UPI" id="pay-upi" className="peer sr-only" />
                                             <Label htmlFor="pay-upi" className={cn(
-                                                "flex flex-col items-center justify-center rounded-2xl border-2 p-6 cursor-pointer hover:border-purple-500/40 transition-all duration-200",
+                                                "flex flex-col items-center justify-center rounded-2xl border-2 p-4 cursor-pointer hover:border-purple-500/40 transition-all duration-200",
                                                 paymentMethod === 'UPI' ? "border-primary bg-primary/5 text-primary" : "border-muted text-muted-foreground bg-muted/10"
                                             )}>
-                                                <QrCode className="mb-2 h-7 w-7 text-purple-500"/>
+                                                <QrCode className="mb-1.5 h-6 w-6 text-purple-500"/>
                                                 <span className="font-bold text-sm">Pay via UPI</span>
-                                                <span className="text-[10px] text-muted-foreground mt-1">App link / QR Code</span>
+                                                <span className="text-[10px] text-muted-foreground mt-0.5">QR Code</span>
                                             </Label>
                                         </div>
                                         <div>
                                             <RadioGroupItem value="COD" id="pay-cod" className="peer sr-only" />
                                             <Label htmlFor="pay-cod" className={cn(
-                                                "flex flex-col items-center justify-center rounded-2xl border-2 p-6 cursor-pointer hover:border-purple-500/40 transition-all duration-200",
+                                                "flex flex-col items-center justify-center rounded-2xl border-2 p-4 cursor-pointer hover:border-purple-500/40 transition-all duration-200",
                                                 paymentMethod === 'COD' ? "border-primary bg-primary/5 text-primary" : "border-muted text-muted-foreground bg-muted/10"
                                             )}>
-                                                <Wallet className="mb-2 h-7 w-7 text-purple-500"/>
-                                                <span className="font-bold text-sm">Cash on Delivery</span>
-                                                <span className="text-[10px] text-muted-foreground mt-1">Pay on delivery</span>
+                                                <Wallet className="mb-1.5 h-6 w-6 text-purple-500"/>
+                                                <span className="font-bold text-sm">COD</span>
+                                                <span className="text-[10px] text-muted-foreground mt-0.5">Pay on delivery</span>
                                             </Label>
                                         </div>
                                     </RadioGroup>
@@ -577,60 +577,70 @@ export default function CheckoutPage() {
 
             {/* UPI Payment Modal (Desktop QR / Mobile App Link) */}
             <Dialog open={isQrModalOpen} onOpenChange={setIsQrModalOpen}>
-                <DialogContent className="max-w-sm rounded-3xl bg-card border border-purple-500/20 shadow-2xl p-6">
+                <DialogContent className="max-w-sm rounded-3xl bg-card border border-purple-500/20 shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
                     <DialogHeader className="space-y-2 text-center flex flex-col items-center">
                         <div className="p-3 bg-purple-500/10 rounded-full text-purple-500 mb-2">
-                            {isMobile ? <Smartphone className="h-8 w-8" /> : <QrCode className="h-8 w-8" />}
+                            <QrCode className="h-8 w-8" />
                         </div>
                         <DialogTitle className="text-xl font-bold font-headline">
-                            {isMobile ? "UPI Mobile Payment" : "UPI Scan to Pay"}
+                            UPI QR Payment
                         </DialogTitle>
                         <DialogDescription className="text-sm">
-                            {isMobile 
-                                ? "Complete your payment of the order amount in your UPI app, then return here to confirm."
-                                : "Scan this QR code using any UPI app (GPay, PhonePe, Paytm) to complete payment."
-                            }
+                            Save the QR code and upload it in your UPI app to complete payment.
                         </DialogDescription>
                     </DialogHeader>
 
                     {paymentTargetOrder && (
                         <div className="flex flex-col items-center justify-center p-4 gap-4 bg-muted/10 rounded-2xl border border-purple-500/5 my-4 animate-in fade-in duration-200">
-                            <div className="flex flex-col items-center gap-3">
+                            <div className="flex flex-col items-center gap-2">
+                                <p className="text-xs font-semibold text-center text-muted-foreground">Scan QR code to make payment</p>
                                 <div 
                                     onClick={() => {
                                         if (!qrCodeUrl) return;
-                                        const a = document.createElement('a');
-                                        a.href = qrCodeUrl;
-                                        a.download = `QR_${paymentTargetOrder.id}.png`;
-                                        document.body.appendChild(a);
-                                        a.click();
-                                        document.body.removeChild(a);
-                                        toast({ title: "QR Code Saved", description: "Saved to your device gallery." });
+                                        const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                                        if (isIos) {
+                                            const win = window.open('', '_blank');
+                                            if (win) {
+                                                win.document.write(`<html><head><title>QR Code - Long press to save</title></head><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${qrCodeUrl}" style="max-width:100%;height:auto" /></body></html>`);
+                                                win.document.close();
+                                            }
+                                            toast({ title: "Long press to save", description: "Long press the QR image and tap 'Add to Photos'." });
+                                        } else {
+                                            const a = document.createElement('a');
+                                            a.href = qrCodeUrl;
+                                            a.download = `QR_${paymentTargetOrder.id}.png`;
+                                            document.body.appendChild(a);
+                                            a.click();
+                                            document.body.removeChild(a);
+                                            toast({ title: "QR Code Saved", description: "Saved to your device." });
+                                        }
                                     }}
-                                    className="relative bg-white p-3 rounded-2xl overflow-hidden border cursor-pointer hover:border-purple-500 hover:shadow-lg transition-all group"
+                                    className="relative bg-white p-2 rounded-2xl overflow-hidden border cursor-pointer hover:border-purple-500 hover:shadow-lg transition-all group"
                                     title="Click to save QR Code"
                                 >
                                     {qrCodeUrl ? (
                                         <>
-                                            <Image src={qrCodeUrl} alt={`QR Code for ${paymentTargetOrder.vendorName}`} width={220} height={220} className="object-contain" />
+                                            <Image src={qrCodeUrl} alt={`QR Code for ${paymentTargetOrder.vendorName}`} width={160} height={160} className="object-contain" />
                                             <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Download className="text-white h-8 w-8 mb-2" />
-                                                <span className="text-white font-bold text-sm bg-black/50 px-3 py-1 rounded-full">Save Image</span>
+                                                <Download className="text-white h-6 w-6 mb-1" />
+                                                <span className="text-white font-bold text-xs bg-black/50 px-2 py-1 rounded-full">Save Image</span>
                                             </div>
                                         </>
                                     ) : (
-                                        <div className="w-56 h-56 flex items-center justify-center text-xs text-muted-foreground">Generating QR code...</div>
+                                        <div className="w-40 h-40 flex items-center justify-center text-xs text-muted-foreground">Generating QR code...</div>
                                     )}
                                 </div>
-                                <p className="text-[11px] text-muted-foreground text-center max-w-[220px]">
-                                    Click the QR code to save it.
+                                <p className="text-[11px] text-muted-foreground text-center">
+                                    {/iPad|iPhone|iPod/.test(typeof navigator !== 'undefined' ? navigator.userAgent : '') 
+                                        ? "Tap to open → long press to save to Photos" 
+                                        : "Click the QR code to save it."}
                                 </p>
                             </div>
 
                             {/* Quick Launch Tray for Mobile */}
                             {isMobile && (
                                 <div className="w-full flex flex-col items-center gap-2 mt-2 pt-4 border-t border-purple-500/10">
-                                    <p className="text-xs font-semibold text-primary">Saved the QR? Open your app to scan:</p>
+                                    <p className="text-xs font-semibold text-primary">Saved the QR? Open your UPI app to upload:</p>
                                     <div className="flex justify-center gap-2 w-full">
                                         <Button 
                                             variant="outline" 
