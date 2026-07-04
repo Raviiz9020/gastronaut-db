@@ -102,7 +102,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                 <DialogHeader>
                     <DialogTitle className="font-headline text-2xl">Find Vendors Near You</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-6 py-4">
+                <div className="space-y-6 py-4 max-h-[70vh] overflow-y-auto pr-1">
                     <p className="text-sm text-muted-foreground text-center">
                         {userLocation ? (
                             <>Your current location is set to: <strong className="text-foreground text-base">{userLocation.addressName}</strong></>

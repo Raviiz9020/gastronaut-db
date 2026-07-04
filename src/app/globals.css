@@ -55,6 +55,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
     background-image:
       linear-gradient(hsl(var(--primary) / 0.03) 1px, transparent 1px),
       linear-gradient(to right, hsl(var(--primary) / 0.03) 1px, hsl(var(--background)) 1px);

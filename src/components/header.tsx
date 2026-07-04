@@ -180,7 +180,7 @@ export default function Header({ pageVendor }: HeaderProps) {
             {!isAdminRoute && !pathname.startsWith('/rider') && (
                 <LocationPicker variant="full" className="flex max-w-[130px] sm:max-w-[150px] md:max-w-none" />
             )}
-            <nav className="hidden md:flex items-center gap-4 landscape:hidden">
+            <nav className="hidden md:flex items-center gap-4">
                 {navLinks.map(link => (
                      <Link key={link.href} href={link.href} passHref>
                         <Button variant={pathname === link.href ? 'secondary' : 'ghost'}>
@@ -255,7 +255,7 @@ export default function Header({ pageVendor }: HeaderProps) {
                 {totalItems > 0 && (
                   <Badge
                     variant="destructive"
-                    className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full p-0"
+                    className="absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-full p-0"
                   >
                     {totalItems}
                   </Badge>
