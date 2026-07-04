@@ -340,6 +340,8 @@ export default function CustomerDetailsPage() {
     const { customer, updateDetails, loginWithGoogle } = useCustomer();
     const { userLocation, detectLocation, isLoading: isLocating, error: locationError } = useLocation();
     const [isTermsDialogOpen, setIsTermsDialogOpen] = useState(false);
+    const [hasClickedDetect, setHasClickedDetect] = useState(false);
+    const [displayPlaceName, setDisplayPlaceName] = useState<string | null>(null);
     const [isLoading, startTransition] = useTransition();
 
     const form = useForm<z.infer<typeof formSchema>>({
@@ -390,15 +392,56 @@ export default function CustomerDetailsPage() {
     }, [customer, router, form]);
 
     useEffect(() => {
-        if (userLocation?.latitude && userLocation?.longitude) {
-            form.setValue('latitude', userLocation.latitude, { shouldValidate: true });
-            form.setValue('longitude', userLocation.longitude, { shouldValidate: true });
-            toast({
-                title: "Location Captured Successfully",
-                description: `Lat: ${userLocation.latitude.toFixed(6)}, Lng: ${userLocation.longitude.toFixed(6)}`,
-            });
+        if (hasClickedDetect && !isLocating) {
+            if (userLocation?.latitude && userLocation?.longitude && !locationError) {
+                form.setValue('latitude', userLocation.latitude, { shouldValidate: true });
+                form.setValue('longitude', userLocation.longitude, { shouldValidate: true });
+                toast({
+                    title: "Location Captured Successfully",
+                    description: `${userLocation.addressName ? userLocation.addressName + ' — ' : ''}Lat: ${userLocation.latitude.toFixed(6)}, Lng: ${userLocation.longitude.toFixed(6)}`,
+                });
+            }
+            setHasClickedDetect(false);
         }
-    }, [userLocation, form, toast]);
+    }, [userLocation, isLocating, locationError, hasClickedDetect, form, toast]);
+
+    const formLat = form.watch('latitude');
+    const formLng = form.watch('longitude');
+
+    useEffect(() => {
+        if (!formLat || !formLng) {
+            setDisplayPlaceName(null);
+            return;
+        }
+
+        // If it matches the newly detected location, use its cached name
+        if (userLocation && formLat === userLocation.latitude && formLng === userLocation.longitude && userLocation.addressName) {
+            setDisplayPlaceName(userLocation.addressName);
+            return;
+        }
+
+        // Otherwise, reverse geocode it (e.g. for the saved profile location)
+        let isMounted = true;
+        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${formLat}&lon=${formLng}&format=json`)
+            .then(res => res.json())
+            .then(data => {
+                if (!isMounted) return;
+                if (data && data.address) {
+                    const placeName = data.address.city || data.address.town || data.address.village || data.address.suburb || data.address.county;
+                    if (placeName) {
+                        setDisplayPlaceName(placeName);
+                    } else {
+                        setDisplayPlaceName(null);
+                    }
+                }
+            })
+            .catch(err => {
+                console.error("Failed to reverse geocode:", err);
+                if (isMounted) setDisplayPlaceName(null);
+            });
+
+        return () => { isMounted = false; };
+    }, [formLat, formLng, userLocation]);
 
     const onSubmit = (values: z.infer<typeof formSchema>) => {
         startTransition(async () => {
@@ -568,7 +611,10 @@ export default function CustomerDetailsPage() {
                         type="button"
                         variant="outline"
                         className="gap-2 rounded-xl border-purple-500/50 text-purple-500 hover:bg-purple-500/10"
-                        onClick={() => detectLocation()}
+                        onClick={() => {
+                            setHasClickedDetect(true);
+                            detectLocation();
+                        }}
                         disabled={isLocating}
                     >
                         {isLocating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Navigation className="h-4 w-4" />}
@@ -586,6 +632,9 @@ export default function CustomerDetailsPage() {
                         <ShieldCheck className="h-4 w-4 text-green-500 flex-shrink-0" />
                         <div>
                             <p className="text-sm font-medium text-green-600 dark:text-green-400">Location captured</p>
+                            {displayPlaceName && (
+                                <p className="text-sm font-semibold text-foreground">📍 {displayPlaceName}</p>
+                            )}
                             <p className="text-xs text-muted-foreground">
                                 Lat: {form.watch('latitude')?.toFixed(6)}, Lng: {form.watch('longitude')?.toFixed(6)}
                             </p>
