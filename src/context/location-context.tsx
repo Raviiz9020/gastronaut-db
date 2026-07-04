@@ -61,11 +61,24 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
 
         navigator.geolocation.getCurrentPosition(
-            (position) => {
+            async (position) => {
+                let placeName = 'Current Location';
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${position.coords.latitude}&lon=${position.coords.longitude}&format=json`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data && data.address) {
+                            placeName = data.address.city || data.address.town || data.address.village || data.address.suburb || data.address.county || 'Current Location';
+                        }
+                    }
+                } catch (err) {
+                    console.error('Reverse geocoding failed:', err);
+                }
+
                 const newLocation: UserLocation = {
                     latitude: position.coords.latitude,
                     longitude: position.coords.longitude,
-                    addressName: 'Current Location' // Fallback since we don't have reverse geocoding yet
+                    addressName: placeName
                 };
                 setLocation(newLocation);
                 setIsLoading(false);
