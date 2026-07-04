@@ -29,7 +29,6 @@ import { LocationPicker } from './location-picker';
 
 const navLinks = [
   { href: '/menu', label: 'Menu', icon: Utensils },
-  { href: '/specials', label: 'Specials', icon: Sparkles },
   { href: '/track', label: 'Track Order', icon: Package },
   { href: '/vendor-details', label: 'Our Vendors', icon: Users },
   { href: '/benefits', label: 'Why Us?', icon: Heart },
@@ -180,12 +179,19 @@ export default function Header({ pageVendor }: HeaderProps) {
             {!isAdminRoute && !pathname.startsWith('/rider') && (
                 <LocationPicker variant="full" className="flex max-w-[130px] sm:max-w-[150px] md:max-w-none" />
             )}
-            <nav className="hidden md:flex items-center gap-4">
+            <nav className="hidden md:flex items-center gap-6 text-sm">
                 {navLinks.map(link => (
-                     <Link key={link.href} href={link.href} passHref>
-                        <Button variant={pathname === link.href ? 'secondary' : 'ghost'}>
+                     <Link 
+                        key={link.href} 
+                        href={link.href} 
+                        className={cn(
+                            "transition-colors duration-200",
+                            pathname === link.href 
+                                ? "text-primary font-bold" 
+                                : "text-muted-foreground font-medium hover:text-foreground"
+                        )}
+                     >
                            {link.label}
-                        </Button>
                      </Link>
                 ))}
             </nav>
