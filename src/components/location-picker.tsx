@@ -126,7 +126,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                         <div className="flex-grow border-t border-muted"></div>
                     </div>
 
-                    <form onSubmit={handleSearch} className="flex w-full gap-2">
+                    <form onSubmit={handleSearch} className="flex w-full gap-2 min-w-0">
                         <Input 
                             placeholder="Enter city, area, or street..." 
                             value={searchQuery}
@@ -139,16 +139,16 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                     </form>
 
                     {searchResults.length > 0 && (
-                        <div className="max-h-[200px] overflow-y-auto space-y-2 border rounded-xl p-2 bg-muted/20 w-full overflow-x-hidden">
+                        <div className="max-h-[200px] overflow-y-auto space-y-2 border rounded-xl p-2 bg-muted/20 w-full min-w-0 max-w-full">
                             {searchResults.map((result, idx) => (
                                 <button
                                     key={idx}
                                     type="button"
                                     onClick={() => handleSelectLocation(result)}
-                                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-lg transition-colors flex flex-col overflow-hidden"
+                                    className="w-full text-left px-2 py-2 text-sm hover:bg-muted rounded-lg transition-colors flex flex-col min-w-0 overflow-hidden"
                                 >
-                                    <span className="font-semibold w-full truncate">{result.name}</span>
-                                    <span className="text-xs text-muted-foreground w-full truncate">{result.display_name}</span>
+                                    <span className="font-semibold block w-full truncate">{result.name}</span>
+                                    <span className="text-xs text-muted-foreground block w-full truncate">{result.display_name}</span>
                                 </button>
                             ))}
                         </div>
