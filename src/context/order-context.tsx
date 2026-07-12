@@ -348,7 +348,7 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
               riderSettlementMarkedBy: "",
               riderSettlementPaymentMode: "",
               riderSettlementRejectedReason: "",
-              riderSettlementStatus: "",
+              riderSettlementStatus: "pending",
               vendorAddress: v.address || "",
               vendorLatitude: v.latitude ?? 0,
               vendorLongitude: v.longitude ?? 0,
