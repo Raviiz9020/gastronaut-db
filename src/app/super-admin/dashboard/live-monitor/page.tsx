@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { Card, CardContent } from '@/components/ui/card';
@@ -48,6 +48,7 @@ import { X, UserCog } from 'lucide-react';
 import { useRiderManagement } from '@/context/rider-management-context';
 import { useToast } from '@/hooks/use-toast';
 import type { Rider } from '@/types';
+import { batchResolveCities } from '@/lib/reverseGeocode';
 
 const statusColors: Record<OrderStatus, string> = {
   'Order Placed': 'bg-blue-500',
@@ -79,6 +80,8 @@ export default function LiveMonitorPage() {
   const { allVendors, fetchAllVendors } = useVendor();
   const { riders, fetchAllRiders } = useRiderManagement();
   const { toast } = useToast();
+  const [cityMap, setCityMap] = useState<Record<string, string | null>>({});
+  const resolvingRef = useRef(false);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -96,6 +99,54 @@ export default function LiveMonitorPage() {
   const approvedRiders = useMemo(() => {
     return riders.filter(r => r.isApproved === true);
   }, [riders]);
+
+  // Resolve city names from lat/long for all active orders
+  useEffect(() => {
+    if (resolvingRef.current || orders.length === 0) return;
+    resolvingRef.current = true;
+
+    const coords: Array<{ id: string; lat: number | undefined | null; lng: number | undefined | null }> = [];
+
+    for (const order of orders) {
+      // Customer coords
+      coords.push({
+        id: `customer-${order.orderId}`,
+        lat: order.customer.latitude,
+        lng: order.customer.longitude,
+      });
+      // Vendor coords
+      coords.push({
+        id: `vendor-${order.orderId}`,
+        lat: order.vendorLatitude,
+        lng: order.vendorLongitude,
+      });
+      // Rider coords (look up from riders array)
+      if (order.assignedDeliveryBoyId) {
+        const rider = riders.find(r => r.id === order.assignedDeliveryBoyId);
+        if (rider) {
+          coords.push({
+            id: `rider-${order.orderId}`,
+            lat: rider.currentLatitude,
+            lng: rider.currentLongitude,
+          });
+        }
+      }
+    }
+
+    // Filter out entries that are already resolved
+    const unresolved = coords.filter(c => !(c.id in cityMap));
+    if (unresolved.length === 0) {
+      resolvingRef.current = false;
+      return;
+    }
+
+    batchResolveCities(unresolved).then((results) => {
+      setCityMap(prev => ({ ...prev, ...results }));
+      resolvingRef.current = false;
+    }).catch(() => {
+      resolvingRef.current = false;
+    });
+  }, [orders, riders]);
 
   useEffect(() => {
     const ordersRef = collection(db, 'orders');
@@ -356,6 +407,12 @@ export default function LiveMonitorPage() {
                                       {order.riderStatus}
                                     </Badge>
                                   )}
+                                  {cityMap[`rider-${order.orderId}`] && (
+                                    <span className="text-[9px] text-violet-600 font-black bg-violet-50 px-2 py-0.5 rounded-full border border-violet-100 w-fit flex items-center gap-1">
+                                      <MapPin className="h-2.5 w-2.5" />
+                                      {cityMap[`rider-${order.orderId}`]}
+                                    </span>
+                                  )}
                                   <span className="text-[9px] text-primary font-black bg-white px-2 py-0.5 rounded-full border border-blue-100 w-fit animate-pulse">
                                     {formatElapsedTime(order.assignedDeliveryBoyAt || order.createdAt)}
                                   </span>
@@ -551,6 +608,12 @@ export default function LiveMonitorPage() {
                                 <Store className="h-3.5 w-3.5 text-slate-300" />
                                 {getVendorName(order.vendorUsername)}
                               </span>
+                              {cityMap[`vendor-${order.orderId}`] && (
+                                <span className="text-[9px] text-emerald-600 font-black bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 w-fit flex items-center gap-1 ml-auto">
+                                  <MapPin className="h-2.5 w-2.5" />
+                                  {cityMap[`vendor-${order.orderId}`]}
+                                </span>
+                              )}
                               <span className="text-[10px] text-slate-400 font-bold uppercase">{vendor?.contact || 'No Contact'}</span>
                             </Button>
                           </DialogTrigger>
@@ -603,6 +666,12 @@ export default function LiveMonitorPage() {
                                 <User className="h-3.5 w-3.5 text-slate-300" />
                                 {order.customer.name}
                               </span>
+                              {cityMap[`customer-${order.orderId}`] && (
+                                <span className="text-[9px] text-blue-600 font-black bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 w-fit flex items-center gap-1">
+                                  <MapPin className="h-2.5 w-2.5" />
+                                  {cityMap[`customer-${order.orderId}`]}
+                                </span>
+                              )}
                               <span className="text-[10px] text-slate-400 font-bold uppercase truncate max-w-[120px] italic">{order.customer.address}</span>
                             </Button>
                           </DialogTrigger>

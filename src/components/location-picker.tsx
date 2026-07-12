@@ -45,10 +45,38 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
 
         setIsSearching(true);
         try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&addressdetails=1&limit=5`);
+            const res = await fetch(`/api/geocode?address=${encodeURIComponent(searchQuery)}`);
             if (res.ok) {
                 const data = await res.json();
-                setSearchResults(data);
+                if (data.status === 'OK' && data.results) {
+                    const mapped = data.results.map((item: any) => {
+                        const components = item.address_components || [];
+                        const cityComp = components.find((c: any) => 
+                            c.types.includes('locality') || 
+                            c.types.includes('administrative_area_level_2')
+                        );
+                        const subLocalityComp = components.find((c: any) => 
+                            c.types.includes('sublocality') || 
+                            c.types.includes('neighborhood')
+                        );
+
+                        const name = subLocalityComp?.long_name || cityComp?.long_name || item.formatted_address;
+
+                        return {
+                            name: name,
+                            display_name: item.formatted_address,
+                            lat: item.geometry.location.lat,
+                            lon: item.geometry.location.lng,
+                            address: {
+                                city: cityComp?.long_name || null
+                            }
+                        };
+                    });
+                    setSearchResults(mapped);
+                } else {
+                    console.error('Geocoding API returned status:', data.status, data.error_message || '');
+                    setSearchResults([]);
+                }
             }
         } catch (err) {
             console.error('Search failed:', err);
