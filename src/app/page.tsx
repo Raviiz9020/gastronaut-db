@@ -566,6 +566,7 @@ export default function LandingPage() {
                 <Link href="/contact" className="hover:text-primary">Contact</Link>
                 <Link href="/privacy-policy" className="hover:text-primary">Privacy Policy</Link>
                 <Link href="/terms-of-service" className="hover:text-primary">Terms of Service</Link>
+                <Link href="/cancellation-refund-policy" className="hover:text-primary">Cancellation & Refunds</Link>
               </div>
               <div className="flex items-center gap-4">
                 <Link href="/benefits" passHref>

@@ -6,31 +6,31 @@
             http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
 
 <url>
-  <loc>https://hyperdelivery.shop/</loc>
+  <loc>https://hyperdelivery.in/</loc>
   <priority>1.00</priority>
 </url>
 <url>
-  <loc>https://hyperdelivery.shop/menu</loc>
+  <loc>https://hyperdelivery.in/menu</loc>
   <priority>0.80</priority>
 </url>
 <url>
-  <loc>https://hyperdelivery.shop/vendor-details</loc>
+  <loc>https://hyperdelivery.in/vendor-details</loc>
   <priority>0.80</priority>
 </url>
 <url>
-  <loc>https://hyperdelivery.shop/specials</loc>
+  <loc>https://hyperdelivery.in/specials</loc>
   <priority>0.80</priority>
 </url>
 <url>
-  <loc>https://hyperdelivery.shop/benefits</loc>
+  <loc>https://hyperdelivery.in/benefits</loc>
   <priority>0.80</priority>
 </url>
 <url>
-  <loc>https://hyperdelivery.shop/about</loc>
+  <loc>https://hyperdelivery.in/about</loc>
   <priority>0.80</priority>
 </url>
 <url>
-  <loc>https://hyperdelivery.shop/contact</loc>
+  <loc>https://hyperdelivery.in/contact</loc>
   <priority>0.80</priority>
 </url>
 

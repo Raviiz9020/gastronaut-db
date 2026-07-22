@@ -12,50 +12,50 @@ import nodemailer from 'nodemailer';
 import { format } from 'date-fns';
 
 const SendOfferNotificationInputSchema = z.object({
-  offer: z.any().describe('The full offer object that was activated.'),
-  vendorName: z.string().describe("The name of the vendor who activated the offer."),
-  superAdminEmail: z.string().email().describe("The email address of the super admin to notify.")
+    offer: z.any().describe('The full offer object that was activated.'),
+    vendorName: z.string().describe("The name of the vendor who activated the offer."),
+    superAdminEmail: z.string().email().describe("The email address of the super admin to notify.")
 });
 export type SendOfferNotificationInput = z.infer<typeof SendOfferNotificationInputSchema>;
 
 const SendOfferNotificationOutputSchema = z.object({
-  success: z.boolean(),
-  message: z.string(),
+    success: z.boolean(),
+    message: z.string(),
 });
 export type SendOfferNotificationOutput = z.infer<typeof SendOfferNotificationOutputSchema>;
 
 export async function sendOfferNotificationEmail(input: SendOfferNotificationInput): Promise<SendOfferNotificationOutput> {
-  return sendOfferNotificationFlow(input);
+    return sendOfferNotificationFlow(input);
 }
 
 const sendOfferNotificationFlow = ai.defineFlow(
-  {
-    name: 'sendOfferNotificationFlow',
-    inputSchema: SendOfferNotificationInputSchema,
-    outputSchema: SendOfferNotificationOutputSchema,
-  },
-  async ({ offer, vendorName, superAdminEmail }) => {
-    
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_APP_PASSWORD) {
-        console.error('Email credentials are not set in environment variables.');
-        return { success: false, message: 'Server is not configured to send emails.' };
-    }
+    {
+        name: 'sendOfferNotificationFlow',
+        inputSchema: SendOfferNotificationInputSchema,
+        outputSchema: SendOfferNotificationOutputSchema,
+    },
+    async ({ offer, vendorName, superAdminEmail }) => {
 
-    const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_APP_PASSWORD,
-        },
-    });
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_APP_PASSWORD) {
+            console.error('Email credentials are not set in environment variables.');
+            return { success: false, message: 'Server is not configured to send emails.' };
+        }
 
-    const subject = `New Offer Activated: "${offer.title}" by ${vendorName}`;
-    const campaignLink = `https://hyperdelivery.shop/super-admin/dashboard/campaigns`;
-    
-    const formattedStartDate = offer.startDate ? format(new Date(offer.startDate), 'MMM dd, yyyy') : 'N/A';
-    const formattedEndDate = offer.endDate ? format(new Date(offer.endDate), 'MMM dd, yyyy') : 'N/A';
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_APP_PASSWORD,
+            },
+        });
 
-    const body = `
+        const subject = `New Offer Activated: "${offer.title}" by ${vendorName}`;
+        const campaignLink = `https://hyperdelivery.in/super-admin/dashboard/campaigns`;
+
+        const formattedStartDate = offer.startDate ? format(new Date(offer.startDate), 'MMM dd, yyyy') : 'N/A';
+        const formattedEndDate = offer.endDate ? format(new Date(offer.endDate), 'MMM dd, yyyy') : 'N/A';
+
+        const body = `
       <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px;">
         <table width="100%" border="0" cellspacing="0" cellpadding="0">
             <tr>
@@ -97,20 +97,20 @@ const sendOfferNotificationFlow = ai.defineFlow(
       </body>
     `;
 
-    try {
-        await transporter.sendMail({
-            from: `"HyperDelivery System" <${process.env.EMAIL_USER}>`,
-            to: superAdminEmail,
-            subject: subject,
-            html: body,
-        });
-        return { 
-            success: true, 
-            message: 'Super admin notification email sent successfully.',
-        };
-    } catch(error) {
-        console.error("Error sending offer notification email: ", error);
-        return { success: false, message: 'Failed to send notification email.' };
+        try {
+            await transporter.sendMail({
+                from: `"HyperDelivery System" <${process.env.EMAIL_USER}>`,
+                to: superAdminEmail,
+                subject: subject,
+                html: body,
+            });
+            return {
+                success: true,
+                message: 'Super admin notification email sent successfully.',
+            };
+        } catch (error) {
+            console.error("Error sending offer notification email: ", error);
+            return { success: false, message: 'Failed to send notification email.' };
+        }
     }
-  }
 );

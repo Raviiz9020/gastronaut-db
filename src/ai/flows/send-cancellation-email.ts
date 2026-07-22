@@ -10,52 +10,52 @@ import type { Order } from '@/types';
 import nodemailer from 'nodemailer';
 
 const SendCancellationEmailInputSchema = z.object({
-  order: z.any().describe('The full order object, which must include customer details and vendor contact information.'),
+    order: z.any().describe('The full order object, which must include customer details and vendor contact information.'),
 });
 export type SendCancellationEmailInput = z.infer<typeof SendCancellationEmailInputSchema>;
 
 const SendCancellationEmailOutputSchema = z.object({
-  success: z.boolean(),
-  message: z.string(),
+    success: z.boolean(),
+    message: z.string(),
 });
 export type SendCancellationEmailOutput = z.infer<typeof SendCancellationEmailOutputSchema>;
 
 export async function sendCancellationEmail(input: SendCancellationEmailInput): Promise<SendCancellationEmailOutput> {
-  return sendCancellationEmailFlow(input);
+    return sendCancellationEmailFlow(input);
 }
 
 const sendCancellationEmailFlow = ai.defineFlow(
-  {
-    name: 'sendCancellationEmailFlow',
-    inputSchema: SendCancellationEmailInputSchema,
-    outputSchema: SendCancellationEmailOutputSchema,
-  },
-  async ({ order }) => {
-    
-    if (!order.customer?.email) {
-        return { success: false, message: `Customer for order ${order.orderId} does not have an email address.` };
-    }
+    {
+        name: 'sendCancellationEmailFlow',
+        inputSchema: SendCancellationEmailInputSchema,
+        outputSchema: SendCancellationEmailOutputSchema,
+    },
+    async ({ order }) => {
 
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_APP_PASSWORD) {
-        console.error('Email credentials are not set in environment variables.');
-        return { success: false, message: 'Server is not configured to send emails.' };
-    }
+        if (!order.customer?.email) {
+            return { success: false, message: `Customer for order ${order.orderId} does not have an email address.` };
+        }
 
-    const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_APP_PASSWORD,
-        },
-    });
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_APP_PASSWORD) {
+            console.error('Email credentials are not set in environment variables.');
+            return { success: false, message: 'Server is not configured to send emails.' };
+        }
 
-    const subject = `Update on your HyperDelivery Order: #${order.orderId}`;
-    
-    const shopName = order.items[0]?.shopName || 'the shop';
-    const reason = order.cancellationReason || 'an unforeseen issue';
-    const vendorContact = order.vendorContact || 'the vendor';
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_APP_PASSWORD,
+            },
+        });
 
-    const body = `
+        const subject = `Update on your HyperDelivery Order: #${order.orderId}`;
+
+        const shopName = order.items[0]?.shopName || 'the shop';
+        const reason = order.cancellationReason || 'an unforeseen issue';
+        const vendorContact = order.vendorContact || 'the vendor';
+
+        const body = `
       <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px;">
         <table width="100%" border="0" cellspacing="0" cellpadding="0">
             <tr>
@@ -80,7 +80,7 @@ const sendCancellationEmailFlow = ai.defineFlow(
                                     
                                     <div style="text-align: center; margin-top: 30px;">
                                     <p style="color: #555;">We value your business and hope to serve you again soon.</p>
-                                    <a href="https://hyperdelivery.shop/menu" style="display: inline-block; background-color: #1890ff; color: white; padding: 12px 25px; text-decoration: none; border-radius: 25px; font-weight: bold; margin-top: 10px;">Return to Menu</a>
+                                    <a href="https://hyperdelivery.in/menu" style="display: inline-block; background-color: #1890ff; color: white; padding: 12px 25px; text-decoration: none; border-radius: 25px; font-weight: bold; margin-top: 10px;">Return to Menu</a>
                                     </div>
                                 </div>
                                 <div style="background-color: #f4f4f4; text-align: center; padding: 15px; font-size: 12px; color: #888;">
@@ -96,20 +96,20 @@ const sendCancellationEmailFlow = ai.defineFlow(
       </body>
     `;
 
-    try {
-        await transporter.sendMail({
-            from: `"HyperDelivery Orders" <${process.env.EMAIL_USER}>`,
-            to: order.customer.email,
-            subject: subject,
-            html: body,
-        });
-        return { 
-            success: true, 
-            message: 'Cancellation email sent successfully.',
-        };
-    } catch(error) {
-        console.error("Error sending cancellation email: ", error);
-        return { success: false, message: 'Failed to send cancellation email.' };
+        try {
+            await transporter.sendMail({
+                from: `"HyperDelivery Orders" <${process.env.EMAIL_USER}>`,
+                to: order.customer.email,
+                subject: subject,
+                html: body,
+            });
+            return {
+                success: true,
+                message: 'Cancellation email sent successfully.',
+            };
+        } catch (error) {
+            console.error("Error sending cancellation email: ", error);
+            return { success: false, message: 'Failed to send cancellation email.' };
+        }
     }
-  }
 );

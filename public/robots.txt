@@ -8,4 +8,4 @@ Disallow: /customer-details
 
 Allow: /
 
-Sitemap: https://hyperdelivery.shop/sitemap.xml
+Sitemap: https://hyperdelivery.in/sitemap.xml

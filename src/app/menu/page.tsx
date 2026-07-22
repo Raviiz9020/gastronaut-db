@@ -13,26 +13,26 @@ type Props = {
     searchParams: { [key: string]: string | string[] | undefined };
 };
 
-const SITE_URL = 'https://hyperdelivery.shop';
-const FALLBACK_IMAGE_URL = 'https://hyperdelivery.shop/og-image.png';
+const SITE_URL = 'https://hyperdelivery.in';
+const FALLBACK_IMAGE_URL = 'https://hyperdelivery.in/og-image.png';
 const SITE_NAME = 'HyperDelivery';
 
 export async function generateMetadata(
-  props: Props,
-  parent: ResolvingMetadata
+    props: Props,
+    parent: ResolvingMetadata
 ): Promise<Metadata> {
     const { searchParams } = props;
     const rawItemParam = searchParams?.item;
     const itemParam = Array.isArray(rawItemParam) ? rawItemParam[0] : (rawItemParam as string | undefined);
-    
+
     const rawCategoryParam = searchParams?.category;
     const categoryName = Array.isArray(rawCategoryParam) ? rawCategoryParam[0] : (rawCategoryParam as string | undefined);
-    
+
     if (itemParam) {
         try {
             const docRef = doc(db, 'menuItems', itemParam as string);
             const itemDoc = await getDoc(docRef);
-            
+
             if (itemDoc.exists()) {
                 const item = { id: itemDoc.id, ...itemDoc.data() } as MenuItemType;
                 const fullUrl = `${SITE_URL}/menu?item=${encodeURIComponent(item.id)}`;
@@ -40,7 +40,7 @@ export async function generateMetadata(
                 const description = item.description || `Order ${item.name} now from ${item.shopName} on ${SITE_NAME}.`;
                 const rawImageUrl = (typeof item.image === 'string' && item.image.trim()) ? item.image : FALLBACK_IMAGE_URL;
                 const imageUrl = rawImageUrl.replace(/&amp;/g, '&');
-                
+
                 return {
                     title: title,
                     description: description,
@@ -72,20 +72,20 @@ export async function generateMetadata(
             console.error("Error fetching item metadata:", error);
         }
     }
-    
+
     if (categoryName) {
-         try {
+        try {
             const q = query(collection(db, 'categories'), where('name', '==', categoryName), limit(1));
             const categorySnap = await getDocs(q);
 
-             if (!categorySnap.empty) {
+            if (!categorySnap.empty) {
                 const category = categorySnap.docs[0].data() as Category;
                 const fullUrl = `${SITE_URL}/menu?category=${encodeURIComponent(category.name)}`;
                 const title = `${SITE_NAME} - ${category.name}`;
                 const description = `Explore all items in the ${category.name} category.`;
                 const rawImageUrl = (typeof category.imageUrl === 'string' && category.imageUrl.trim()) ? category.imageUrl : FALLBACK_IMAGE_URL;
                 const imageUrl = rawImageUrl.replace(/&amp;/g, '&');
-                
+
                 return {
                     title: title,
                     description: description,
@@ -124,7 +124,7 @@ export async function generateMetadata(
     return {
         title: defaultTitle,
         description: defaultDescription,
-         openGraph: {
+        openGraph: {
             title: defaultTitle,
             description: defaultDescription,
             url: SITE_URL,
@@ -150,12 +150,12 @@ export async function generateMetadata(
 }
 
 const MenuPageFallback = () => (
-  <div className="flex flex-col min-h-screen">
-      <Header />
-      <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-  </div>
+    <div className="flex flex-col min-h-screen">
+        <Header />
+        <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+    </div>
 );
 
 

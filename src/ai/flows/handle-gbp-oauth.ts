@@ -11,7 +11,7 @@ import { google } from 'googleapis';
 
 const GmbAuthUrlInputSchema = z.object({
   vendorId: z.string().describe("The UID of the vendor initiating the auth flow."),
-  baseUrl: z.string().url().describe("The base URL of the application (e.g., https://hyperdelivery.shop)."),
+  baseUrl: z.string().url().describe("The base URL of the application (e.g., https://hyperdelivery.in)."),
 });
 
 const GmbAuthUrlOutputSchema = z.string().describe("The Google OAuth 2.0 URL for the vendor to visit.");
@@ -32,7 +32,7 @@ const generateGmbAuthUrlFlow = ai.defineFlow(
     }
 
     // Always use the hardcoded production URL for consistency and security.
-    const redirectUri = 'https://hyperdelivery.shop/api/oauth/google/callback';
+    const redirectUri = 'https://hyperdelivery.in/api/oauth/google/callback';
     console.log("🔍 Generated OAuth Redirect URI (frontend flow):", redirectUri);
 
     const oauth2Client = new google.auth.OAuth2(

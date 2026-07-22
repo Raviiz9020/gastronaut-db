@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   const state = searchParams.get('state'); // vendorId
-  const dashboardUrl = new URL('/admin/dashboard', 'https://hyperdelivery.shop');
+  const dashboardUrl = new URL('/admin/dashboard', 'https://hyperdelivery.in');
 
   if (!code || !state) {
     dashboardUrl.searchParams.set('error', 'oauth_failed');
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   try {
     const adminDb = getAdminDb();
     const vendorId = state;
-    const redirectUri = 'https://hyperdelivery.shop/api/oauth/google/callback';
+    const redirectUri = 'https://hyperdelivery.in/api/oauth/google/callback';
 
     const oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
@@ -28,9 +28,9 @@ export async function GET(request: NextRequest) {
     const { tokens } = await oauth2Client.getToken(code);
 
     if (!tokens.access_token) {
-        throw new Error('Authentication failed, no access token received.');
+      throw new Error('Authentication failed, no access token received.');
     }
-    
+
     if (!tokens.refresh_token) {
       dashboardUrl.searchParams.set(
         'error',
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     };
 
     const vendorRef = adminDb.collection('vendors').doc(vendorId);
-    
+
     // Step 1: List accounts using the account management API
     const myBusinessAccountManagement = google.mybusinessaccountmanagement({
       version: 'v1',
@@ -69,15 +69,15 @@ export async function GET(request: NextRequest) {
     const accountId = primaryAccount.name?.split('/').pop() || null;
 
     // Combine auth payload and account ID and save to Firestore
-    await vendorRef.set({ 
-        gmbAuth: gmbAuthPayload,
-        gmbAccountId: accountId
+    await vendorRef.set({
+      gmbAuth: gmbAuthPayload,
+      gmbAccountId: accountId
     }, { merge: true });
 
 
     // Step 2: List locations using a direct fetch call
     const locationsApiUrl = `https://mybusinessbusinessinformation.googleapis.com/v1/${primaryAccount.name}/locations?readMask=name,title`;
-    
+
     const locationsResponse = await fetch(locationsApiUrl, {
       headers: {
         'Authorization': `Bearer ${tokens.access_token}`,
@@ -85,9 +85,9 @@ export async function GET(request: NextRequest) {
     });
 
     if (!locationsResponse.ok) {
-        const errorBody = await locationsResponse.json();
-        console.error('❌ Error fetching locations via REST:', errorBody);
-        throw new Error(`Failed to fetch locations: ${errorBody.error?.message || 'Unknown error'}`);
+      const errorBody = await locationsResponse.json();
+      console.error('❌ Error fetching locations via REST:', errorBody);
+      throw new Error(`Failed to fetch locations: ${errorBody.error?.message || 'Unknown error'}`);
     }
 
     const locationsData = await locationsResponse.json();

@@ -10,47 +10,47 @@ import { z } from 'zod';
 import nodemailer from 'nodemailer';
 
 const SendNewVendorEmailInputSchema = z.object({
-  vendorName: z.string().describe("The name of the new vendor."),
-  shopName: z.string().optional().describe("The shop name of the new vendor, if provided."),
-  superAdminEmail: z.string().email().describe("The email address of the super admin to notify.")
+    vendorName: z.string().describe("The name of the new vendor."),
+    shopName: z.string().optional().describe("The shop name of the new vendor, if provided."),
+    superAdminEmail: z.string().email().describe("The email address of the super admin to notify.")
 });
 export type SendNewVendorEmailInput = z.infer<typeof SendNewVendorEmailInputSchema>;
 
 const SendNewVendorEmailOutputSchema = z.object({
-  success: z.boolean(),
-  message: z.string(),
+    success: z.boolean(),
+    message: z.string(),
 });
 export type SendNewVendorEmailOutput = z.infer<typeof SendNewVendorEmailOutputSchema>;
 
 export async function sendNewVendorEmail(input: SendNewVendorEmailInput): Promise<SendNewVendorEmailOutput> {
-  return sendNewVendorEmailFlow(input);
+    return sendNewVendorEmailFlow(input);
 }
 
 const sendNewVendorEmailFlow = ai.defineFlow(
-  {
-    name: 'sendNewVendorEmailFlow',
-    inputSchema: SendNewVendorEmailInputSchema,
-    outputSchema: SendNewVendorEmailOutputSchema,
-  },
-  async ({ vendorName, shopName, superAdminEmail }) => {
-    
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_APP_PASSWORD) {
-        console.error('Email credentials are not set in environment variables.');
-        return { success: false, message: 'Server is not configured to send emails.' };
-    }
+    {
+        name: 'sendNewVendorEmailFlow',
+        inputSchema: SendNewVendorEmailInputSchema,
+        outputSchema: SendNewVendorEmailOutputSchema,
+    },
+    async ({ vendorName, shopName, superAdminEmail }) => {
 
-    const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_APP_PASSWORD,
-        },
-    });
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_APP_PASSWORD) {
+            console.error('Email credentials are not set in environment variables.');
+            return { success: false, message: 'Server is not configured to send emails.' };
+        }
 
-    const subject = `New Vendor Signup: ${shopName || vendorName}`;
-    const dashboardLink = `https://hyperdelivery.shop/super-admin/dashboard`;
-    
-    const body = `
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_APP_PASSWORD,
+            },
+        });
+
+        const subject = `New Vendor Signup: ${shopName || vendorName}`;
+        const dashboardLink = `https://hyperdelivery.in/super-admin/dashboard`;
+
+        const body = `
       <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px;">
         <table width="100%" border="0" cellspacing="0" cellpadding="0">
             <tr>
@@ -89,20 +89,20 @@ const sendNewVendorEmailFlow = ai.defineFlow(
       </body>
     `;
 
-    try {
-        await transporter.sendMail({
-            from: `"HyperDelivery System" <${process.env.EMAIL_USER}>`,
-            to: superAdminEmail,
-            subject: subject,
-            html: body,
-        });
-        return { 
-            success: true, 
-            message: 'New vendor notification email sent successfully.',
-        };
-    } catch(error) {
-        console.error("Error sending new vendor email: ", error);
-        return { success: false, message: 'Failed to send notification email.' };
+        try {
+            await transporter.sendMail({
+                from: `"HyperDelivery System" <${process.env.EMAIL_USER}>`,
+                to: superAdminEmail,
+                subject: subject,
+                html: body,
+            });
+            return {
+                success: true,
+                message: 'New vendor notification email sent successfully.',
+            };
+        } catch (error) {
+            console.error("Error sending new vendor email: ", error);
+            return { success: false, message: 'Failed to send notification email.' };
+        }
     }
-  }
 );

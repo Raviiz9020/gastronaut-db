@@ -11,68 +11,68 @@ import type { Order, Vendor } from '@/types';
 import nodemailer from 'nodemailer';
 
 const SendOrderEmailInputSchema = z.object({
-  order: z.any().describe('The full order object.'),
-  vendor: z.any().describe('The full vendor object.'),
+    order: z.any().describe('The full order object.'),
+    vendor: z.any().describe('The full vendor object.'),
 });
 export type SendOrderEmailInput = z.infer<typeof SendOrderEmailInputSchema>;
 
 const SendOrderEmailOutputSchema = z.object({
-  success: z.boolean(),
-  message: z.string(),
+    success: z.boolean(),
+    message: z.string(),
 });
 export type SendOrderEmailOutput = z.infer<typeof SendOrderEmailOutputSchema>;
 
 export async function sendOrderEmail(input: SendOrderEmailInput): Promise<SendOrderEmailOutput> {
-  return sendOrderEmailFlow(input);
+    return sendOrderEmailFlow(input);
 }
 
 const sendOrderEmailFlow = ai.defineFlow(
-  {
-    name: 'sendOrderEmailFlow',
-    inputSchema: SendOrderEmailInputSchema,
-    outputSchema: SendOrderEmailOutputSchema,
-  },
-  async ({ order, vendor }) => {
-    
-    if (!vendor.email) {
-        return { success: false, message: `Vendor ${vendor.username} does not have an email address.` };
-    }
+    {
+        name: 'sendOrderEmailFlow',
+        inputSchema: SendOrderEmailInputSchema,
+        outputSchema: SendOrderEmailOutputSchema,
+    },
+    async ({ order, vendor }) => {
 
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_APP_PASSWORD) {
-        console.error('Email credentials are not set in environment variables.');
-        return { success: false, message: 'Server is not configured to send emails.' };
-    }
+        if (!vendor.email) {
+            return { success: false, message: `Vendor ${vendor.username} does not have an email address.` };
+        }
 
-    const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_APP_PASSWORD,
-        },
-    });
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_APP_PASSWORD) {
+            console.error('Email credentials are not set in environment variables.');
+            return { success: false, message: 'Server is not configured to send emails.' };
+        }
 
-    const subject = `New Order Received: #${order.orderId}`;
-    
-    const itemsList = order.items.map((item: any) => 
-        `<tr style="border-bottom: 1px solid #eee;">
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_APP_PASSWORD,
+            },
+        });
+
+        const subject = `New Order Received: #${order.orderId}`;
+
+        const itemsList = order.items.map((item: any) =>
+            `<tr style="border-bottom: 1px solid #eee;">
             <td style="padding: 10px 0;">${item.quantity}x ${item.name}</td>
             <td style="padding: 10px 0; text-align: right;">₹${(item.price * item.quantity).toFixed(2)}</td>
          </tr>`
-    ).join('');
+        ).join('');
 
-    const contact = order.customer.contact;
-    const maskedContact = contact && contact.length > 4 ? 'x'.repeat(contact.length - 4) + contact.slice(-4) : contact;
+        const contact = order.customer.contact;
+        const maskedContact = contact && contact.length > 4 ? 'x'.repeat(contact.length - 4) + contact.slice(-4) : contact;
 
-    const customNotesHtml = order.customNotes ? `
+        const customNotesHtml = order.customNotes ? `
         <div style="margin-top: 20px; padding: 15px; background-color: #fffbe6; border: 1px solid #ffe58f; border-radius: 8px;">
             <h4 style="margin: 0 0 5px 0; font-weight: bold; color: #d46b08;">Customer's Special Instructions:</h4>
             <p style="margin: 0; color: #d46b08;"><em>"${order.customNotes}"</em></p>
         </div>
     ` : '';
-    
-    const rewardsRedeemed = order.pointsRedeemed && order.pointsRedeemed > 0;
 
-    const rewardsHtml = (order.pointsEarned && order.pointsEarned > 0) || rewardsRedeemed ? `
+        const rewardsRedeemed = order.pointsRedeemed && order.pointsRedeemed > 0;
+
+        const rewardsHtml = (order.pointsEarned && order.pointsEarned > 0) || rewardsRedeemed ? `
         <div style="margin-top: 20px; padding: 15px; background-color: ${rewardsRedeemed ? '#fff1f0' : '#f0f9ff'}; border: 1px solid ${rewardsRedeemed ? '#ffccc7' : '#bae6fd'}; border-radius: 8px;">
             <h4 style="margin: 0; font-weight: bold; color: ${rewardsRedeemed ? '#cf1322' : '#0284c7'};">Rewards Info</h4>
             ${rewardsRedeemed ? `
@@ -83,15 +83,15 @@ const sendOrderEmailFlow = ai.defineFlow(
             ` : ''}
         </div>
     ` : '';
-    
-    const subtotalHtml = `
+
+        const subtotalHtml = `
       <tr style="font-weight: normal; color: #555;">
         <td style="padding: 10px 0 0;">Subtotal</td>
         <td style="padding: 10px 0 0; text-align: right;">₹${order.subtotal.toFixed(2)}</td>
       </tr>
     `;
 
-    const discountHtml = rewardsRedeemed ? `
+        const discountHtml = rewardsRedeemed ? `
       <tr style="font-weight: normal; color: #cf1322;">
         <td style="padding: 5px 0;">Rewards Discount</td>
         <td style="padding: 5px 0; text-align: right;">- ₹${order.discountAmount.toFixed(2)}</td>
@@ -99,7 +99,7 @@ const sendOrderEmailFlow = ai.defineFlow(
     ` : '';
 
 
-    const body = `
+        const body = `
       <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px;">
         <table width="100%" border="0" cellspacing="0" cellpadding="0">
             <tr>
@@ -151,7 +151,7 @@ const sendOrderEmailFlow = ai.defineFlow(
                                     ${rewardsHtml}
                                     
                                     <div style="text-align: center; margin-top: 30px;">
-                                    <p style="color: #555;">Please log in to your vendor dashboard to process this order. Login here - <a href="https://hyperdelivery.shop/admin/login" target="_blank">https://hyperdelivery.shop/admin/login</a></p>
+                                    <p style="color: #555;">Please log in to your vendor dashboard to process this order. Login here - <a href="https://hyperdelivery.in/admin/login" target="_blank">https://hyperdelivery.in/admin/login</a></p>
                                     </div>
                                 </div>
                                 <div style="background-color: #f4f4f4; text-align: center; padding: 15px; font-size: 12px; color: #888;">
@@ -167,20 +167,20 @@ const sendOrderEmailFlow = ai.defineFlow(
       </body>
     `;
 
-    try {
-        await transporter.sendMail({
-            from: `"HyperDelivery Orders" <${process.env.EMAIL_USER}>`,
-            to: vendor.email,
-            subject: subject,
-            html: body,
-        });
-        return { 
-            success: true, 
-            message: 'Order email sent successfully to vendor.',
-        };
-    } catch(error) {
-        console.error("Error sending email: ", error);
-        return { success: false, message: 'Failed to send email.' };
+        try {
+            await transporter.sendMail({
+                from: `"HyperDelivery Orders" <${process.env.EMAIL_USER}>`,
+                to: vendor.email,
+                subject: subject,
+                html: body,
+            });
+            return {
+                success: true,
+                message: 'Order email sent successfully to vendor.',
+            };
+        } catch (error) {
+            console.error("Error sending email: ", error);
+            return { success: false, message: 'Failed to send email.' };
+        }
     }
-  }
 );

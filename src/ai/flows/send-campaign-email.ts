@@ -160,7 +160,7 @@ const sendCampaignEmailFlow = ai.defineFlow(
         const recipientName = (recipient as Vendor).shopName || recipient.name || 'Valued Member';
 
         // 3. Construct the email body for each recipient
-        const unsubscribeUrl = `https://hyperdelivery.shop/unsubscribe?email=${encodeURIComponent(recipient.email)}`;
+        const unsubscribeUrl = `https://hyperdelivery.in/unsubscribe?email=${encodeURIComponent(recipient.email)}`;
         const emailHtml = `
           <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px;">
             <table width="100%" border="0" cellspacing="0" cellpadding="0">

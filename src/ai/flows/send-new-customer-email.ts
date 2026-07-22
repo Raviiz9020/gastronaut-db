@@ -48,7 +48,7 @@ const sendNewCustomerEmailFlow = ai.defineFlow(
     });
 
     const subject = `New Customer Signup: ${customerName}`;
-    const dashboardLink = `https://hyperdelivery.shop/super-admin/dashboard/customers`;
+    const dashboardLink = `https://hyperdelivery.in/super-admin/dashboard/customers`;
     
     const body = `
       <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px;">
