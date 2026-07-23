@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Building, Rocket, ChevronLeft, Upload, Loader2, Info, Mail, Bike, Home, AlertCircle, KeyRound, MapPin } from 'lucide-react';
+import { Building, Rocket, ChevronLeft, Upload, Loader2, Info, Mail, Bike, Home, AlertCircle, KeyRound, MapPin, BadgePercent } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useVendor } from '@/context/vendor-context';
@@ -430,6 +430,22 @@ export default function VendorDetailsPage() {
                       value={category || 'To be assigned by admin'} 
                       readOnly 
                       className="bg-muted/50 cursor-not-allowed"
+                  />
+              </div>
+              <div className="space-y-2">
+                  <Label htmlFor="commission" className="flex items-center gap-1.5">
+                      <BadgePercent className="h-4 w-4 text-primary" />
+                      Commission Rate (Per Order)
+                  </Label>
+                  <Input 
+                      id="commission" 
+                      value={
+                        vendor?.isCommissionOn 
+                          ? `${vendor?.commissionPercentage ?? 0}% Commission (Managed by Superadmin)`
+                          : 'Disabled / Subscription Mode (Managed by Superadmin)'
+                      } 
+                      readOnly 
+                      className="bg-muted/50 cursor-not-allowed font-medium text-muted-foreground"
                   />
               </div>
               <div className="space-y-2">

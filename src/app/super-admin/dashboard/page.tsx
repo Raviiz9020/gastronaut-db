@@ -5,7 +5,7 @@ import { useVendor } from '@/context/vendor-context';
 import { useOrder } from '@/context/order-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Edit, Trash2, Building, Package, Calendar, CheckCircle, XCircle, FileSpreadsheet, Gift, Utensils, Mail, TrendingUp, Sparkles, KeyRound, Award, Upload, BarChart2, Download, ShieldCheck } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Building, Package, Calendar, CheckCircle, XCircle, FileSpreadsheet, Gift, Utensils, Mail, TrendingUp, Sparkles, KeyRound, Award, Upload, BarChart2, Download, ShieldCheck, BadgePercent } from 'lucide-react';
 import type { Vendor, Order, CartItem, MenuItem } from '@/types';
 import VendorForm from './vendor-form';
 import ConfirmationDialog from '@/components/confirmation-dialog';
@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format, differenceInDays } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import RewardsConfigDialog from './rewards-config-dialog';
+import CommissionConfigDialog from './commission-config-dialog';
 import BulkUploadDialog from './bulk-upload-dialog';
 import { collection, query, where, getDocs, getCountFromServer } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -43,6 +44,7 @@ const VendorCard = ({
     onToggleAiAssistant, 
     onToggleAccountLinking, 
     onToggleRewards, 
+    onToggleCommission,
     onBulkUpload,
     onToggleDemo,
     onToggleMenuRestriction,
@@ -63,6 +65,7 @@ const VendorCard = ({
     onToggleAiAssistant: (username: string, currentStatus: boolean) => void
     onToggleAccountLinking: (username: string, currentStatus: boolean) => void
     onToggleRewards: (vendor: Vendor) => void;
+    onToggleCommission: (vendor: Vendor) => void;
     onBulkUpload: (vendor: Vendor) => void;
     onToggleDemo: (username: string, currentStatus: boolean) => void;
     onToggleMenuRestriction: (username: string, currentStatus: boolean) => void;
@@ -174,9 +177,9 @@ const VendorCard = ({
                     <span>Campaigns</span>
                 </div>
                 {vendor.emailPreferences?.campaigns ?? true ? (
-                    <CheckCircle className="h-5 w-5 text-green-500" title="Subscribed"/>
+                    <span title="Subscribed"><CheckCircle className="h-5 w-5 text-green-500"/></span>
                 ) : (
-                    <XCircle className="h-5 w-5 text-destructive" title="Unsubscribed"/>
+                    <span title="Unsubscribed"><XCircle className="h-5 w-5 text-destructive"/></span>
                 )}
             </div>
              <div className="flex justify-between items-center">
@@ -283,6 +286,26 @@ const VendorCard = ({
                     onCheckedChange={() => onToggleRewards(vendor)}
                 />
             </div>
+            <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                    {vendor.isCommissionOn ? <CheckCircle className="h-4 w-4 text-green-500"/> : <XCircle className="h-4 w-4 text-destructive"/>}
+                    <span>Take Share</span>
+                     {vendor.isCommissionOn && vendor.commissionPercentage !== undefined && (
+                        <span 
+                            onClick={() => onToggleCommission(vendor)}
+                            className="cursor-pointer text-xs font-mono bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded-full hover:opacity-80 transition-opacity"
+                            title="Click to edit commission percentage"
+                        >
+                            {vendor.commissionPercentage}% Comm.
+                        </span>
+                    )}
+                </div>
+                <Switch
+                    id={`commission-switch-${vendor.username}`}
+                    checked={vendor.isCommissionOn ?? false}
+                    onCheckedChange={() => onToggleCommission(vendor)}
+                />
+            </div>
 
             <Separator className="my-2"/>
             <div className="bg-muted/30 p-3 rounded-2xl space-y-2">
@@ -365,7 +388,8 @@ export default function SuperAdminDashboardPage() {
     toggleVendorRewards,
     toggleVendorDemoStatus,
     toggleMenuEditRestriction,
-    toggleInventoryStatus
+    toggleInventoryStatus,
+    toggleVendorCommission
   } = useVendor();
   const { menuItems, fetchAllItems } = useMenu();
   
@@ -375,6 +399,8 @@ export default function SuperAdminDashboardPage() {
   const [vendorToDelete, setVendorToDelete] = useState<string | null>(null);
   const [isRewardsConfigOpen, setIsRewardsConfigOpen] = useState(false);
   const [rewardsVendor, setRewardsVendor] = useState<Vendor | null>(null);
+  const [isCommissionConfigOpen, setIsCommissionConfigOpen] = useState(false);
+  const [commissionVendor, setCommissionVendor] = useState<Vendor | null>(null);
   const [vendorStats, setVendorStats] = useState<Record<string, VendorStats>>({});
   const [fetchingDetailsFor, setFetchingDetailsFor] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -495,6 +521,23 @@ export default function SuperAdminDashboardPage() {
     setRewardsVendor(null);
   };
 
+  const handleCommissionToggle = (vendor: Vendor) => {
+    if (!vendor.isCommissionOn) {
+      setCommissionVendor(vendor);
+      setIsCommissionConfigOpen(true);
+    } else {
+      toggleVendorCommission(vendor.username, false, 0);
+    }
+  };
+
+  const handleCommissionConfigSave = async (percentage: number) => {
+    if (commissionVendor) {
+      await toggleVendorCommission(commissionVendor.username, true, percentage);
+    }
+    setIsCommissionConfigOpen(false);
+    setCommissionVendor(null);
+  };
+
 
   const onFormClose = (isOpen: boolean) => {
     setIsFormOpen(isOpen);
@@ -539,6 +582,7 @@ export default function SuperAdminDashboardPage() {
                     onToggleAiAssistant={handleAiAssistantToggle}
                     onToggleAccountLinking={handleAccountLinkingToggle}
                     onToggleRewards={handleRewardsToggle}
+                    onToggleCommission={handleCommissionToggle}
                     onBulkUpload={handleBulkUpload}
                     onToggleDemo={toggleVendorDemoStatus}
                     onToggleMenuRestriction={toggleMenuEditRestriction}
@@ -569,6 +613,13 @@ export default function SuperAdminDashboardPage() {
         onOpenChange={setIsRewardsConfigOpen}
         onSave={handleRewardsConfigSave}
         vendor={rewardsVendor}
+      />
+
+      <CommissionConfigDialog
+        isOpen={isCommissionConfigOpen}
+        onOpenChange={setIsCommissionConfigOpen}
+        onSave={handleCommissionConfigSave}
+        vendor={commissionVendor}
       />
 
       <ConfirmationDialog

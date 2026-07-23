@@ -308,6 +308,14 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
 
           const isHomeDelivery = vendorDeliveryOption === 'Home Delivery';
 
+          let commissionPercentage = 0;
+          let commissionAmount = 0;
+
+          if (isHomeDelivery && v.isCommissionOn && v.commissionPercentage && v.commissionPercentage > 0) {
+            commissionPercentage = v.commissionPercentage;
+            commissionAmount = Number(((finalPrice * v.commissionPercentage) / 100).toFixed(2));
+          }
+
           const newOrderData: Omit<Order, 'orderId'> & { tableId?: string | null } = {
             displayId: displayId,
             customer: {
@@ -338,6 +346,8 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
             deliveryDistanceKm: deliveryDistanceKm > 0 ? deliveryDistanceKm : 0,
             deliveryCharge: deliveryCharge > 0 ? deliveryCharge : 0,
             distanceCalculationType: distanceCalculationType || "",
+            commissionPercentage,
+            commissionAmount,
             paymentStatus: 'PENDING',
             ...(isHomeDelivery ? {
               riderPayout: deliveryCharge,
@@ -633,23 +643,16 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
           const updatedOrder = { orderId, ...updatedOrderSnap.data() } as Order;
 
           if (updatedOrder.deliveryOption !== 'Dine-In') {
-            let customerToEmail: Customer | Vendor | null = null;
-
-            if (updatedOrder.deliveryOption === 'Dine-In') {
-              const vendorRef = doc(db, 'vendors', updatedOrder.vendorUsername);
-              const vendorSnap = await getDoc(vendorRef);
-              if (vendorSnap.exists()) customerToEmail = vendorSnap.data() as Vendor;
-            } else {
-              const customerRef = doc(db, 'customers', updatedOrder.customerUsername);
-              const customerSnap = await getDoc(customerRef);
-              if (customerSnap.exists()) customerToEmail = customerSnap.data() as Customer;
-            }
-
-            if (customerToEmail?.email) {
-              await sendOrderModifiedEmail({
-                order: JSON.parse(JSON.stringify(updatedOrder)),
-                customer: JSON.parse(JSON.stringify(customerToEmail)),
-              });
+            const customerRef = doc(db, 'customers', updatedOrder.customerUsername);
+            const customerSnap = await getDoc(customerRef);
+            if (customerSnap.exists()) {
+              const customerToEmail = customerSnap.data() as Customer;
+              if (customerToEmail.email) {
+                await sendOrderModifiedEmail({
+                  order: JSON.parse(JSON.stringify(updatedOrder)),
+                  customer: JSON.parse(JSON.stringify(customerToEmail)),
+                });
+              }
             }
           }
         }

@@ -54,6 +54,7 @@ interface VendorContextType {
   toggleVendorDemoStatus: (username: string, currentStatus: boolean) => Promise<void>;
   toggleMenuEditRestriction: (username: string, currentStatus: boolean) => Promise<void>;
   toggleInventoryStatus: (username: string, currentStatus: boolean) => Promise<void>;
+  toggleVendorCommission: (username: string, enable: boolean, percentage?: number) => Promise<void>;
 }
 
 const VendorContext = createContext<VendorContextType | undefined>(undefined);
@@ -383,7 +384,7 @@ export const VendorProvider = ({ children }: { children: ReactNode }) => {
   };
 
 
-  const signup = async (username: string, password: string, details?: Partial<Omit<Vendor, 'username' | 'password' | 'isApproved'>>) => {
+  const signup = async (username: string, password: string, details?: Partial<Omit<Vendor, 'username' | 'password' | 'isApproved'>>): Promise<Vendor> => {
      try {
         const userCredential = await createUserWithEmailAndPassword(auth, `${username}@hyperplate.app`, password);
         const firebaseUser = userCredential.user;
@@ -701,6 +702,25 @@ export const VendorProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const toggleVendorCommission = async (username: string, enable: boolean, percentage?: number) => {
+    const vendorRef = doc(db, 'vendors', username);
+    try {
+      const updateData: Partial<Vendor> = {
+        isCommissionOn: enable,
+        commissionPercentage: enable ? (percentage ?? 0) : 0
+      };
+      await updateDoc(vendorRef, updateData as any);
+      fetchAllVendors();
+      toast({
+        title: 'Success',
+        description: `Commission share for this vendor has been ${enable ? `enabled at ${percentage ?? 0}%` : 'disabled'}.`,
+      });
+    } catch (e) {
+      console.error("Error toggling vendor commission:", e);
+      toast({ title: 'Error', description: 'Could not update commission settings.', variant: 'destructive' });
+    }
+  };
+
   const filteredVendors = useMemo(() => {
     if (customer?.isDemoCustomer) {
       return allVendors.filter(v => v.isDemoAccount);
@@ -710,7 +730,7 @@ export const VendorProvider = ({ children }: { children: ReactNode }) => {
 
 
   return (
-    <VendorContext.Provider value={{ vendor: currentVendor, vendors: filteredVendors, allVendors, isAuthLoading, addVendorToContext, fetchAllVendors, login, loginWithGoogle, loginAsDemo, linkNewGoogleAccount, signup, updateDetails, logout, removeVendor, updateVendorBySuperAdmin, toggleVendorApproval, toggleShopOpenStatus, toggleVendorGbpStatus, toggleVendorExpenseTracking, toggleVendorOfferCreation, toggleDineInStatus, toggleAiAssistantStatus, toggleAccountLinkingStatus, toggleVendorRewards, toggleVendorDemoStatus, toggleMenuEditRestriction, toggleInventoryStatus }}>
+    <VendorContext.Provider value={{ vendor: currentVendor, vendors: filteredVendors, allVendors, isAuthLoading, addVendorToContext, fetchAllVendors, login, loginWithGoogle, loginAsDemo, linkNewGoogleAccount, signup, updateDetails, logout, removeVendor, updateVendorBySuperAdmin, toggleVendorApproval, toggleShopOpenStatus, toggleVendorGbpStatus, toggleVendorExpenseTracking, toggleVendorOfferCreation, toggleDineInStatus, toggleAiAssistantStatus, toggleAccountLinkingStatus, toggleVendorRewards, toggleVendorDemoStatus, toggleMenuEditRestriction, toggleInventoryStatus, toggleVendorCommission }}>
       {children}
     </VendorContext.Provider>
   );

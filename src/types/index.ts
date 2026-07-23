@@ -155,6 +155,8 @@ export interface Vendor {
     isDemoAccount?: boolean; // Indicates if this is a demo account
     isMenuEditDisabled?: boolean; // Prevents data mutation for demo integrity
     isInventory?: boolean; // Super admin control for inventory management
+    isCommissionOn?: boolean; // Super admin control for order commission share
+    commissionPercentage?: number; // Commission percentage taken per order (e.g. 5, 10)
     rewardsConfig?: {
       spend: number;
       points: number;
@@ -231,6 +233,8 @@ export interface Order {
     deliveryDistanceKm?: number;
     deliveryCharge?: number;
     distanceCalculationType?: string;
+    commissionPercentage?: number;
+    commissionAmount?: number;
     
     // Additional home-delivery settlement/vendor fields (Android Parity)
     riderPayout?: number;
