@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { LogOut, Package, Utensils, PanelLeftClose, PanelRight, Building, LayoutDashboard, LayoutList, IndianRupee, Shapes, Gift, Brush, Users, FileSpreadsheet, Mail, Activity, Bike, Route } from 'lucide-react';
+import { LogOut, Package, Utensils, PanelLeftClose, PanelRight, Building, LayoutDashboard, LayoutList, IndianRupee, Shapes, Gift, Brush, Users, FileSpreadsheet, Mail, Activity, Bike, Route, HandCoins } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ const navLinks = [
   { href: '/super-admin/dashboard/category', label: 'Menu Categories', icon: LayoutList },
   { href: '/super-admin/dashboard/expense-categories', label: 'Expense Categories', icon: FileSpreadsheet },
   { href: '/super-admin/dashboard/revenue', label: 'Revenue', icon: IndianRupee },
+  { href: '/super-admin/dashboard/commission-settlements', label: 'Commission Payouts', icon: HandCoins },
   { href: '/super-admin/dashboard/offers', label: 'Offers', icon: Gift },
   { href: '/super-admin/dashboard/campaigns', label: 'Campaigns', icon: Mail },
   { href: '/super-admin/dashboard/delivery-charges', label: 'Delivery Charges', icon: Route },

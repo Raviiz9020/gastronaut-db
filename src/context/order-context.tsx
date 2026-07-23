@@ -348,6 +348,10 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
             distanceCalculationType: distanceCalculationType || "",
             commissionPercentage,
             commissionAmount,
+            adminSettlementStatus: isHomeDelivery && commissionAmount > 0 ? 'pending' : 'none',
+            adminSettlementPaymentMode: '',
+            adminSettlementMarkedAt: '',
+            adminSettlementConfirmedAt: '',
             paymentStatus: 'PENDING',
             ...(isHomeDelivery ? {
               riderPayout: deliveryCharge,

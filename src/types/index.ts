@@ -236,6 +236,12 @@ export interface Order {
     commissionPercentage?: number;
     commissionAmount?: number;
     
+    // Admin commission settlement fields
+    adminSettlementStatus?: 'pending' | 'payment_sent' | 'settled' | string;
+    adminSettlementPaymentMode?: string;
+    adminSettlementMarkedAt?: string;
+    adminSettlementConfirmedAt?: string;
+    
     // Additional home-delivery settlement/vendor fields (Android Parity)
     riderPayout?: number;
     riderSettlementConfirmedAt?: string;
