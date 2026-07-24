@@ -184,10 +184,10 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
 
                     {error && (
                         <div className="bg-destructive/10 p-4 rounded-2xl space-y-2 border border-destructive/20">
-                            <p className="text-xs text-destructive text-center font-medium">
+                            <p className="text-xs text-destructive text-center font-medium leading-relaxed">
                                 {error === 'User denied Geolocation' 
-                                    ? 'Location access was denied. Please enable location permissions in your browser settings to continue.' 
-                                    : error}
+                                    ? 'Location access was denied. Please enable location permissions or search for your address manually in the box below.' 
+                                    : `${error}. If you are experiencing GPS issues, please search for your address manually in the box below.`}
                             </p>
                             <Button 
                                 variant="outline" 

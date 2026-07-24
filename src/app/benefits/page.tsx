@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
 import Header from '@/components/header';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -51,7 +51,7 @@ const galleryImages = [
     { id: "img-6", src: "https://firebasestorage.googleapis.com/v0/b/hyperdelivery-c381b.firebasestorage.app/o/Benefits%2FWhatsApp%20Image%202025-09-19%20at%205.23.24%20PM%20(6).jpeg?alt=media&token=b34ce5a0-c54a-45b9-a087-8a69617d20b4" }
 ];
 
-const BenefitItem = ({ icon, title, description, index }: { icon: JSX.Element; title: string; description: string; index: number }) => (
+const BenefitItem = ({ icon, title, description, index }: { icon: ReactNode; title: string; description: string; index: number }) => (
   <motion.div
     className="flex items-start gap-4"
     initial={{ opacity: 0, x: -20 }}
