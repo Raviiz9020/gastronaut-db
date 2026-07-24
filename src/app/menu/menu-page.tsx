@@ -167,6 +167,7 @@ const ZoomedImageOverlay = ({ item, onClose }: { item: { id: string; image: stri
                         alt={item.name}
                         layout="fill"
                         objectFit="cover"
+                        unoptimized={typeof item.image === 'string' && item.image.startsWith('data:')}
                     />
                 </motion.div>
             </motion.div>
@@ -280,6 +281,7 @@ const PopularPickItemCard = ({
                     className="object-cover transition-transform duration-300 group-hover:scale-105"
                     placeholder={item.blurDataUrl ? 'blur' : 'empty'}
                     blurDataURL={item.blurDataUrl}
+                    unoptimized={typeof item.image === 'string' && item.image.startsWith('data:')}
                   />
                   {/* Smart Discount Badge */}
                   {(() => {
@@ -524,125 +526,175 @@ const MenuItemCard = ({
 
   return (
   <motion.div
-    initial={{ opacity: 0, y: 20 }}
+    initial={{ opacity: 0, y: 15 }}
     animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.5 }}
+    transition={{ duration: 0.4 }}
     className="h-full"
   >
     <Card className={cn(
-        "w-full h-full flex flex-col overflow-hidden border-yellow-500/10 hover:border-yellow-500/40 transition-all duration-300 hover:bg-card/95 rounded-3xl relative",
-        !isItemEffectivelyAvailable && "bg-muted/50 border-muted-foreground/10 hover:border-muted-foreground/10"
+        "w-full h-full flex flex-col overflow-hidden border-border/60 hover:border-primary/40 shadow-sm hover:shadow-md transition-all duration-300 rounded-3xl bg-card relative group",
+        !isItemEffectivelyAvailable && "bg-muted/40 border-muted-foreground/10 hover:border-muted-foreground/10 shadow-none"
     )}>
-       {discountPercentage > 0 && (
-          <div className="absolute top-2 right-2 z-10 bg-destructive text-destructive-foreground rounded-full px-2 py-1 text-[10px] font-bold flex items-center justify-center">
-            <Tag className="h-3 w-3 mr-1" />
-            <span>{discountPercentage}%</span>
-          </div>
-        )}
-      <CardContent className="p-4 relative flex-1 flex flex-col">
+      <CardContent className="p-4 sm:p-5 relative flex-1 flex flex-col">
           {!isItemEffectivelyAvailable && (
-            <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-10 rounded-3xl">
-                <p className="text-foreground font-bold text-lg text-center px-4">
+            <div className="absolute inset-0 bg-background/85 backdrop-blur-[2px] flex items-center justify-center z-20 rounded-3xl">
+                <span className="text-foreground font-bold text-sm text-center px-4 py-1.5 rounded-full bg-muted border border-border shadow-sm">
                     {!isShopOpen ? (shopStatus?.msg || 'Closed') : (!isEffectivelyInStock ? 'Out of Stock' : 'Not available')}
-                </p>
+                </span>
             </div>
           )}
-          <div className={cn("flex flex-row items-start gap-4 flex-1", !isItemEffectivelyAvailable && "filter grayscale opacity-60")}>
-            <div className="w-24 flex-shrink-0">
-                {showImage && (
-                  <motion.div 
-                    layoutId={`image-${item.id}`}
-                    className="aspect-square relative rounded-2xl overflow-hidden cursor-pointer"
-                    onClick={() => onImageClick({id: item.id, image: imageToDisplay, name: item.name})}
-                  >
-                      <Image
-                          src={imageToDisplay}
-                          alt={item.name}
-                          fill
-                          sizes="(max-width: 768px) 100vw, 128px"
-                          data-ai-hint={item.aiHint}
-                          className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-110"
-                          placeholder={item.blurDataUrl ? 'blur' : 'empty'}
-                          blurDataURL={item.blurDataUrl}
-                      />
-                  </motion.div>
-                )}
-                 {ratingCount > 0 && (
-                    <div className="flex items-center justify-center gap-1 text-xs text-amber-400 mt-2" title="Item Rating">
-                        <Star className="h-3 w-3 fill-current" />
-                        <span>{averageRating.toFixed(1)}</span>
-                        <span className="text-xs text-muted-foreground">({ratingCount})</span>
+          <div className={cn("flex flex-row items-stretch justify-between gap-4 flex-1", !isItemEffectivelyAvailable && "filter grayscale opacity-50")}>
+            {/* Left side: Info */}
+            <div className="flex-1 flex flex-col justify-between">
+                <div>
+                    <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                      <span className={cn(
+                        "w-4 h-4 border rounded-[4px] p-[2px] flex items-center justify-center flex-shrink-0",
+                        item.isVeg ? "border-green-600" : "border-red-600"
+                      )} title={item.isVeg ? "Veg" : "Non-Veg"}>
+                        <span className={cn(
+                          "w-2 h-2 rounded-full",
+                          item.isVeg ? "bg-green-600" : "bg-red-600"
+                        )} />
+                      </span>
+                      {discountPercentage > 0 && (
+                        <span className="bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-full px-2 py-0.5 text-[9px] font-extrabold shadow-sm flex items-center gap-0.5">
+                          <Tag className="h-2.5 w-2.5 fill-current" />
+                          {discountPercentage}% OFF
+                        </span>
+                      )}
+                      {item.isPopular && (
+                        <span className="text-[10px] font-extrabold text-amber-600 bg-amber-500/15 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                          <Sparkles className="h-2.5 w-2.5 fill-amber-500" /> Bestseller
+                        </span>
+                      )}
                     </div>
-                )}
-            </div>
-            <div className="flex-1 flex flex-col h-full">
-                <div className="flex-grow">
-                    <h3 className="font-headline text-lg font-semibold">{item.name}</h3>
-                     <div className="flex items-center gap-4 mt-1 flex-wrap">
-                        <div className="flex items-center gap-2 text-xs text-amber-500" title={`Vendor: ${vendor?.shopName}`}>
-                            <Building className="h-4 w-4" />
-                            <span className="font-medium">{item.shopName || 'Unknown Vendor'}</span>
-                        </div>
+
+                    <h3 className="font-headline text-base sm:text-lg font-bold leading-snug text-foreground group-hover:text-primary transition-colors">{item.name}</h3>
+
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-md font-medium" title={`Vendor: ${vendor?.shopName}`}>
+                            <Building className="h-3 w-3 text-amber-500" />
+                            {item.shopName || 'Unknown Vendor'}
+                        </span>
+                        {ratingCount > 0 && (
+                            <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 font-bold bg-amber-500/10 px-1.5 py-0.5 rounded-md">
+                                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                {averageRating.toFixed(1)} <span className="text-[9px] text-muted-foreground font-normal">({ratingCount})</span>
+                            </span>
+                        )}
                     </div>
-                    <p className="text-muted-foreground text-sm mt-2">{item.description}</p>
+
+                    <p className="text-muted-foreground text-xs sm:text-sm mt-2 line-clamp-2 leading-relaxed">{item.description}</p>
+                    
                     {typeof item.stock === 'number' && item.stock > 0 && !isCustomizable && (vendor?.isInventory || vendor?.category === 'Bakery' || item.stock <= 5) && (
                       <p className={cn(
-                        "text-xs font-semibold mt-1",
+                        "text-[11px] font-semibold mt-1",
                         item.stock <= 5 ? "text-destructive" : "text-amber-600"
                       )}>
-                        {item.stock} available
+                        Only {item.stock} left!
                       </p>
                     )}
                 </div>
 
-                <div className="flex items-center justify-between mt-4">
-                      <div className="flex flex-col">
-                        <p className="text-sm font-semibold text-foreground">
-                            {isCustomizable && <span>From </span>}
-                            ₹{startingPrice.toFixed(2)}
-                        </p>
+                <div className="mt-3 pt-2">
+                    <div className="flex items-baseline gap-2">
+                        <span className="text-base sm:text-lg font-extrabold text-foreground">
+                            {isCustomizable && <span className="text-[10px] text-muted-foreground font-normal block -mb-1">From</span>}
+                            ₹{startingPrice.toFixed(0)}
+                        </span>
                         {hasDiscount && !isCustomizable && (
-                            <p className="text-[10px] text-muted-foreground line-through">₹{item.price.toFixed(2)}</p>
-                        )}
-                      </div>
-                    <div className="flex items-center gap-2">
-                        {!isCustomizable ? (
-                            quantityInCart > 0 ? (
-                                <div className="flex items-center gap-1">
-                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleSimpleQuantityChange(-1)} disabled={!isItemEffectivelyAvailable}>
-                                        <Minus className="h-4 w-4"/>
-                                    </Button>
-                                    <span className="font-bold w-8 text-center">{quantityInCart}</span>
-                                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleSimpleQuantityChange(1)} disabled={!isItemEffectivelyAvailable}>
-                                        <Plus className="h-4 w-4"/>
-                                    </Button>
-                                </div>
-                            ) : (
-                                <Button onClick={handleAddClick} variant="outline" size="sm" className="rounded-full border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white flex items-center gap-1" disabled={!isItemEffectivelyAvailable}>
-                                    Add
-                                </Button>
-                            )
-                        ) : (
-                            totalQuantityInCart > 0 ? (
-                                <div className="flex items-center gap-1">
-                                    <span className="font-bold w-6 text-center text-purple-500">{totalQuantityInCart}</span>
-                                    <Button onClick={handleAddClick} variant="outline" size="icon" className="h-8 w-8 rounded-full border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white" disabled={!isItemEffectivelyAvailable}>
-                                        <Plus className="h-4 w-4"/>
-                                    </Button>
-                                </div>
-                            ) : (
-                                <Button onClick={handleAddClick} variant="outline" size="sm" className="rounded-full border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white flex items-center gap-1" disabled={!isItemEffectivelyAvailable}>
-                                    Add <ChevronDown className="h-3 w-3" />
-                                </Button>
-                            )
+                            <span className="text-xs text-muted-foreground line-through">₹{item.price.toFixed(0)}</span>
                         )}
                     </div>
+                </div>
+            </div>
+
+            {/* Right side: Image + Floating ADD Pill */}
+            <div className="w-28 sm:w-32 flex-shrink-0 flex flex-col items-center justify-start relative self-center pb-3">
+                {showImage ? (
+                  <motion.div 
+                    layoutId={`image-${item.id}`}
+                    className="w-28 h-28 sm:w-32 sm:h-32 relative rounded-2xl overflow-hidden cursor-pointer border border-border/50 shadow-sm"
+                    onClick={() => onImageClick({id: item.id, image: imageToDisplay, name: item.name})}
+                  >
+                      {typeof imageToDisplay === 'string' && imageToDisplay.startsWith('data:') ? (
+                          <img
+                              src={imageToDisplay}
+                              alt={item.name}
+                              data-ai-hint={item.aiHint}
+                              className="w-full h-full object-cover transition-transform duration-500 ease-in-out group-hover:scale-110"
+                          />
+                      ) : (
+                          <Image
+                              src={imageToDisplay}
+                              alt={item.name}
+                              fill
+                              sizes="(max-width: 768px) 128px, 160px"
+                              data-ai-hint={item.aiHint}
+                              className="object-cover transition-transform duration-500 ease-in-out group-hover:scale-110"
+                              placeholder={item.blurDataUrl ? 'blur' : 'empty'}
+                              blurDataURL={item.blurDataUrl}
+                          />
+                      )}
+                  </motion.div>
+                ) : (
+                  <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl bg-muted/60 border border-border/40 flex items-center justify-center text-muted-foreground">
+                    <Utensils className="h-8 w-8 opacity-40" />
+                  </div>
+                )}
+
+                {/* Overlapping ADD Pill Button (Swiggy/Zomato Signature Style) */}
+                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 z-10">
+                    {!isCustomizable ? (
+                        quantityInCart > 0 ? (
+                            <div className="flex items-center gap-1 bg-background border-2 border-primary rounded-xl px-1.5 py-0.5 shadow-md">
+                                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg text-primary hover:bg-primary/10" onClick={() => handleSimpleQuantityChange(-1)} disabled={!isItemEffectivelyAvailable}>
+                                    <Minus className="h-3 w-3"/>
+                                </Button>
+                                <span className="font-extrabold w-5 text-center text-xs text-primary">{quantityInCart}</span>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg text-primary hover:bg-primary/10" onClick={() => handleSimpleQuantityChange(1)} disabled={!isItemEffectivelyAvailable}>
+                                    <Plus className="h-3 w-3"/>
+                                </Button>
+                            </div>
+                        ) : (
+                            <Button 
+                                onClick={handleAddClick} 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-8 px-4 rounded-xl border-2 border-primary text-primary font-extrabold text-xs bg-background hover:bg-primary hover:text-primary-foreground shadow-md transition-all uppercase tracking-wider" 
+                                disabled={!isItemEffectivelyAvailable}
+                            >
+                                ADD
+                            </Button>
+                        )
+                    ) : (
+                        totalQuantityInCart > 0 ? (
+                            <div className="flex items-center gap-1 bg-background border-2 border-primary rounded-xl px-2 py-0.5 shadow-md">
+                                <span className="font-extrabold text-xs text-primary">{totalQuantityInCart}</span>
+                                <Button onClick={handleAddClick} variant="ghost" size="icon" className="h-6 w-6 rounded-lg text-primary hover:bg-primary/10" disabled={!isItemEffectivelyAvailable}>
+                                    <Plus className="h-3 w-3"/>
+                                </Button>
+                            </div>
+                        ) : (
+                            <Button 
+                                onClick={handleAddClick} 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-8 px-3 rounded-xl border-2 border-primary text-primary font-extrabold text-xs bg-background hover:bg-primary hover:text-primary-foreground shadow-md transition-all uppercase tracking-wider flex items-center gap-0.5" 
+                                disabled={!isItemEffectivelyAvailable}
+                            >
+                                ADD <ChevronDown className="h-3 w-3" />
+                            </Button>
+                        )
+                    )}
                 </div>
             </div>
           </div>
       </CardContent>
     </Card>
   </motion.div>
+
 )};
 
 const CombinedMenuItemCard = ({
@@ -684,109 +736,146 @@ const CombinedMenuItemCard = ({
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.4 }}
             className="h-full"
         >
             <Card className={cn(
-                "w-full h-full flex flex-col overflow-hidden border-yellow-500/10 hover:border-yellow-500/40 transition-all duration-300 hover:bg-card/95 rounded-3xl relative",
-                !isEffectivelyAvailable && "bg-muted/50 border-muted-foreground/10 hover:border-muted-foreground/10"
+                "w-full h-full flex flex-col overflow-hidden border-border/60 hover:border-primary/40 shadow-sm hover:shadow-md transition-all duration-300 rounded-3xl bg-card relative group",
+                !isEffectivelyAvailable && "bg-muted/40 border-muted-foreground/10 hover:border-muted-foreground/10 shadow-none"
             )}>
-                 <CardContent className="p-4 relative flex-1 flex flex-col">
+                 <CardContent className="p-4 sm:p-5 relative flex-1 flex flex-col">
                     {!isEffectivelyAvailable && (
-                        <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-10 rounded-3xl">
-                            <p className="text-foreground font-bold text-lg text-center px-4">
+                        <div className="absolute inset-0 bg-background/85 backdrop-blur-[2px] flex items-center justify-center z-20 rounded-3xl">
+                            <span className="text-foreground font-bold text-sm text-center px-4 py-1.5 rounded-full bg-muted border border-border shadow-sm">
                                 {!isShopOpen ? (shopStatus?.msg || 'Closed') : 'Out of Stock'}
-                            </p>
+                            </span>
                         </div>
                     )}
-                     <div className={cn("flex flex-row items-start gap-4 flex-1", !isEffectivelyAvailable && "filter grayscale opacity-60")}>
-                        <div className="w-24 flex-shrink-0">
-                            {showImage && (
-                                <motion.div
-                                    layoutId={`image-${primaryItem.id}`}
-                                    className="aspect-square relative rounded-2xl overflow-hidden cursor-pointer"
-                                    onClick={() => onImageClick({ id: primaryItem.id, image: imageToDisplay, name: baseName })}
-                                >
-                                    <Image
-                                        src={imageToDisplay}
-                                        alt={baseName}
-                                        fill
-                                        sizes="(max-width: 768px) 100vw, 128px"
-                                        data-ai-hint={primaryItem.aiHint}
-                                        className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-110"
-                                        placeholder={primaryItem.blurDataUrl ? 'blur' : 'empty'}
-                                        blurDataURL={primaryItem.blurDataUrl}
-                                    />
-                                    {/* Smart Discount Badge */}
-                                    {(() => {
-                                        let maxPct = 0;
-                                        items.forEach(item => {
-                                            if (item.isDiscountActive) {
-                                                if (item.discountPrice && item.price > 0) {
-                                                    const pct = Math.round(((item.price - item.discountPrice) / item.price) * 100);
-                                                    if (pct > maxPct) maxPct = pct;
-                                                }
-                                                item.customizations?.forEach(c => {
-                                                    c.options.forEach(o => {
-                                                        if (o.originalPrice && o.originalPrice > o.price) {
-                                                            const pct = Math.round(((o.originalPrice - o.price) / o.originalPrice) * 100);
-                                                            if (pct > maxPct) maxPct = pct;
-                                                        }
-                                                    });
-                                                });
-                                            }
-                                        });
-                                        if (maxPct > 0) {
-                                            return (
-                                                <div className="absolute top-1.5 left-1.5 z-10 bg-destructive text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full shadow-lg flex items-center gap-0.5">
-                                                    <Tag className="h-2 w-2 fill-current" />
-                                                    {maxPct}% OFF
-                                                </div>
-                                            );
-                                        }
-                                        return null;
-                                    })()}
-                                </motion.div>
-                            )}
-                            {ratingCount > 0 && (
-                                <div className="flex items-center justify-center gap-1 text-xs text-amber-400 mt-2" title="Item Rating">
-                                    <Star className="h-3 w-3 fill-current" />
-                                    <span>{averageRating.toFixed(1)}</span>
-                                    <span className="text-xs text-muted-foreground">({ratingCount})</span>
+                     <div className={cn("flex flex-row items-stretch justify-between gap-4 flex-1", !isEffectivelyAvailable && "filter grayscale opacity-50")}>
+                        {/* Left side: Info */}
+                        <div className="flex-1 flex flex-col justify-between">
+                            <div>
+                                <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                  <span className={cn(
+                                    "w-4 h-4 border rounded-[4px] p-[2px] flex items-center justify-center flex-shrink-0",
+                                    primaryItem.isVeg ? "border-green-600" : "border-red-600"
+                                  )} title={primaryItem.isVeg ? "Veg" : "Non-Veg"}>
+                                    <span className={cn(
+                                      "w-2 h-2 rounded-full",
+                                      primaryItem.isVeg ? "bg-green-600" : "bg-red-600"
+                                    )} />
+                                  </span>
+                                  {(() => {
+                                      let maxPct = 0;
+                                      items.forEach(item => {
+                                          if (item.isDiscountActive) {
+                                              if (item.discountPrice && item.price > 0) {
+                                                  const pct = Math.round(((item.price - item.discountPrice) / item.price) * 100);
+                                                  if (pct > maxPct) maxPct = pct;
+                                              }
+                                              item.customizations?.forEach(c => {
+                                                  c.options.forEach(o => {
+                                                      if (o.originalPrice && o.originalPrice > o.price) {
+                                                          const pct = Math.round(((o.originalPrice - o.price) / o.originalPrice) * 100);
+                                                          if (pct > maxPct) maxPct = pct;
+                                                      }
+                                                  });
+                                              });
+                                          }
+                                      });
+                                      if (maxPct > 0) {
+                                          return (
+                                              <span className="bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-full px-2 py-0.5 text-[9px] font-extrabold shadow-sm flex items-center gap-0.5">
+                                                  <Tag className="h-2.5 w-2.5 fill-current" />
+                                                  {maxPct}% OFF
+                                              </span>
+                                          );
+                                      }
+                                      return null;
+                                  })()}
+                                  {primaryItem.isPopular && (
+                                    <span className="text-[10px] font-extrabold text-amber-600 bg-amber-500/15 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                                      <Sparkles className="h-2.5 w-2.5 fill-amber-500" /> Bestseller
+                                    </span>
+                                  )}
                                 </div>
-                            )}
-                        </div>
-                        <div className="flex-1 flex flex-col h-full">
-                             <div className="flex-grow">
-                                <h3 className="font-headline text-lg font-semibold">{baseName}</h3>
-                                 <div className="flex items-center gap-4 mt-1 flex-wrap">
-                                    <div className="flex items-center gap-2 text-xs text-amber-500" title={`Vendor: ${vendor?.shopName}`}>
-                                        <Building className="h-4 w-4" />
-                                        <span className="font-medium">{primaryItem.shopName || 'Unknown Vendor'}</span>
-                                    </div>
+
+                                <h3 className="font-headline text-base sm:text-lg font-bold leading-snug text-foreground group-hover:text-primary transition-colors">{baseName}</h3>
+
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                    <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-md font-medium" title={`Vendor: ${vendor?.shopName}`}>
+                                        <Building className="h-3 w-3 text-amber-500" />
+                                        {primaryItem.shopName || 'Unknown Vendor'}
+                                    </span>
+                                    {ratingCount > 0 && (
+                                        <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 font-bold bg-amber-500/10 px-1.5 py-0.5 rounded-md">
+                                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                            {averageRating.toFixed(1)} <span className="text-[9px] text-muted-foreground font-normal">({ratingCount})</span>
+                                        </span>
+                                    )}
                                 </div>
-                                <p className="text-muted-foreground text-sm mt-2">{primaryItem.description}</p>
-                                <div className="text-xs text-destructive font-semibold mt-1">
-                                    {typeof halfStock === 'number' && halfStock > 0 && (vendor?.isInventory || vendor?.category === 'Bakery' || halfStock <= 5) && <span>{halfStock} half available. </span>}
-                                    {typeof fullStock === 'number' && fullStock > 0 && (vendor?.isInventory || vendor?.category === 'Bakery' || fullStock <= 5) && <span>{fullStock} full available.</span>}
+
+                                <p className="text-muted-foreground text-xs sm:text-sm mt-2 line-clamp-2 leading-relaxed">{primaryItem.description}</p>
+                                <div className="text-[11px] text-destructive font-semibold mt-1">
+                                    {typeof halfStock === 'number' && halfStock > 0 && (vendor?.isInventory || vendor?.category === 'Bakery' || halfStock <= 5) && <span>Only {halfStock} half left. </span>}
+                                    {typeof fullStock === 'number' && fullStock > 0 && (vendor?.isInventory || vendor?.category === 'Bakery' || fullStock <= 5) && <span>Only {fullStock} full left.</span>}
                                 </div>
                             </div>
-                            <div className="flex items-center justify-between mt-4">
-                                <p className="text-sm">
-                                    {halfPrice !== null && `Half: ₹${halfPrice.toFixed(2)}`}
+                            <div className="mt-3 pt-2">
+                                <p className="text-sm font-extrabold text-foreground">
+                                    {halfPrice !== null && `Half: ₹${halfPrice.toFixed(0)}`}
                                     {halfPrice !== null && fullPrice !== null && ' / '}
-                                    {fullPrice !== null && `Full: ₹${fullPrice.toFixed(2)}`}
+                                    {fullPrice !== null && `Full: ₹${fullPrice.toFixed(0)}`}
                                 </p>
+                            </div>
+                        </div>
+
+                        {/* Right side: Image + Floating ADD Pill */}
+                        <div className="w-28 sm:w-32 flex-shrink-0 flex flex-col items-center justify-start relative self-center pb-3">
+                            {showImage ? (
+                                <motion.div
+                                    layoutId={`image-${primaryItem.id}`}
+                                    className="w-28 h-28 sm:w-32 sm:h-32 relative rounded-2xl overflow-hidden cursor-pointer border border-border/50 shadow-sm"
+                                    onClick={() => onImageClick({ id: primaryItem.id, image: imageToDisplay, name: baseName })}
+                                >
+                                    {typeof imageToDisplay === 'string' && imageToDisplay.startsWith('data:') ? (
+                                        <img
+                                            src={imageToDisplay}
+                                            alt={baseName}
+                                            data-ai-hint={primaryItem.aiHint}
+                                            className="w-full h-full object-cover transition-transform duration-500 ease-in-out group-hover:scale-110"
+                                        />
+                                    ) : (
+                                        <Image
+                                            src={imageToDisplay}
+                                            alt={baseName}
+                                            fill
+                                            sizes="(max-width: 768px) 128px, 160px"
+                                            data-ai-hint={primaryItem.aiHint}
+                                            className="object-cover transition-transform duration-500 ease-in-out group-hover:scale-110"
+                                            placeholder={primaryItem.blurDataUrl ? 'blur' : 'empty'}
+                                            blurDataURL={primaryItem.blurDataUrl}
+                                        />
+                                    )}
+                                </motion.div>
+                            ) : (
+                              <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl bg-muted/60 border border-border/40 flex items-center justify-center text-muted-foreground">
+                                <Utensils className="h-8 w-8 opacity-40" />
+                              </div>
+                            )}
+
+                            {/* Overlapping ADD Pill Button */}
+                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 z-10">
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="rounded-full border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white"
+                                    className="h-8 px-4 rounded-xl border-2 border-primary text-primary font-extrabold text-xs bg-background hover:bg-primary hover:text-primary-foreground shadow-md transition-all uppercase tracking-wider flex items-center gap-0.5"
                                     disabled={!isEffectivelyAvailable}
                                     onClick={() => onAddClick(items)}
                                 >
-                                    Add
+                                    ADD <ChevronDown className="h-3 w-3" />
                                 </Button>
                             </div>
                         </div>
@@ -972,7 +1061,7 @@ export default function MenuPageContent() {
         list = list.filter(v => isVendorServiceable(v, userLocation));
         
         list.sort((a, b) => {
-            if (a.latitude === undefined || b.latitude === undefined) return 0;
+            if (a.latitude === undefined || a.longitude === undefined || b.latitude === undefined || b.longitude === undefined) return 0;
             const distA = calculateDistanceInKm(userLocation.latitude, userLocation.longitude, a.latitude, a.longitude);
             const distB = calculateDistanceInKm(userLocation.latitude, userLocation.longitude, b.latitude, b.longitude);
             return distA - distB;
@@ -1324,7 +1413,7 @@ export default function MenuPageContent() {
   );
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-background">
       <Header />
       <AnimatePresence>
           {zoomedItem && (
@@ -1334,15 +1423,116 @@ export default function MenuPageContent() {
             />
           )}
       </AnimatePresence>
-      <div className="container mx-auto px-4 py-8">
+
+      {/* ── MENU HERO BANNER ────────────────────────────────────────────── */}
+      <section className="bg-gradient-to-b from-primary/10 via-primary/5 to-transparent py-8 sm:py-10 border-b border-border/40 relative overflow-hidden">
+        <div className="container mx-auto px-4 text-center max-w-3xl relative z-10">
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-primary uppercase tracking-widest bg-primary/10 px-3 py-1 rounded-full mb-3 border border-primary/20">
+            <Sparkles className="h-3.5 w-3.5" /> Direct Local Delivery
+          </span>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold font-headline text-foreground tracking-tight">
+            Explore <span className="text-primary">Menus & Dishes</span>
+          </h1>
+          <p className="mt-2 text-xs sm:text-sm text-muted-foreground max-w-lg mx-auto leading-relaxed">
+            Order fresh meals, snacks, and daily essentials from trusted local vendors near you.
+          </p>
+        </div>
+      </section>
+
+      <div className="container mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <div className="space-y-6 mb-6">
+                {/* ── STICKY GLASSMORPHIC SEARCH & FILTER BAR ───────────────────────────── */}
+                <div className="sticky top-16 z-30 bg-card/85 backdrop-blur-xl border border-border/80 rounded-3xl p-3 sm:p-4 shadow-lg space-y-3">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-3 w-full">
+                        {/* Vendor Dropdown Selector */}
+                        <Combobox
+                            className="w-full md:w-48 lg:w-56 flex-shrink-0"
+                            options={filteredVendorOptions}
+                            value={selectedVendor}
+                            onChange={handleVendorChange}
+                            onInputChange={setVendorSearchQuery}
+                            placeholder="Select a vendor"
+                            searchPlaceholder="Search vendors..."
+                            noResultsText="No vendors found."
+                            icon={<Building className="h-4 w-4 text-primary" />}
+                            isLoading={isFetchingItems}
+                        />
+
+                        {/* Menu Item Search Bar */}
+                        <div className="relative w-full md:flex-1">
+                          <Utensils className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input 
+                              placeholder="Search dishes or items..."
+                              value={itemSearchQuery}
+                              onChange={(e) => setItemSearchQuery(e.target.value)}
+                              className="pl-9 pr-9 h-11 rounded-2xl border-border/80 focus-visible:ring-primary/20 bg-background/80"
+                          />
+                          {itemSearchQuery && (
+                              <Button
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full"
+                              onClick={() => setItemSearchQuery('')}
+                              >
+                              <X className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                          )}
+                        </div>
+
+                        {/* Quick Filter Chips (Veg / Non-Veg / All) */}
+                        <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-2xl border border-border/50 flex-shrink-0 w-full sm:w-auto justify-center">
+                            <button
+                              type="button"
+                              onClick={() => setFilterMode('all')}
+                              className={cn(
+                                "px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex-1 sm:flex-initial text-center",
+                                filterMode === 'all' 
+                                  ? "bg-primary text-primary-foreground shadow-sm" 
+                                  : "text-muted-foreground hover:text-foreground"
+                              )}
+                            >
+                              All
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setFilterMode('veg')}
+                              className={cn(
+                                "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 whitespace-nowrap flex-1 sm:flex-initial",
+                                filterMode === 'veg' 
+                                  ? "bg-green-600 text-white shadow-sm" 
+                                  : "text-green-600 hover:bg-green-500/10"
+                              )}
+                            >
+                              <Leaf className="h-3.5 w-3.5" /> Veg
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setFilterMode('non-veg')}
+                              className={cn(
+                                "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 whitespace-nowrap flex-1 sm:flex-initial",
+                                filterMode === 'non-veg' 
+                                  ? "bg-red-600 text-white shadow-sm" 
+                                  : "text-red-600 hover:bg-red-500/10"
+                              )}
+                            >
+                              <Beef className="h-3.5 w-3.5" /> Non-Veg
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
               {popularPicks.length > 0 && (
-                <section className="py-4 bg-amber-50 rounded-3xl mt-8">
-                  <div className="flex justify-between items-center px-4">
-                      <h2 className="text-xl font-bold text-center font-headline text-red-500">POPULAR PICKS</h2>
+                <section className="py-5 px-4 sm:px-6 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-amber-500/10 border border-amber-500/20 rounded-3xl shadow-sm">
+                  <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <span className="w-7 h-7 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-600">
+                          <Sparkles className="h-4 w-4" />
+                        </span>
+                        <h2 className="text-xl font-bold font-headline text-foreground tracking-wide">Popular Picks</h2>
+                      </div>
                       <Link href="/popular-picks" passHref>
-                          <Button variant="link" className="text-primary pr-0">
+                          <Button variant="link" className="text-primary font-semibold pr-0">
                           See all
                           </Button>
                       </Link>
@@ -1378,65 +1568,6 @@ export default function MenuPageContent() {
                     </div>
                 </section>
               )}
-                <div className="flex flex-col items-center justify-center gap-4">
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full">
-                        <Combobox
-                            className="w-full md:w-auto"
-                            options={filteredVendorOptions}
-                            value={selectedVendor}
-                            onChange={handleVendorChange}
-                            onInputChange={setVendorSearchQuery}
-                            placeholder="Select a vendor"
-                            searchPlaceholder="Search vendors..."
-                            noResultsText="No vendors found."
-                            icon={<Building className="h-4 w-4" />}
-                            isLoading={isFetchingItems}
-                        />
-                        <div className="relative w-full md:w-auto">
-                        <Utensils className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            placeholder="Search menu..."
-                            value={itemSearchQuery}
-                            onChange={(e) => setItemSearchQuery(e.target.value)}
-                            className="pl-9 pr-9"
-                        />
-                        {itemSearchQuery && (
-                            <Button
-                            variant="ghost"
-                            size="icon"
-                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                            onClick={() => setItemSearchQuery('')}
-                            >
-                            <X className="h-4 w-4 text-muted-foreground" />
-                            </Button>
-                        )}
-                        </div>
-                        <div className="flex items-center space-x-2 sm:space-x-4">
-                            <div className="flex items-center space-x-2">
-                                <Switch
-                                id="veg-only"
-                                checked={filterMode === 'veg'}
-                                onCheckedChange={(checked) => setFilterMode(checked ? 'veg' : 'all')}
-                                className="data-[state=checked]:bg-green-500"
-                                />
-                                <Label htmlFor="veg-only" className="flex items-center gap-1 font-semibold text-green-600">
-                                    <Leaf className="h-4 w-4"/> Veg
-                                </Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <Switch
-                                id="non-veg-only"
-                                checked={filterMode === 'non-veg'}
-                                onCheckedChange={(checked) => setFilterMode(checked ? 'non-veg' : 'all')}
-                                className="data-[state=checked]:bg-red-500"
-                                />
-                                <Label htmlFor="non-veg-only" className="flex items-center gap-1 font-semibold text-red-600">
-                                    <Beef className="h-4 w-4"/> Non-Veg
-                                </Label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
                  {isFilterActive && (
                     <div className="flex justify-center mt-2">
                         <Button
@@ -1482,6 +1613,7 @@ export default function MenuPageContent() {
                                   className="object-cover"
                                   placeholder={category.blurDataUrl ? 'blur' : 'empty'}
                                   blurDataURL={category.blurDataUrl}
+                                  unoptimized={typeof category.imageUrl === 'string' && category.imageUrl.startsWith('data:')}
                               />
                               </div>
                               <p className="text-xs text-center font-semibold">{category.name}</p>
@@ -1503,6 +1635,7 @@ export default function MenuPageContent() {
                                   className="object-cover"
                                   placeholder={category.blurDataUrl ? 'blur' : 'empty'}
                                   blurDataURL={category.blurDataUrl}
+                                  unoptimized={typeof category.imageUrl === 'string' && category.imageUrl.startsWith('data:')}
                               />
                               </div>
                               <p className="text-xs text-center font-semibold">{category.name}</p>
@@ -1566,6 +1699,7 @@ export default function MenuPageContent() {
                                                             className="object-cover transition-transform duration-300 group-hover:scale-105"
                                                             placeholder={item.blurDataUrl ? 'blur' : 'empty'}
                                                             blurDataURL={item.blurDataUrl}
+                                                            unoptimized={typeof item.image === 'string' && item.image.startsWith('data:')}
                                                         />
                                                     </div>
                                                     <h3 className="font-semibold text-xs leading-tight flex-1">{item.name}</h3>

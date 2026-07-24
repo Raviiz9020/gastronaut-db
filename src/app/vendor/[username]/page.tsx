@@ -1361,6 +1361,7 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
         items={portionSelectItems}
         open={!!portionSelectItems}
         isVendorOwner={!!isVendorOwner}
+        vendor={vendor}
         onOpenChange={() => setPortionSelectItems(null)}
         onAddToCart={(item, quantity) => {
           const forceSelfPickup = deliveryChoiceForPortionSelect === 'yes';
@@ -1408,6 +1409,7 @@ const PortionSelectDialog = ({
   isVendorOwner,
   onAddToCart,
   onAddToTableOrder,
+  vendor,
 }: {
   items: MenuItemType[] | null;
   open: boolean;
@@ -1415,6 +1417,7 @@ const PortionSelectDialog = ({
   isVendorOwner?: boolean;
   onAddToCart?: (item: MenuItemType, quantity: number) => void;
   onAddToTableOrder?: (item: MenuItemType, quantity: number) => void;
+  vendor?: Vendor | null;
 }) => {
   const [selectedItemId, setSelectedItemId] = useState<string>('');
   const [quantity, setQuantity] = useState(1);

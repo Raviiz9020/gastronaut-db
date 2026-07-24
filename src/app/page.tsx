@@ -358,22 +358,18 @@ export default function LandingPage() {
           <div className="container mx-auto px-4">
 
             {/* ── HERO ──────────────────────────────────────────────── */}
-            <section className="relative flex items-center py-12 md:py-20 overflow-hidden">
-              {/* Gradient background blobs */}
-              <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-pink-500/5 rounded-full blur-2xl pointer-events-none" />
+            <section className="py-12 md:py-20">
 
-              <div className="grid md:grid-cols-2 gap-8 items-center w-full relative z-10">
+              <div className="grid md:grid-cols-2 gap-8 items-center w-full">
 
-                {/* ─── CINEMATIC ORDER SCENE ─ right side */}
+                {/* ─── CINEMATIC ORDER SCENE ─ right side (+ mobile bottom) */}
                 <motion.div
-                  className="hidden md:flex justify-center md:order-last"
+                  className="flex justify-center order-last md:order-last"
                   initial={{ opacity: 0, x: 30 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.8, ease: 'easeOut' }}
                 >
-                  <div className="relative w-80 h-96">
+                  <div className="relative w-full max-w-xs h-72 md:w-80 md:h-96">
                     {/* Background glow that shifts color with step */}
                     <motion.div
                       className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${orderSteps[activeOrderStep].glow} blur-3xl`}

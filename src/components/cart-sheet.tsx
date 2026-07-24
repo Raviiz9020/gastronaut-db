@@ -200,7 +200,7 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
                             <div key={item.cartItemId} className="flex items-center gap-2">
                             <div className="flex-1 flex items-center gap-3">
                                 <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
-                                    <Image src={item.image} alt={item.name} fill className="object-cover" />
+                                    <Image src={item.image} alt={item.name} fill className="object-cover" unoptimized={typeof item.image === 'string' && item.image.startsWith('data:')} />
                                 </div>
                                 <div>
                                     <h4 className="text-xs font-semibold leading-tight">{item.name}</h4>
