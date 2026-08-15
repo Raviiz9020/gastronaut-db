@@ -38,6 +38,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import FloatingCartBar from '@/components/floating-cart-bar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useLocation } from '@/context/location-context';
 import { isVendorServiceable, calculateDistanceInKm } from '@/lib/location-utils';
@@ -925,10 +926,25 @@ export default function MenuPageContent() {
   const itemParam = searchParams.get('item');
   const maxPriceParam = searchParams.get('maxPrice');
   const vendorCategoryParam = searchParams.get('vendorCategory');
+  const searchParam = searchParams.get('search');
+  const vegOnlyParam = searchParams.get('vegOnly');
+  const fastDeliveryParam = searchParams.get('fastDelivery');
+  const minRatingParam = searchParams.get('minRating');
+  const offersOnlyParam = searchParams.get('offersOnly');
   
   const [portionSelectItems, setPortionSelectItems] = useState<MenuItemType[] | null>(null);
   const [deliveryChoiceForPortionSelect, setDeliveryChoiceForPortionSelect] = useState<'yes' | 'no' | null>(null);
   
+  // Sync URL search and veg filter parameters to local state
+  useEffect(() => {
+    if (searchParam) {
+      setItemSearchQuery(searchParam);
+    }
+    if (vegOnlyParam === 'true') {
+      setFilterMode('veg');
+    }
+  }, [searchParam, vegOnlyParam]);
+
   const vendorForDialog = useMemo(() => {
     const item = selfPickupDialogState.item || selfPickupDialogState.items?.[0];
     if (!item) return null;
@@ -936,8 +952,34 @@ export default function MenuPageContent() {
   }, [selfPickupDialogState, vendors]);
 
   const isFilterActive = useMemo(() => {
-    return selectedVendor !== 'all' || !!categoryParam || itemSearchQuery.length > 0 || !!maxPriceParam || !!vendorCategoryParam || !!itemParam;
-  }, [selectedVendor, categoryParam, itemSearchQuery, maxPriceParam, vendorCategoryParam, itemParam]);
+    return (
+      selectedVendor !== 'all' ||
+      !!categoryParam ||
+      itemSearchQuery.length > 0 ||
+      !!searchParam ||
+      !!maxPriceParam ||
+      !!vendorCategoryParam ||
+      !!itemParam ||
+      vegOnlyParam === 'true' ||
+      fastDeliveryParam === 'true' ||
+      !!minRatingParam ||
+      offersOnlyParam === 'true' ||
+      filterMode !== 'all'
+    );
+  }, [
+    selectedVendor,
+    categoryParam,
+    itemSearchQuery,
+    searchParam,
+    maxPriceParam,
+    vendorCategoryParam,
+    itemParam,
+    vegOnlyParam,
+    fastDeliveryParam,
+    minRatingParam,
+    offersOnlyParam,
+    filterMode,
+  ]);
   
   const getItemUrl = (item: MenuItemType) => {
     const vendor = vendors.find(v => v.username === item.vendorUsername);
@@ -1072,11 +1114,65 @@ export default function MenuPageContent() {
   }, [vendors, userLocation]);
 
   const vendorsToDisplay = useMemo(() => {
-    if (!vendorCategoryParam) {
-        return approvedVendors;
+    let list = approvedVendors;
+
+    if (vendorCategoryParam) {
+      list = list.filter((v) => v.category === vendorCategoryParam);
     }
-    return approvedVendors.filter(v => v.category === vendorCategoryParam);
-  }, [approvedVendors, vendorCategoryParam]);
+
+    if (minRatingParam) {
+      const minRating = parseFloat(minRatingParam);
+      if (!isNaN(minRating)) {
+        list = list.filter((v) => {
+          const ratingCount = v.ratingCount || 0;
+          const totalRatingSum = v.totalRatingSum || 0;
+          const avg = ratingCount > 0 ? totalRatingSum / ratingCount : 0;
+          return avg >= minRating;
+        });
+      }
+    }
+
+    if (offersOnlyParam === 'true') {
+      const vendorUsernamesWithDiscountedItems = new Set(
+        menuItems
+          .filter((item) => {
+            if (!item.isAvailable || !item.isDiscountActive) return false;
+            const flatDiscountPrice = Number(item.discountPrice);
+            if (flatDiscountPrice > 0 && flatDiscountPrice < item.price) return true;
+            const hasVariationDiscount = item.customizations?.some((c) =>
+              c.options.some((o) => o.originalPrice && Number(o.originalPrice) > Number(o.price))
+            );
+            return !!hasVariationDiscount;
+          })
+          .map((item) => item.vendorUsername)
+      );
+      list = list.filter((v) => vendorUsernamesWithDiscountedItems.has(v.username));
+    }
+
+    if (fastDeliveryParam === 'true' && userLocation) {
+      list = list.filter((v) => {
+        if (v.latitude === undefined || v.longitude === undefined) return true;
+        const dist = calculateDistanceInKm(
+          userLocation.latitude,
+          userLocation.longitude,
+          v.latitude,
+          v.longitude
+        );
+        return dist <= 3.5; // Within 3.5km for under-30m delivery
+      });
+    }
+
+    return list;
+  }, [
+    approvedVendors,
+    vendorCategoryParam,
+    minRatingParam,
+    offersOnlyParam,
+    offers,
+    menuItems,
+    fastDeliveryParam,
+    userLocation,
+  ]);
 
   const menuItemsToDisplay = useMemo(() => {
     const approvedVendorUsernames = new Set(vendorsToDisplay.map(v => v.username));
@@ -1121,6 +1217,20 @@ export default function MenuPageContent() {
             });
         }
     }
+
+    if (offersOnlyParam === 'true') {
+        baseItems = baseItems.filter(item => {
+            if (!item.isDiscountActive) return false;
+            
+            const flatDiscountPrice = Number(item.discountPrice);
+            if (flatDiscountPrice > 0 && flatDiscountPrice < item.price) return true;
+
+            const hasVariationDiscount = item.customizations?.some(c =>
+                c.options.some(o => o.originalPrice && Number(o.originalPrice) > Number(o.price))
+            );
+            return !!hasVariationDiscount;
+        });
+    }
     
     if (!isFilterActive) {
       return [];
@@ -1134,7 +1244,7 @@ export default function MenuPageContent() {
         if (!aInStock && bInStock) return 1;
         return a.name.localeCompare(b.name);
     });
-  }, [menuItems, vendorsToDisplay, selectedVendor, activeTab, categoryParam, itemParam, itemSearchQuery, isFilterActive, maxPriceParam, filterMode]);
+  }, [menuItems, vendorsToDisplay, selectedVendor, activeTab, categoryParam, itemParam, itemSearchQuery, isFilterActive, maxPriceParam, filterMode, offersOnlyParam, offers]);
 
   const discountedItems = useMemo(() => {
     const approvedVendorUsernames = new Set(approvedVendors.map(v => v.username));
@@ -1866,6 +1976,7 @@ export default function MenuPageContent() {
             </div>
         </DialogContent>
       </Dialog>
+      <FloatingCartBar />
     </div>
   </div>
 );

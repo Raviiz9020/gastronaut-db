@@ -171,7 +171,6 @@ export default function OrderCustomizationSheet({ item, vendor, open, onOpenChan
                 className="object-cover w-full h-full"
                 placeholder={item.blurDataUrl ? 'blur' : 'empty'}
                 blurDataURL={item.blurDataUrl}
-                unoptimized={typeof imageToShow === 'string' && imageToShow.startsWith('data:')}
               />
             </div>
           )}

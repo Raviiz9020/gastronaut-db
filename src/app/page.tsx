@@ -5,7 +5,7 @@ import Header from '@/components/header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, Clock, MapPin, Shield, Star, Gift, Store, ShoppingBag, Utensils, Heart, Building, LayoutGrid, Zap, BadgeCheck, TrendingUp, Users, Package, ArrowRight, ChefHat, Coffee, Pizza, Sandwich, IceCream2 } from 'lucide-react';
+import { Search, Clock, MapPin, Shield, Star, Gift, Store, ShoppingBag, Utensils, Heart, Building, LayoutGrid, Zap, BadgeCheck, TrendingUp, Users, Package, ArrowRight, ChefHat, Coffee, Pizza, Sandwich, IceCream2, Tag, CheckCircle2, Mail, Phone } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useVendor } from '@/context/vendor-context';
@@ -34,46 +34,16 @@ import MultiOfferSplashDialog from '@/components/multi-offer-splash-dialog';
 import { LocationPicker } from '@/components/location-picker';
 import { useLocation } from '@/context/location-context';
 import { isVendorServiceable } from '@/lib/location-utils';
+import VendorCard from '@/components/vendor-card';
+import HeroSearchBar from '@/components/hero-search-bar';
+import DishCategoryBubbles from '@/components/dish-category-bubbles';
+import QuickFilterBar from '@/components/quick-filter-bar';
+import OrderAgainShelf from '@/components/order-again-shelf';
+import FloatingCartBar from '@/components/floating-cart-bar';
+import TrendingDishesGrid from '@/components/trending-dishes-grid';
+import TrustBadgesBar from '@/components/trust-badges-bar';
 
 
-const richFeatures = [
-  {
-    name: 'Fast Delivery',
-    icon: <Clock className="h-6 w-6 text-primary" />,
-    description: 'Get your order at your doorstep in minutes, not hours. We partner with local vendors to keep delivery swift and reliable.',
-  },
-  {
-    name: 'Local Vendors',
-    icon: <MapPin className="h-6 w-6 text-primary" />,
-    description: 'Support home chefs and local shops in your neighborhood. Every order goes directly to a local entrepreneur.',
-  },
-  {
-    name: 'Easy Ordering',
-    icon: <ShoppingBag className="h-6 w-6 text-primary" />,
-    description: 'Browse menus, customize your order, and pay — all in a few taps. No complexity, just great food.',
-  },
-];
-
-const howItWorks = [
-  {
-    step: '01',
-    title: 'Browse Vendors',
-    description: 'Discover local restaurants, home chefs, and grocery shops near you.',
-    icon: <Store className="h-6 w-6" />,
-  },
-  {
-    step: '02',
-    title: 'Place Your Order',
-    description: 'Pick your items, customize to your taste, and confirm in seconds.',
-    icon: <ShoppingBag className="h-6 w-6" />,
-  },
-  {
-    step: '03',
-    title: 'Get It Delivered',
-    description: 'Sit back and track your order in real-time as it heads to your door.',
-    icon: <Package className="h-6 w-6" />,
-  },
-];
 
 
 const floatingFoodIcons = [
@@ -93,48 +63,6 @@ const tickerItems = [
   '#VerifiedCustomers', '•', 'Local Vendors', '•', 'Community First', '•',
 ];
 
-const orderSteps = [
-  {
-    icon: <ShoppingBag className="h-6 w-6" />,
-    iconBg: 'bg-purple-500/20 text-purple-400',
-    glow: 'from-purple-500/20 to-pink-500/10',
-    status: 'Order Confirmed',
-    detail: 'Your order has been placed',
-    tag: 'CONFIRMED',
-    tagColor: 'bg-purple-500/20 text-purple-300',
-    dot: 'bg-purple-400',
-  },
-  {
-    icon: <ChefHat className="h-6 w-6" />,
-    iconBg: 'bg-orange-500/20 text-orange-400',
-    glow: 'from-orange-500/20 to-amber-500/10',
-    status: 'Being Prepared',
-    detail: 'Chef is cooking your meal',
-    tag: 'PREPARING',
-    tagColor: 'bg-orange-500/20 text-orange-300',
-    dot: 'bg-orange-400',
-  },
-  {
-    icon: <Package className="h-6 w-6" />,
-    iconBg: 'bg-blue-500/20 text-blue-400',
-    glow: 'from-blue-500/20 to-cyan-500/10',
-    status: 'Rider On the Way',
-    detail: 'Arriving in approximately 5 mins',
-    tag: 'EN ROUTE',
-    tagColor: 'bg-blue-500/20 text-blue-300',
-    dot: 'bg-blue-400',
-  },
-  {
-    icon: <MapPin className="h-6 w-6" />,
-    iconBg: 'bg-green-500/20 text-green-400',
-    glow: 'from-green-500/20 to-emerald-500/10',
-    status: 'Delivered!',
-    detail: 'Enjoy your meal 🎉',
-    tag: 'DELIVERED',
-    tagColor: 'bg-green-500/20 text-green-300',
-    dot: 'bg-green-400',
-  },
-];
 
 const WhatsAppIcon = () => (
   <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -209,14 +137,102 @@ export default function LandingPage() {
     }
   }, [isLocationLoading, userLocation]);
 
-  const [activeOrderStep, setActiveOrderStep] = useState(0);
+  const { orders } = useOrder();
 
+  // Compute real dynamic platform stats
+  const approvedVendorsCount = useMemo(() => {
+    let list = vendors.filter((v) => v.isApproved && v.shopName);
+    if (userLocation) {
+      list = list.filter((v) => isVendorServiceable(v, userLocation));
+    }
+    return list.length;
+  }, [vendors, userLocation]);
+
+  const platformStats = useMemo(() => {
+    let sum = 0;
+    let count = 0;
+    orders.forEach((o) => {
+      if (o.status === 'Delivered' && typeof o.vendorRating === 'number' && o.vendorRating > 0) {
+        sum += o.vendorRating;
+        count += 1;
+      }
+    });
+    if (count === 0) {
+      vendors.forEach((v) => {
+        if (v.totalRatingSum && v.ratingCount) {
+          sum += v.totalRatingSum;
+          count += v.ratingCount;
+        }
+      });
+    }
+    const avg = count > 0 ? (sum / count).toFixed(1) : '4.8';
+    return { avg, count };
+  }, [orders, vendors]);
+
+  const heroDishes = useMemo(() => {
+    const approvedVendors = vendors.filter(
+      (v) => v.isApproved && (userLocation ? isVendorServiceable(v, userLocation) : true)
+    );
+    const vendorMap = new Map(approvedVendors.map((v) => [v.username, v]));
+
+    const list = menuItems
+      .filter(
+        (i) =>
+          vendorMap.has(i.vendorUsername) &&
+          i.isAvailable &&
+          i.image &&
+          typeof i.image === 'string' &&
+          i.image.startsWith('http') &&
+          i.image.length > 15
+      )
+      .map((item) => {
+        const vendor = vendorMap.get(item.vendorUsername)!;
+        let rating = 4.8;
+        let reviewCount = 0;
+        if (item.totalRatingSum && item.ratingCount && item.ratingCount > 0) {
+          rating = Number((item.totalRatingSum / item.ratingCount).toFixed(1));
+          reviewCount = item.ratingCount;
+        } else if (vendor.totalRatingSum && vendor.ratingCount && vendor.ratingCount > 0) {
+          rating = Number((vendor.totalRatingSum / vendor.ratingCount).toFixed(1));
+          reviewCount = vendor.ratingCount;
+        }
+        return {
+          ...item,
+          shopName: vendor.shopName,
+          calculatedRating: rating.toFixed(1),
+          calculatedReviewCount: reviewCount,
+        };
+      });
+
+    const popularWithImages = list.filter((i) => i.isPopular);
+    if (popularWithImages.length > 0) return popularWithImages.slice(0, 5);
+    if (list.length >= 1) return list.slice(0, 5);
+
+    return [
+      {
+        id: 'default-hero',
+        name: 'Freshly Prepared Meals',
+        image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=600&auto=format&fit=crop&q=80',
+        price: 199,
+        shopName: 'Local Kitchens',
+        calculatedRating: '4.8',
+        calculatedReviewCount: 0,
+      },
+    ];
+  }, [menuItems, vendors, userLocation]);
+
+  const [activeHeroDishIndex, setActiveHeroDishIndex] = useState(0);
+
+  // Automatically cycle through top hero dishes every 3.8s
   useEffect(() => {
+    if (heroDishes.length <= 1) return;
     const interval = setInterval(() => {
-      setActiveOrderStep(prev => (prev + 1) % orderSteps.length);
-    }, 2200);
+      setActiveHeroDishIndex((prev) => (prev + 1) % heroDishes.length);
+    }, 3800);
     return () => clearInterval(interval);
-  }, []);
+  }, [heroDishes]);
+
+  const currentHeroDish = heroDishes[activeHeroDishIndex] || heroDishes[0];
   const [isOfferDialogOpen, setIsOfferDialogOpen] = useState(false);
   const [selectedOffers, setSelectedOffers] = useState<Offer[]>([]);
 
@@ -358,113 +374,127 @@ export default function LandingPage() {
           <div className="container mx-auto px-4">
 
             {/* ── HERO ──────────────────────────────────────────────── */}
-            <section className="py-12 md:py-20">
-
+            <section className="py-10 md:py-16">
               <div className="grid md:grid-cols-2 gap-8 items-center w-full">
 
-                {/* ─── CINEMATIC ORDER SCENE ─ right side (+ mobile bottom) */}
+                {/* ─── FOOD SHOWCASE HERO GRAPHIC ─ right side */}
                 <motion.div
                   className="flex justify-center order-last md:order-last"
-                  initial={{ opacity: 0, x: 30 }}
-                  animate={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.8, ease: 'easeOut' }}
                 >
-                  <div className="relative w-full max-w-xs h-72 md:w-80 md:h-96">
-                    {/* Background glow that shifts color with step */}
+                  <div className="relative w-full max-w-xs sm:max-w-sm h-72 sm:h-84 flex items-center justify-center">
+                    {/* Background Radial Glow */}
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-primary/25 via-amber-500/15 to-orange-500/10 blur-3xl" />
+
+                    {/* Central Elevated Dish Image Platter with Automatic Rotation */}
                     <motion.div
-                      className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${orderSteps[activeOrderStep].glow} blur-3xl`}
-                      animate={{ opacity: [0.4, 0.7, 0.4] }}
-                      transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                    />
-
-                    {/* Floating ambient food icons — subtle, around the card */}
-                    {[
-                      { icon: <Pizza className="h-6 w-6" />, color: 'text-orange-400/50', x: '-14%', y: '10%', delay: 0 },
-                      { icon: <Coffee className="h-5 w-5" />, color: 'text-amber-400/50', x: '108%', y: '20%', delay: 0.6 },
-                      { icon: <Sandwich className="h-5 w-5" />, color: 'text-yellow-400/50', x: '-12%', y: '75%', delay: 1.1 },
-                      { icon: <IceCream2 className="h-6 w-6" />, color: 'text-pink-400/50', x: '108%', y: '70%', delay: 0.3 },
-                    ].map((f, i) => (
-                      <motion.div
-                        key={i}
-                        className={`absolute ${f.color}`}
-                        style={{ left: f.x, top: f.y }}
-                        animate={{ y: [0, -10, 0], opacity: [0.4, 0.7, 0.4] }}
-                        transition={{ duration: 3.5 + i * 0.4, delay: f.delay, repeat: Infinity, ease: 'easeInOut' }}
-                      >
-                        {f.icon}
-                      </motion.div>
-                    ))}
-
-                    {/* Main order status card */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-2">
-
-                      {/* Step indicator dots */}
-                      <div className="flex items-center gap-2">
-                        {orderSteps.map((s, i) => (
+                      animate={{ y: [0, -8, 0] }}
+                      transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                      className="relative w-56 h-56 sm:w-64 sm:h-64 rounded-full p-2 bg-gradient-to-b from-primary/30 to-transparent shadow-2xl"
+                    >
+                      <div className="relative w-full h-full rounded-full overflow-hidden border-4 border-card shadow-inner bg-muted">
+                        <AnimatePresence mode="wait">
                           <motion.div
-                            key={i}
-                            className={`rounded-full ${i === activeOrderStep ? s.dot : 'bg-muted-foreground/30'}`}
-                            animate={{ width: i === activeOrderStep ? 20 : 8, height: 8 }}
-                            transition={{ duration: 0.3 }}
-                          />
-                        ))}
+                            key={currentHeroDish?.id || activeHeroDishIndex}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 1.04 }}
+                            transition={{ duration: 0.6, ease: 'easeInOut' }}
+                            className="relative w-full h-full"
+                          >
+                            <Image
+                              src={currentHeroDish?.image || 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=600&auto=format&fit=crop&q=80'}
+                              alt={currentHeroDish?.name || 'Delicious Food'}
+                              fill
+                              sizes="(max-width: 640px) 224px, 256px"
+                              className="object-cover hover:scale-105 transition-transform duration-700"
+                              priority
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-black/15" />
+                            <div className="absolute bottom-3 inset-x-0 text-center px-4">
+                              <p className="text-xs font-bold text-white drop-shadow-md truncate">
+                                {currentHeroDish?.name || 'Fresh Local Specialties'}
+                              </p>
+                              <p className="text-[10px] text-amber-300 font-semibold drop-shadow-sm truncate">
+                                {currentHeroDish?.shopName ? `by ${currentHeroDish.shopName}` : 'Freshly Prepared'}
+                              </p>
+                            </div>
+                          </motion.div>
+                        </AnimatePresence>
                       </div>
+                    </motion.div>
 
-                      {/* Animated status card */}
+                    {/* Floating Badge 1 (Top Left: Real Speed / Location ETA) */}
+                    <motion.div
+                      animate={{ y: [0, 6, 0] }}
+                      transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 0.2 }}
+                      className="absolute -top-2 -left-2 sm:left-0 bg-card/95 border border-primary/20 backdrop-blur-md px-3 py-1.5 rounded-2xl shadow-xl flex items-center gap-2 z-20"
+                    >
+                      <div className="w-6 h-6 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
+                        <Clock className="h-3.5 w-3.5" />
+                      </div>
+                      <div className="text-left">
+                        <div className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="text-[10px] font-bold text-foreground">20-30 Min Delivery</span>
+                        </div>
+                        <p className="text-[9px] text-muted-foreground truncate max-w-[100px] sm:max-w-[120px]">
+                          {userLocation?.addressName || 'In Your Society'}
+                        </p>
+                      </div>
+                    </motion.div>
+
+                    {/* Floating Badge 2 (Top Right: Real Platform/Dish Rating that updates with rotating dish) */}
+                    <motion.div
+                      animate={{ y: [0, -6, 0] }}
+                      transition={{ duration: 3.8, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+                      className="absolute top-2 -right-2 sm:right-0 bg-card/95 border border-primary/20 backdrop-blur-md px-3 py-1.5 rounded-2xl shadow-xl flex items-center gap-2 z-20"
+                    >
+                      <div className="w-6 h-6 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+                        <Star className="h-3.5 w-3.5 fill-emerald-500 text-emerald-500" />
+                      </div>
                       <AnimatePresence mode="wait">
                         <motion.div
-                          key={activeOrderStep}
-                          className="w-full bg-card/80 border border-primary/20 rounded-2xl p-5 backdrop-blur-md shadow-xl"
-                          initial={{ y: 20, opacity: 0, scale: 0.97 }}
-                          animate={{ y: 0, opacity: 1, scale: 1 }}
-                          exit={{ y: -20, opacity: 0, scale: 0.97 }}
-                          transition={{ duration: 0.45, ease: 'easeInOut' }}
+                          key={currentHeroDish?.id || activeHeroDishIndex}
+                          initial={{ opacity: 0, y: 3 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -3 }}
+                          transition={{ duration: 0.3 }}
+                          className="text-left"
                         >
-                          {/* Tag */}
-                          <span className={`inline-flex text-[10px] font-bold tracking-widest px-2 py-0.5 rounded-full ${orderSteps[activeOrderStep].tagColor}`}>
-                            {orderSteps[activeOrderStep].tag}
+                          <span className="text-[10px] font-bold text-foreground">
+                            {(currentHeroDish as any)?.calculatedRating || platformStats.avg} ⭐ Rating
                           </span>
-
-                          {/* Icon + Status */}
-                          <div className="flex items-center gap-3 mt-3">
-                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${orderSteps[activeOrderStep].iconBg}`}>
-                              {orderSteps[activeOrderStep].icon}
-                            </div>
-                            <div>
-                              <p className="font-bold text-foreground text-base leading-tight">{orderSteps[activeOrderStep].status}</p>
-                              <p className="text-xs text-muted-foreground mt-0.5">{orderSteps[activeOrderStep].detail}</p>
-                            </div>
-                          </div>
-
-                          {/* Animated progress bar */}
-                          <div className="mt-4 h-1.5 rounded-full bg-muted overflow-hidden">
-                            <motion.div
-                              className={`h-full rounded-full ${orderSteps[activeOrderStep].dot}`}
-                              initial={{ width: '0%' }}
-                              animate={{ width: `${((activeOrderStep + 1) / orderSteps.length) * 100}%` }}
-                              transition={{ duration: 0.8, ease: 'easeOut' }}
-                            />
-                          </div>
-                          <div className="flex justify-between mt-1">
-                            <span className="text-[10px] text-muted-foreground">Step {activeOrderStep + 1} of {orderSteps.length}</span>
-                            <span className="text-[10px] text-muted-foreground">{Math.round(((activeOrderStep + 1) / orderSteps.length) * 100)}%</span>
-                          </div>
+                          <p className="text-[9px] text-muted-foreground">
+                            {(currentHeroDish as any)?.calculatedReviewCount > 0
+                              ? `${(currentHeroDish as any).calculatedReviewCount}+ Reviews`
+                              : 'Verified Kitchen'}
+                          </p>
                         </motion.div>
                       </AnimatePresence>
+                    </motion.div>
 
-                      {/* Mini order summary below */}
-                      <div className="w-full bg-muted/40 border border-border/50 rounded-xl px-4 py-3 flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                          <Utensils className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-foreground truncate">Local Vendor Order</p>
-                          <p className="text-[10px] text-muted-foreground">Fresh • Community-first</p>
-                        </div>
-                        <div className="text-xs font-bold text-primary">LIVE</div>
+                    {/* Floating Badge 3 (Bottom Left: Real Kitchens Count) */}
+                    <motion.div
+                      animate={{ y: [0, 5, 0] }}
+                      transition={{ duration: 4.2, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
+                      className="absolute -bottom-2 -left-2 sm:left-2 bg-card/95 border border-primary/20 backdrop-blur-md px-3 py-1.5 rounded-2xl shadow-xl flex items-center gap-2 z-20"
+                    >
+                      <div className="w-6 h-6 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                        <ChefHat className="h-3.5 w-3.5" />
                       </div>
+                      <div className="text-left">
+                        <span className="text-[10px] font-bold text-foreground">
+                          {approvedVendorsCount > 0 ? `${approvedVendorsCount}+ Kitchens` : 'Local Kitchens'}
+                        </span>
+                        <p className="text-[9px] text-muted-foreground">
+                          Fresh & Hygienic
+                        </p>
+                      </div>
+                    </motion.div>
 
-                    </div>
                   </div>
                 </motion.div>
 
@@ -476,50 +506,53 @@ export default function LandingPage() {
                   transition={{ duration: 0.6, ease: 'easeOut', delay: 0.1 }}
                 >
                   {/* Eyebrow label */}
-                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary uppercase tracking-widest mb-4">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary uppercase tracking-widest mb-3">
                     <Zap className="h-3 w-3" />
-                    Hyperlocal Delivery Platform
+                    Hyperlocal Food Discovery
                   </span>
 
-                  <h1 className="font-headline text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
-                    Your Daily Essentials,{' '}
-                    <span className="text-primary">Delivered.</span>
+                  <h1 className="font-headline text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-extrabold leading-tight">
+                    Craving Delicious Food?{' '}
+                    <span className="text-primary block sm:inline">Delivered Hot & Fresh.</span>
                   </h1>
 
-                  <p className="mt-4 text-base text-muted-foreground max-w-md mx-auto md:mx-0 leading-relaxed">
-                    Order anything from your favorite local vendors and get it delivered right to your door — fresh, fast, and community-first.
+                  <p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-md mx-auto md:mx-0 leading-relaxed">
+                    Order authentic meals, daily tiffins, and snacks from verified home chefs & local kitchens in your society.
                   </p>
 
                   {/* Trust pills */}
-                  <div className="mt-5 flex flex-wrap gap-2 justify-center md:justify-start">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium bg-primary/10 text-primary px-3 py-1.5 rounded-full border border-primary/20">
-                      <BadgeCheck className="h-3.5 w-3.5" /> Verified Vendors
+                  <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20">
+                      <BadgeCheck className="h-3.5 w-3.5" /> 100% Fresh & Hygienic
                     </span>
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium bg-primary/10 text-primary px-3 py-1.5 rounded-full border border-primary/20">
-                      <Clock className="h-3.5 w-3.5" /> Fast Delivery
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20">
+                      <Clock className="h-3.5 w-3.5" /> 20-30 Min Delivery
                     </span>
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium bg-primary/10 text-primary px-3 py-1.5 rounded-full border border-primary/20">
-                      <MapPin className="h-3.5 w-3.5" /> Local Shops Only
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20">
+                      <MapPin className="h-3.5 w-3.5" /> {userLocation?.addressName || 'Local Kitchens Only'}
                     </span>
                   </div>
 
-                  {/* CTA Buttons — colors & functionality unchanged */}
-                  <div className="mt-7 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-sm mx-auto md:mx-0">
+                  {/* Live Hero Search Bar with Rotating Placeholders */}
+                  <HeroSearchBar className="mt-5" />
+
+                  {/* Secondary Quick Action Buttons */}
+                  <div className="mt-4 flex flex-wrap items-center gap-3 justify-center md:justify-start">
                     <Button
-                      size="lg"
+                      size="default"
                       onClick={handleOrderNow}
-                      className="w-full text-white bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 bg-[length:200%_auto] animate-gradient-move"
+                      className="rounded-xl px-5 font-semibold shadow-md"
                     >
-                      <Utensils className="mr-2 h-5 w-5" />
-                      Order Now
+                      <Utensils className="mr-2 h-4 w-4" />
+                      Browse Full Menu
                     </Button>
                     <Link href="/admin/login" passHref>
                       <Button
-                        size="lg"
+                        size="default"
                         variant="outline"
-                        className="w-full text-white bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 bg-[length:200%_auto] animate-gradient-move"
+                        className="rounded-xl px-5 font-semibold border-border/80 hover:border-primary/40 hover:bg-primary/5"
                       >
-                        <Store className="mr-2 h-5 w-5" />
+                        <Store className="mr-2 h-4 w-4 text-primary" />
                         Join as Vendor
                       </Button>
                     </Link>
@@ -548,6 +581,18 @@ export default function LandingPage() {
                 ))}
               </motion.div>
             </div>
+
+            {/* ── QUICK FILTER BAR ─────────────────────────────────── */}
+            <QuickFilterBar className="my-2" />
+
+            {/* ── DISH INSPIRATION BUBBLES ─────────────────────────── */}
+            <DishCategoryBubbles />
+
+            {/* ── ORDER AGAIN (PAST FAVORITES) ────────────────────── */}
+            <OrderAgainShelf />
+
+            {/* ── TRENDING DISHES IN YOUR SOCIETY ──────────────────── */}
+            <TrendingDishesGrid />
 
             {/* ── BROWSE BY CATEGORY ───────────────────────────────── */}
             {activeVendorCategories.length > 0 && (
@@ -653,31 +698,39 @@ export default function LandingPage() {
                     {vendorsWithOffers.map((vendor) => {
                       const firstOffer = activeOffers.find(o => !o.vendorUsername || o.vendorUsername === vendor.username);
                       return (
-                        <CarouselItem key={vendor.username} className="basis-3/4 sm:basis-1/2 md:basis-1/3 pl-4">
+                        <CarouselItem key={vendor.username} className="basis-3/4 sm:basis-1/2 md:basis-1/3 lg:basis-1/4 pl-4">
                           <Card
-                            className="rounded-2xl overflow-hidden group h-full flex flex-col text-left bg-card/80 cursor-pointer"
+                            className="rounded-2xl overflow-hidden group h-full flex flex-col text-left bg-card/90 border border-border/60 backdrop-blur-sm cursor-pointer transition-all duration-300 hover:shadow-xl hover:border-primary/40 hover:-translate-y-1"
                             onClick={() => handleVendorOfferClick(vendor)}
                           >
                             {firstOffer && (
                               <>
-                                <div className="aspect-video w-full relative">
+                                <div className="aspect-[16/9] w-full relative overflow-hidden bg-muted">
                                   <Image
                                     src={firstOffer.imageUrl}
                                     alt={firstOffer.title}
                                     fill
-                                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                                    className="object-cover transition-transform duration-500 group-hover:scale-105"
                                     placeholder={firstOffer.blurDataUrl ? 'blur' : 'empty'}
                                     blurDataURL={firstOffer.blurDataUrl}
                                   />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                                  <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-red-600/90 text-white text-[10px] font-bold shadow-sm">
+                                      <Tag className="h-3 w-3" /> Special Deal
+                                    </span>
+                                    {firstOffer.startDate && firstOffer.endDate && (
+                                      <span className="text-[10px] text-white/90 bg-black/60 px-2 py-0.5 rounded backdrop-blur-sm">
+                                        Valid till {format(new Date(firstOffer.endDate), 'dd MMM')}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="p-3 flex flex-col flex-1">
-                                  <h3 className="font-semibold text-sm truncate">{firstOffer.title}</h3>
-                                  <p className="text-xs text-muted-foreground mt-1 truncate">{vendor.shopName}</p>
-                                  {firstOffer.startDate && firstOffer.endDate && (
-                                    <p className="text-xs text-destructive mt-1 font-semibold">
-                                      Valid: {format(new Date(firstOffer.startDate), 'dd MMM')} - {format(new Date(firstOffer.endDate), 'dd MMM')}
-                                    </p>
-                                  )}
+                                <div className="p-3.5 flex flex-col flex-1 gap-1">
+                                  <h3 className="font-bold text-sm text-foreground truncate group-hover:text-primary transition-colors">
+                                    {firstOffer.title}
+                                  </h3>
+                                  <p className="text-xs text-muted-foreground truncate">{vendor.shopName}</p>
                                 </div>
                               </>
                             )}
@@ -719,45 +772,15 @@ export default function LandingPage() {
                     className="w-full"
                   >
                     <CarouselContent className="-ml-4">
-                      {popularVendors.map((vendor, index) => {
-                        const ratingCount = vendor.ratingCount || 0;
-                        const totalRatingSum = vendor.totalRatingSum || 0;
-                        const average = ratingCount > 0 ? totalRatingSum / ratingCount : 0;
-
-                        return (
-                          <CarouselItem key={`${vendor.username}-${index}`} className="basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6 pl-4">
-                            <Link href={getVendorUrl(vendor)} passHref>
-                              <Card className="rounded-2xl overflow-hidden group h-full flex flex-col text-center bg-card/80">
-                                <CardContent className="p-3 flex flex-col flex-1 items-center">
-                                  <div className="w-20 h-20 mx-auto bg-muted rounded-full flex items-center justify-center relative overflow-hidden">
-                                    <Image
-                                      src={vendor.shopImage || `https://placehold.co/96x96.png`}
-                                      alt={vendor.shopName || ''}
-                                      layout="fill"
-                                      data-ai-hint={vendor.category || 'restaurant'}
-                                      className="object-cover transition-transform duration-300 group-hover:scale-105 rounded-full"
-                                      placeholder={vendor.shopImageBlur ? 'blur' : 'empty'}
-                                      blurDataURL={vendor.shopImageBlur}
-                                    />
-                                  </div>
-                                  <div className="p-2 flex flex-col flex-1 w-full">
-                                    <h3 className="font-semibold text-sm truncate">{vendor.shopName}</h3>
-                                    <p className="text-xs text-muted-foreground flex-1">{renderTagline(vendor.tagline)}</p>
-                                    {ratingCount > 0 && (
-                                      <div className="flex items-center justify-center gap-1 text-xs text-amber-400 mt-2" title="Vendor Rating">
-                                        <Star className="h-3 w-3 fill-current" />
-                                        <span className="font-bold">{average.toFixed(1)}</span>
-                                        <span className="text-muted-foreground">({ratingCount})</span>
-                                      </div>
-                                    )}
-                                    <p className="text-xs text-primary font-semibold mt-1">{vendor.category}</p>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            </Link>
-                          </CarouselItem>
-                        )
-                      })}
+                      {popularVendors.map((vendor, index) => (
+                        <CarouselItem key={`${vendor.username}-${index}`} className="basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4 pl-4">
+                          <VendorCard
+                            vendor={vendor}
+                            offers={activeOffers}
+                            userLocation={userLocation}
+                          />
+                        </CarouselItem>
+                      ))}
                     </CarouselContent>
                   </Carousel>
                 ) : userLocation ? (
@@ -789,73 +812,83 @@ export default function LandingPage() {
               </div>
             </section>
 
-            {/* ── WHY CHOOSE US ────────────────────────────────────── */}
-            <section className="py-10 mt-6">
-              <div className="text-center mb-8">
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary uppercase tracking-widest mb-3">
-                  <Zap className="h-3 w-3" />
-                  Built for your community
-                </span>
-                <h2 className="text-2xl md:text-3xl font-bold font-headline">Why Choose HyperDelivery</h2>
-                <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-                  We're not just an app — we're a local ecosystem that puts your neighborhood first.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                {richFeatures.map((feature, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: index * 0.1 }}
-                    className="bg-muted/50 rounded-3xl p-6 text-center flex flex-col items-center gap-3 border border-primary/10 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
-                  >
-                    <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center">
-                      {feature.icon}
-                    </div>
-                    <h3 className="font-semibold text-base">{feature.name}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
-                  </motion.div>
-                ))}
-              </div>
-            </section>
-
-            {/* ── HOW IT WORKS ─────────────────────────────────────── */}
-            <section className="py-10 mt-2 bg-muted/30 rounded-3xl px-6">
-              <div className="text-center mb-8">
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary uppercase tracking-widest mb-3">
-                  <ArrowRight className="h-3 w-3" />
-                  Simple & fast
-                </span>
-                <h2 className="text-2xl md:text-3xl font-bold font-headline">How It Works</h2>
-                <p className="text-sm text-muted-foreground mt-2">Three easy steps to get food at your doorstep</p>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 relative">
-
-                {howItWorks.map((step, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: index * 0.15 }}
-                    className="flex flex-col items-center text-center gap-3 relative"
-                  >
-                    <div className="relative">
-                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center text-primary">
-                        {step.icon}
-                      </div>
-                      <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
-                        {index + 1}
+            {/* ── PARTNER WITH US (VENDOR ACQUISITION CTA) ─────────── */}
+            <section className="py-8 my-4">
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/10 via-card to-primary/5 border border-primary/20 p-8 sm:p-10 shadow-lg">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
+                  <div className="max-w-xl text-center md:text-left">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 text-primary text-xs font-bold uppercase tracking-wider mb-3">
+                      <ChefHat className="h-3.5 w-3.5" />
+                      For Home Chefs & Kitchens
+                    </span>
+                    <h2 className="text-2xl sm:text-3xl font-extrabold font-headline tracking-tight text-foreground">
+                      Grow Your Food Business in Your Society
+                    </h2>
+                    <p className="text-sm text-muted-foreground mt-2.5 leading-relaxed">
+                      Reach hundreds of hungry neighbors in your residential area with zero setup hassle. List your menu, accept digital orders, and manage deliveries effortlessly.
+                    </p>
+                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-5 text-xs font-semibold text-foreground/80">
+                      <span className="flex items-center gap-1.5">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        0% Commission on Day 1
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        Direct WhatsApp & UPI Orders
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        Dedicated Vendor App
                       </span>
                     </div>
-                    <h3 className="font-semibold text-base">{step.title}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">{step.description}</p>
-                  </motion.div>
-                ))}
+
+                    {/* Direct Contact & Support info */}
+                    <div className="mt-5 pt-4 border-t border-primary/15 flex flex-wrap items-center justify-center md:justify-start gap-2.5 sm:gap-3 text-xs">
+                      <span className="text-muted-foreground font-medium text-[11px] w-full sm:w-auto">
+                        Quick Onboarding Support:
+                      </span>
+                      <a
+                        href="mailto:hyperlabsupport@gmail.com"
+                        className="inline-flex items-center gap-1.5 font-semibold text-foreground hover:text-primary transition-colors bg-card/80 hover:bg-card px-3 py-1.5 rounded-full border border-border/80 shadow-sm text-xs"
+                      >
+                        <Mail className="h-3.5 w-3.5 text-primary" />
+                        hyperlabsupport@gmail.com
+                      </a>
+                      <a
+                        href="https://wa.me/917083609020"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 font-semibold text-foreground hover:text-emerald-500 transition-colors bg-card/80 hover:bg-card px-3 py-1.5 rounded-full border border-border/80 shadow-sm text-xs"
+                      >
+                        <Phone className="h-3.5 w-3.5 text-emerald-500" />
+                        +91 70836 09020
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 flex flex-col items-center gap-2">
+                    <Link href="/admin/login" passHref>
+                      <Button
+                        size="lg"
+                        className="rounded-2xl px-7 py-6 text-sm font-bold shadow-xl shadow-primary/25 hover:shadow-primary/40 hover:scale-105 transition-all duration-300 gap-2 w-full sm:w-auto"
+                      >
+                        <Store className="h-4 w-4" />
+                        Register Your Kitchen ➔
+                      </Button>
+                    </Link>
+                    <p className="text-[11px] text-muted-foreground">
+                      Free setup • Instant activation
+                    </p>
+                  </div>
+                </div>
+
+                {/* Decorative background glow */}
+                <div className="absolute -right-20 -bottom-20 w-72 h-72 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
               </div>
             </section>
+
+            {/* ── TRUST BADGES BAR ─────────────────────────────────── */}
+            <TrustBadgesBar />
 
             {/* ── CUSTOMER REVIEWS ─────────────────────────────────── */}
             <section className="py-8 mt-2">
@@ -948,6 +981,7 @@ export default function LandingPage() {
         onOpenChange={setIsLocationDialogOpen}
         onLocationSelected={() => router.push('/menu')}
       />
+      <FloatingCartBar />
     </>
   );
 }
