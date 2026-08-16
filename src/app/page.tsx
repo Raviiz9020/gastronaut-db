@@ -818,8 +818,8 @@ export default function LandingPage() {
                 <div className="flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
                   <div className="max-w-xl text-center md:text-left">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 text-primary text-xs font-bold uppercase tracking-wider mb-3">
-                      <ChefHat className="h-3.5 w-3.5" />
-                      For Home Chefs & Kitchens
+                      <Store className="h-3.5 w-3.5" />
+                      For Restaurants, Home Chefs & Cloud Kitchens
                     </span>
                     <h2 className="text-2xl sm:text-3xl font-extrabold font-headline tracking-tight text-foreground">
                       Grow Your Food Business in Your Society
@@ -834,11 +834,15 @@ export default function LandingPage() {
                       </span>
                       <span className="flex items-center gap-1.5">
                         <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                        Direct WhatsApp & UPI Orders
+                        Direct UPI Payments
                       </span>
                       <span className="flex items-center gap-1.5">
                         <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                        Dedicated Vendor App
+                        Live In-App Order Tracking
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        Dedicated Vendor Portal
                       </span>
                     </div>
 
@@ -873,7 +877,7 @@ export default function LandingPage() {
                         className="rounded-2xl px-7 py-6 text-sm font-bold shadow-xl shadow-primary/25 hover:shadow-primary/40 hover:scale-105 transition-all duration-300 gap-2 w-full sm:w-auto"
                       >
                         <Store className="h-4 w-4" />
-                        Register Your Kitchen ➔
+                        Register Your Business ➔
                       </Button>
                     </Link>
                     <p className="text-[11px] text-muted-foreground">

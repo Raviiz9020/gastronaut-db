@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Flame, Plus, Minus, Star, Tag, ShoppingBag } from 'lucide-react';
+import { Flame, Plus, Minus } from 'lucide-react';
 import { useMenu } from '@/context/menu-context';
 import { useVendor } from '@/context/vendor-context';
 import { useLocation } from '@/context/location-context';
@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { isVendorServiceable } from '@/lib/location-utils';
 import { isItemInStock } from '@/lib/vendorStatusManager';
 import OrderCustomizationSheet from '@/components/order-customization-sheet';
+import SelfPickupDialog from '@/components/self-pickup-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Carousel,
@@ -31,6 +32,21 @@ export default function TrendingDishesGrid() {
 
   const [selectedCustomItem, setSelectedCustomItem] = useState<MenuItemType | null>(null);
   const [selectedCustomVendor, setSelectedCustomVendor] = useState<Vendor | null>(null);
+
+  // Self Pickup Selection Dialog state
+  const [selfPickupState, setSelfPickupState] = useState<{
+    open: boolean;
+    item: MenuItemType | null;
+    vendor: Vendor | null;
+    selectedOptions: Record<string, string | string[]>;
+    quantity: number;
+  }>({
+    open: false,
+    item: null,
+    vendor: null,
+    selectedOptions: {},
+    quantity: 1,
+  });
 
   useEffect(() => {
     fetchAllItems();
@@ -84,6 +100,54 @@ export default function TrendingDishesGrid() {
     return scoredItems.slice(0, 12);
   }, [menuItems, vendors, userLocation, orders]);
 
+  const handleAddToCartWithDeliveryCheck = (
+    item: MenuItemType,
+    vendor: Vendor,
+    selectedOptions: Record<string, string | string[]> = {},
+    quantity = 1
+  ) => {
+    const isSelfPickupVendor = vendor?.deliveryType === 'Self Pickup Only';
+    const isFirstItemFromThisVendor = cartItems.every(
+      (ci) => ci.vendorUsername !== item.vendorUsername
+    );
+    const isCartEmpty = cartItems.length === 0;
+
+    if (isSelfPickupVendor && (isCartEmpty || isFirstItemFromThisVendor)) {
+      setSelfPickupState({
+        open: true,
+        item,
+        vendor,
+        selectedOptions,
+        quantity,
+      });
+    } else {
+      addToCart(item, selectedOptions, quantity);
+      toast({
+        title: 'Added to Cart! 🛒',
+        description: `${quantity}x ${item.name} added.`,
+      });
+    }
+  };
+
+  const handleSelfPickupChoice = (choice: 'delivery' | 'pickup') => {
+    const { item, selectedOptions, quantity } = selfPickupState;
+    if (item) {
+      const forceSelfPickup = choice === 'pickup';
+      addToCart(item, selectedOptions, quantity, forceSelfPickup);
+      toast({
+        title: 'Added to Cart! 🛒',
+        description: `${quantity}x ${item.name} added.`,
+      });
+    }
+    setSelfPickupState({
+      open: false,
+      item: null,
+      vendor: null,
+      selectedOptions: {},
+      quantity: 1,
+    });
+  };
+
   const handleAddClick = (item: MenuItemType, vendor: Vendor) => {
     const hasCustomizations = item.customizations && item.customizations.length > 0;
 
@@ -91,11 +155,7 @@ export default function TrendingDishesGrid() {
       setSelectedCustomItem(item);
       setSelectedCustomVendor(vendor);
     } else {
-      addToCart(item, {}, 1);
-      toast({
-        title: 'Added to Cart! 🛒',
-        description: `${item.name} added.`,
-      });
+      handleAddToCartWithDeliveryCheck(item, vendor, {}, 1);
     }
   };
 
@@ -287,8 +347,31 @@ export default function TrendingDishesGrid() {
               setSelectedCustomVendor(null);
             }
           }}
+          onAdd={(item, selectedOptions, quantity) => {
+            if (selectedCustomVendor) {
+              handleAddToCartWithDeliveryCheck(
+                item,
+                selectedCustomVendor,
+                selectedOptions,
+                quantity
+              );
+            }
+          }}
         />
       )}
+
+      {/* Self-Pickup vs Delivery Choice Dialog */}
+      <SelfPickupDialog
+        open={selfPickupState.open}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelfPickupState((prev) => ({ ...prev, open: false }));
+          }
+        }}
+        vendorName={selfPickupState.vendor?.shopName || selfPickupState.item?.shopName}
+        minOrderAmount={selfPickupState.vendor?.minOrderAmount || 0}
+        onSelectOption={handleSelfPickupChoice}
+      />
     </section>
   );
 }
