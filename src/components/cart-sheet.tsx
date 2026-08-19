@@ -181,6 +181,12 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
                                 </button>
                             </div>
                         </div>
+                        {vc.isShopOpen === false && (
+                            <div className="text-center text-[10px] p-1.5 rounded-lg flex items-center justify-center gap-1 text-destructive bg-destructive/10 font-semibold my-1">
+                                <Info className="h-3.5 w-3.5 flex-shrink-0" />
+                                <span>Shop is currently closed ({vc.shopStatusMsg || 'Closed'})</span>
+                            </div>
+                        )}
                         {vc.deliveryOption === 'Home Delivery' && (
                             <div className="flex flex-col gap-1 px-1 py-1 bg-muted/30 rounded-xl my-1">
                                 <div className="flex justify-between items-center text-[10px] text-muted-foreground px-2">

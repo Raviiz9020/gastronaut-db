@@ -152,6 +152,16 @@ export default function CheckoutPage() {
             return;
         }
 
+        const closedVendorCart = vendorCarts.find(vc => vc.isShopOpen === false);
+        if (closedVendorCart) {
+            toast({
+                title: "Vendor is Currently Closed",
+                description: `${closedVendorCart.vendor.shopName || closedVendorCart.vendor.name || 'A vendor'} is currently closed (${closedVendorCart.shopStatusMsg || 'Closed'}). Please remove items from this vendor to proceed.`,
+                variant: "destructive"
+            });
+            return;
+        }
+
         if (!canCheckout) {
             toast({
                 title: "Cannot Checkout",
@@ -380,6 +390,13 @@ export default function CheckoutPage() {
                                                                 </button>
                                                             </div>
                                                     </div>
+
+                                                    {vc.isShopOpen === false && (
+                                                        <div className="flex items-center gap-1.5 p-2 bg-red-500/10 text-red-600 rounded-xl text-xs font-semibold">
+                                                            <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                                                            <span>Shop is currently closed ({vc.shopStatusMsg || 'Closed'})</span>
+                                                        </div>
+                                                    )}
 
                                                     <div className="space-y-1">
                                                         {vc.items.map(item => (

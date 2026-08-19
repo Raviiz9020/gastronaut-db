@@ -192,21 +192,29 @@ const PopularPickItemCard = ({
   const simpleQuantity = simpleCartItem ? simpleCartItem.quantity : 0;
   const totalQuantity = cartItems.filter(i => i.id === item.id).reduce((sum, i) => sum + i.quantity, 0);
 
+  const hasDiscount = !!(item.isDiscountActive && item.discountPrice && item.discountPrice > 0);
+  const isCustomizable = item.customizations && item.customizations.length > 0;
+  const hasMandatoryVariants = item.customizations?.some(c => Number(c.minSelect) > 0) ?? false;
+
+  const shopStatus = useMemo(() => {
+    return vendor ? VendorStatusManager.getShopStatus(vendor) : null;
+  }, [vendor]);
+
+  const isShopOpen = !shopStatus || shopStatus.status === VendorStatus.OPEN;
+  const isEffectivelyInStock = isItemInStock(item, vendor?.isInventory);
+  const isItemEffectivelyAvailable = isEffectivelyInStock && isShopOpen;
+  const isOutOfStock = !isEffectivelyInStock;
+
   const handleSimpleQuantityChange = (e: React.MouseEvent, change: number) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!isItemEffectivelyAvailable) return;
     if (!simpleCartItem && change > 0) {
       onAddToCart(item);
     } else if (simpleCartItem) {
       updateCartItemQuantity(simpleCartItem.cartItemId, simpleCartItem.quantity + change);
     }
   };
-
-  const hasDiscount = !!(item.isDiscountActive && item.discountPrice && item.discountPrice > 0);
-  const isCustomizable = item.customizations && item.customizations.length > 0;
-  const hasMandatoryVariants = item.customizations?.some(c => Number(c.minSelect) > 0) ?? false;
-
-  const isOutOfStock = !isItemInStock(item, vendor?.isInventory);
 
   const hasMandatoryCustomization = item.customizations?.some(c => Number(c.minSelect) === 1) ?? false;
 
@@ -255,6 +263,7 @@ const PopularPickItemCard = ({
   ) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!isItemEffectivelyAvailable) return;
     if (isCustomizable) {
         onCustomise(item);
     } else {
@@ -271,8 +280,11 @@ const PopularPickItemCard = ({
     <div className="h-full">
       <Link href={getItemUrl(item)} passHref>
         <div className="h-full">
-          <Card className="rounded-2xl overflow-hidden group h-full flex flex-col text-left bg-card/80">
-            <CardContent className="p-0 flex flex-col flex-1">
+          <Card className={cn(
+            "rounded-2xl overflow-hidden group h-full flex flex-col text-left bg-card/80 relative",
+            !isItemEffectivelyAvailable && "opacity-70 grayscale-[25%]"
+          )}>
+            <CardContent className="p-0 flex flex-col flex-1 relative">
               <div className="w-full aspect-square relative">
                   <Image
                     src={item.image}
@@ -300,7 +312,7 @@ const PopularPickItemCard = ({
                             });
                         });
                     }
-                    if (maxPct > 0) {
+                    if (maxPct > 0 && isItemEffectivelyAvailable) {
                         return (
                             <div className="absolute top-2 left-2 z-10 bg-destructive text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-lg flex items-center gap-0.5">
                                 <Tag className="h-2 w-2 fill-current" />
@@ -310,6 +322,15 @@ const PopularPickItemCard = ({
                     }
                     return null;
                   })()}
+
+                  {/* Shop Closed / Out of Stock Overlay */}
+                  {!isItemEffectivelyAvailable && (
+                    <div className="absolute inset-0 bg-background/80 backdrop-blur-[1.5px] flex items-center justify-center z-20 p-2">
+                      <span className="text-foreground font-bold text-[11px] text-center px-2 py-0.5 rounded-full bg-muted/95 border border-border shadow-sm">
+                        {!isShopOpen ? (shopStatus?.msg || 'Closed') : 'Out of Stock'}
+                      </span>
+                    </div>
+                  )}
                 </div>
               <div className="p-2 flex-1 flex flex-col">
                 <h3 className="font-semibold text-xs flex-1 leading-tight">
@@ -320,12 +341,13 @@ const PopularPickItemCard = ({
                     {vendor.shopName}
                   </p>
                 )}
-                {isOutOfStock && (
+                {isOutOfStock && isShopOpen && (
                   <p className="text-[10px] text-destructive font-semibold mt-0.5">
                     Out of Stock
                   </p>
                 )}
                 {!isOutOfStock &&
+                  isShopOpen &&
                   !hasMandatoryVariants &&
                   typeof item.stock === 'number' &&
                   !isCustomizable &&
@@ -355,13 +377,13 @@ const PopularPickItemCard = ({
                   </p>
                   <div className="flex items-center">
                       {!isCustomizable ? (
-                          simpleQuantity > 0 ? (
+                          simpleQuantity > 0 && isItemEffectivelyAvailable ? (
                               <div className="flex items-center gap-1">
-                                  <Button variant="outline" size="icon" className="h-6 w-6 rounded-full" onClick={(e) => handleSimpleQuantityChange(e, -1)} disabled={isOutOfStock}>
+                                  <Button variant="outline" size="icon" className="h-6 w-6 rounded-full" onClick={(e) => handleSimpleQuantityChange(e, -1)} disabled={!isItemEffectivelyAvailable}>
                                       <Minus className="h-3 w-3"/>
                                   </Button>
                                   <span className="font-bold w-4 text-center text-xs">{simpleQuantity}</span>
-                                  <Button variant="outline" size="icon" className="h-6 w-6 rounded-full" onClick={(e) => handleSimpleQuantityChange(e, 1)} disabled={isOutOfStock}>
+                                  <Button variant="outline" size="icon" className="h-6 w-6 rounded-full" onClick={(e) => handleSimpleQuantityChange(e, 1)} disabled={!isItemEffectivelyAvailable}>
                                       <Plus className="h-3 w-3"/>
                                   </Button>
                               </div>
@@ -370,20 +392,20 @@ const PopularPickItemCard = ({
                                 size="icon"
                                 className="h-6 w-6 rounded-full"
                                 onClick={(e) => handleAction(e, item)}
-                                disabled={isOutOfStock}
+                                disabled={!isItemEffectivelyAvailable}
                               >
                                 <Plus className="h-4 w-4" />
                               </Button>
                           )
                       ) : (
-                          totalQuantity > 0 ? (
+                          totalQuantity > 0 && isItemEffectivelyAvailable ? (
                              <div className="flex items-center gap-1">
                                  <span className="font-bold w-4 text-center text-xs text-purple-500">{totalQuantity}</span>
                                  <Button
                                     size="icon"
                                     className="h-6 w-6 rounded-full border-purple-500 text-purple-500"
                                     onClick={(e) => handleAction(e, item)}
-                                    disabled={isOutOfStock}
+                                    disabled={!isItemEffectivelyAvailable}
                                     variant="outline"
                                   >
                                     <Plus className="h-3 w-3" />
@@ -394,7 +416,7 @@ const PopularPickItemCard = ({
                                 size="icon"
                                 className="h-6 w-6 rounded-full"
                                 onClick={(e) => handleAction(e, item)}
-                                disabled={isOutOfStock}
+                                disabled={!isItemEffectivelyAvailable}
                               >
                                 <ChevronDown className="h-3 w-3" />
                               </Button>

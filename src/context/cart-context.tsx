@@ -3,6 +3,8 @@
 'use client';
 
 import type { CartItem, MenuItem, Vendor, Customer, DeliveryOption, DeliveryConfig } from '@/types';
+import { VendorStatus } from '@/types';
+import { VendorStatusManager } from '@/lib/vendorStatusManager';
 import React, { createContext, useContext, useState, ReactNode, useMemo, useCallback, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useVendor } from './vendor-context';
@@ -32,6 +34,8 @@ export interface VendorCart {
     deliveryCharge?: number;
     isOutOfRange?: boolean;
     distanceCalculationType?: string;
+    isShopOpen?: boolean;
+    shopStatusMsg?: string;
 }
 
 interface CartContextType {
@@ -161,6 +165,19 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     quantity = 1,
     forceSelfPickup?: boolean
   ): boolean => {
+    const vendor = vendors.find(v => v.username === item.vendorUsername);
+    if (vendor) {
+      const shopStatus = VendorStatusManager.getShopStatus(vendor);
+      if (shopStatus.status !== VendorStatus.OPEN) {
+        toast({
+          title: "Vendor is Currently Closed",
+          description: `${vendor.shopName || vendor.name || 'This vendor'} is currently closed (${shopStatus.msg}). Orders cannot be placed right now.`,
+          variant: "destructive"
+        });
+        return false;
+      }
+    }
+
     const uniqueVendorsInCart = new Set(cartItems.map(i => i.vendorUsername));
     if (!uniqueVendorsInCart.has(item.vendorUsername) && uniqueVendorsInCart.size >= 4) {
         toast({
@@ -322,6 +339,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             }
         }
 
+        const shopStatus = VendorStatusManager.getShopStatus(vc.vendor);
+        const isShopOpen = shopStatus.status === VendorStatus.OPEN;
+        const shopStatusMsg = shopStatus.msg;
+
         return {
             ...vc,
             isMinOrderMet,
@@ -330,13 +351,18 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             deliveryCharge,
             isOutOfRange,
             distanceCalculationType,
+            isShopOpen,
+            shopStatusMsg,
         };
     });
   }, [cartItems, vendors, vendorDeliveryOptions, getVendorDeliveryOption, deliveryConfig, customer]);
 
   const canCheckout = useMemo(() => {
     if (vendorCarts.length === 0) return false;
-    return vendorCarts.every(vc => vc.isMinOrderMet && !vc.isOutOfRange);
+    return vendorCarts.every(vc => {
+      const isShopOpen = vc.isShopOpen !== false;
+      return vc.isMinOrderMet && !vc.isOutOfRange && isShopOpen;
+    });
   }, [vendorCarts]);
 
   const { potentialPoints, redemptionDetails } = useMemo(() => {

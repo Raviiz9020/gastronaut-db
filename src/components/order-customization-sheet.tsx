@@ -3,6 +3,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import type { MenuItem, CustomizationOption, Vendor } from '@/types';
+import { VendorStatus } from '@/types';
+import { VendorStatusManager } from '@/lib/vendorStatusManager';
 import {
   Sheet,
   SheetContent,
@@ -109,8 +111,22 @@ export default function OrderCustomizationSheet({ item, vendor, open, onOpenChan
   const totalPrice = useMemo(() => singleItemPrice * quantity, [singleItemPrice, quantity]);
   const totalOriginalPrice = useMemo(() => singleItemOriginalPrice * quantity, [singleItemOriginalPrice, quantity]);
 
+  const shopStatus = useMemo(() => {
+    return vendor ? VendorStatusManager.getShopStatus(vendor) : null;
+  }, [vendor]);
+  const isShopOpen = !shopStatus || shopStatus.status === VendorStatus.OPEN;
+
   const handleAddToOrder = () => {
     if (!item) return;
+
+    if (!isShopOpen) {
+      toast({
+        title: "Shop is Closed",
+        description: `${vendor?.shopName || 'This shop'} is currently closed (${shopStatus?.msg}).`,
+        variant: "destructive"
+      });
+      return;
+    }
 
     const missingMandatoryGroups = item.customizations?.filter(cust => {
       if (cust.minSelect === 1) {
@@ -409,28 +425,40 @@ export default function OrderCustomizationSheet({ item, vendor, open, onOpenChan
             {/* Add to order CTA */}
             <Button
               size="lg"
-              className="flex-1 h-12 rounded-xl font-bold text-sm shadow-md shadow-primary/20 group relative overflow-hidden"
+              disabled={!isShopOpen}
+              className={cn(
+                "flex-1 h-12 rounded-xl font-bold text-sm shadow-md transition-all group relative overflow-hidden",
+                !isShopOpen
+                  ? "bg-muted text-muted-foreground cursor-not-allowed opacity-75"
+                  : "shadow-primary/20"
+              )}
               onClick={handleAddToOrder}
             >
-              <div className="flex items-center justify-between w-full">
-                <div className="flex flex-col items-start leading-tight">
-                  {hasSaving && (
-                    <span className="text-[9px] opacity-60 line-through decoration-[1.5px]">
-                      ₹{totalOriginalPrice.toFixed(0)}
-                    </span>
-                  )}
-                  <span className="text-sm font-extrabold leading-none">₹{totalPrice.toFixed(0)}</span>
-                  {hasSaving && (
-                    <span className="text-[9px] text-green-300 font-semibold leading-none mt-0.5">
-                      Save ₹{(totalOriginalPrice - totalPrice).toFixed(0)} 🎉
-                    </span>
-                  )}
+              {isShopOpen ? (
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex flex-col items-start leading-tight">
+                    {hasSaving && (
+                      <span className="text-[9px] opacity-60 line-through decoration-[1.5px]">
+                        ₹{totalOriginalPrice.toFixed(0)}
+                      </span>
+                    )}
+                    <span className="text-sm font-extrabold leading-none">₹{totalPrice.toFixed(0)}</span>
+                    {hasSaving && (
+                      <span className="text-[9px] text-green-300 font-semibold leading-none mt-0.5">
+                        Save ₹{(totalOriginalPrice - totalPrice).toFixed(0)} 🎉
+                      </span>
+                    )}
+                  </div>
+                  <span className="flex items-center gap-1.5 group-active:scale-95 transition-transform">
+                    Add to Order
+                    <ShoppingBag className="h-4 w-4" />
+                  </span>
                 </div>
-                <span className="flex items-center gap-1.5 group-active:scale-95 transition-transform">
-                  Add to Order
-                  <ShoppingBag className="h-4 w-4" />
+              ) : (
+                <span className="flex items-center justify-center gap-1.5">
+                  Closed • {shopStatus?.msg || 'Unavailable'}
                 </span>
-              </div>
+              )}
             </Button>
           </div>
         </SheetFooter>

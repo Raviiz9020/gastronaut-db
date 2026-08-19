@@ -11,7 +11,9 @@ import { useCart } from '@/context/cart-context';
 import { useOrder } from '@/context/order-context';
 import { useToast } from '@/hooks/use-toast';
 import { isVendorServiceable } from '@/lib/location-utils';
-import { isItemInStock } from '@/lib/vendorStatusManager';
+import { VendorStatusManager, isItemInStock } from '@/lib/vendorStatusManager';
+import { VendorStatus } from '@/types';
+import { cn } from '@/lib/utils';
 import OrderCustomizationSheet from '@/components/order-customization-sheet';
 import SelfPickupDialog from '@/components/self-pickup-dialog';
 import { Button } from '@/components/ui/button';
@@ -106,6 +108,16 @@ export default function TrendingDishesGrid() {
     selectedOptions: Record<string, string | string[]> = {},
     quantity = 1
   ) => {
+    const shopStatus = vendor ? VendorStatusManager.getShopStatus(vendor) : null;
+    if (shopStatus && shopStatus.status !== VendorStatus.OPEN) {
+      toast({
+        title: 'Shop is Closed',
+        description: `${vendor.shopName || 'Vendor'} is currently closed (${shopStatus.msg}).`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const isSelfPickupVendor = vendor?.deliveryType === 'Self Pickup Only';
     const isFirstItemFromThisVendor = cartItems.every(
       (ci) => ci.vendorUsername !== item.vendorUsername
@@ -130,8 +142,24 @@ export default function TrendingDishesGrid() {
   };
 
   const handleSelfPickupChoice = (choice: 'delivery' | 'pickup') => {
-    const { item, selectedOptions, quantity } = selfPickupState;
+    const { item, selectedOptions, quantity, vendor } = selfPickupState;
     if (item) {
+      const shopStatus = vendor ? VendorStatusManager.getShopStatus(vendor) : null;
+      if (shopStatus && shopStatus.status !== VendorStatus.OPEN) {
+        toast({
+          title: 'Shop is Closed',
+          description: `${vendor?.shopName || 'Vendor'} is currently closed (${shopStatus.msg}).`,
+          variant: 'destructive',
+        });
+        setSelfPickupState({
+          open: false,
+          item: null,
+          vendor: null,
+          selectedOptions: {},
+          quantity: 1,
+        });
+        return;
+      }
       const forceSelfPickup = choice === 'pickup';
       addToCart(item, selectedOptions, quantity, forceSelfPickup);
       toast({
@@ -149,6 +177,25 @@ export default function TrendingDishesGrid() {
   };
 
   const handleAddClick = (item: MenuItemType, vendor: Vendor) => {
+    const shopStatus = vendor ? VendorStatusManager.getShopStatus(vendor) : null;
+    if (shopStatus && shopStatus.status !== VendorStatus.OPEN) {
+      toast({
+        title: 'Shop is Closed',
+        description: `${vendor.shopName || 'Vendor'} is currently closed (${shopStatus.msg}).`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!isItemInStock(item, vendor?.isInventory)) {
+      toast({
+        title: 'Item Unavailable',
+        description: `${item.name} is currently out of stock.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const hasCustomizations = item.customizations && item.customizations.length > 0;
 
     if (hasCustomizations) {
@@ -167,6 +214,16 @@ export default function TrendingDishesGrid() {
   ) => {
     e.preventDefault();
     e.stopPropagation();
+
+    const shopStatus = vendor ? VendorStatusManager.getShopStatus(vendor) : null;
+    if (shopStatus && shopStatus.status !== VendorStatus.OPEN) {
+      toast({
+        title: 'Shop is Closed',
+        description: `${vendor.shopName || 'Vendor'} is currently closed (${shopStatus.msg}).`,
+        variant: 'destructive',
+      });
+      return;
+    }
 
     const simpleCartItem = cartItems.find(
       (ci) => ci.id === item.id && Object.keys(ci.customizationDetails || {}).length === 0
@@ -213,6 +270,11 @@ export default function TrendingDishesGrid() {
       >
         <CarouselContent className="-ml-2.5">
           {trendingDishes.map(({ item, vendor }) => {
+            const shopStatus = VendorStatusManager.getShopStatus(vendor);
+            const isShopOpen = !shopStatus || shopStatus.status === VendorStatus.OPEN;
+            const isEffectivelyInStock = isItemInStock(item, vendor?.isInventory);
+            const isEffectivelyAvailable = isEffectivelyInStock && isShopOpen;
+
             const simpleCartItem = cartItems.find(
               (ci) => ci.id === item.id && Object.keys(ci.customizationDetails || {}).length === 0
             );
@@ -238,7 +300,10 @@ export default function TrendingDishesGrid() {
                 key={item.id}
                 className="basis-[45%] sm:basis-1/3 md:basis-1/4 lg:basis-[18.5%] pl-2.5"
               >
-                <div className="group relative bg-card rounded-2xl border border-border/60 hover:border-primary/40 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col h-full">
+                <div className={cn(
+                  "group relative bg-card rounded-2xl border border-border/60 hover:border-primary/40 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col h-full",
+                  !isEffectivelyAvailable && "opacity-70 grayscale-[25%]"
+                )}>
                   {/* Compact Dish Image */}
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
                     <Image
@@ -261,9 +326,18 @@ export default function TrendingDishesGrid() {
                     </div>
 
                     {/* Discount Badge */}
-                    {hasDiscount && (
+                    {hasDiscount && isEffectivelyAvailable && (
                       <div className="absolute top-2 right-2 z-10 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-md">
                         {discountPercent}% OFF
+                      </div>
+                    )}
+
+                    {/* Closed / Out of Stock Overlay */}
+                    {!isEffectivelyAvailable && (
+                      <div className="absolute inset-0 bg-background/80 backdrop-blur-[1.5px] flex items-center justify-center z-20 p-2">
+                        <span className="text-foreground font-bold text-[11px] text-center px-2.5 py-1 rounded-full bg-muted/95 border border-border shadow-sm">
+                          {!isShopOpen ? (shopStatus?.msg || 'Closed') : 'Out of Stock'}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -296,7 +370,7 @@ export default function TrendingDishesGrid() {
                       </div>
 
                       {/* Interactive Stepper Button */}
-                      {totalQty > 0 && !hasCustomizations ? (
+                      {totalQty > 0 && !hasCustomizations && isEffectivelyAvailable ? (
                         <div className="flex items-center bg-primary text-primary-foreground rounded-full h-7 px-1 shadow-sm">
                           <button
                             onClick={(e) => handleQuantityChange(e, item, vendor, -1)}
@@ -320,8 +394,14 @@ export default function TrendingDishesGrid() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-7 px-2.5 text-[11px] font-bold text-primary border-primary/40 hover:bg-primary hover:text-white rounded-full shadow-sm group-hover:border-primary transition-all"
-                          onClick={() => handleAddClick(item, vendor)}
+                          disabled={!isEffectivelyAvailable}
+                          className={cn(
+                            "h-7 px-2.5 text-[11px] font-bold rounded-full shadow-sm transition-all",
+                            !isEffectivelyAvailable
+                              ? "text-muted-foreground border-border/40 opacity-60 cursor-not-allowed"
+                              : "text-primary border-primary/40 hover:bg-primary hover:text-white group-hover:border-primary"
+                          )}
+                          onClick={() => isEffectivelyAvailable && handleAddClick(item, vendor)}
                         >
                           ADD <Plus className="h-2.5 w-2.5 ml-0.5" />
                         </Button>

@@ -10,7 +10,9 @@ import { useMenu } from '@/context/menu-context';
 import { useVendor } from '@/context/vendor-context';
 import { useCart } from '@/context/cart-context';
 import { useToast } from '@/hooks/use-toast';
-import { isItemInStock } from '@/lib/vendorStatusManager';
+import { VendorStatusManager, isItemInStock } from '@/lib/vendorStatusManager';
+import { VendorStatus } from '@/types';
+import { cn } from '@/lib/utils';
 import SelfPickupDialog from '@/components/self-pickup-dialog';
 import { Button } from '@/components/ui/button';
 import {
@@ -115,6 +117,25 @@ export default function OrderAgainShelf() {
     e.stopPropagation();
 
     const vendor = vendors.find((v) => v.username === item.vendorUsername);
+    const shopStatus = vendor ? VendorStatusManager.getShopStatus(vendor) : null;
+    if (shopStatus && shopStatus.status !== VendorStatus.OPEN) {
+      toast({
+        title: 'Shop is Closed',
+        description: `${vendor?.shopName || 'Vendor'} is currently closed (${shopStatus.msg}).`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (vendor && !isItemInStock(item, vendor.isInventory)) {
+      toast({
+        title: 'Item Unavailable',
+        description: `${item.name} is currently out of stock.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const isSelfPickupVendor = vendor?.deliveryType === 'Self Pickup Only';
     const isFirstItemFromThisVendor = cartItems.every(
       (ci) => ci.vendorUsername !== item.vendorUsername
@@ -137,8 +158,22 @@ export default function OrderAgainShelf() {
   };
 
   const handleSelfPickupChoice = (choice: 'delivery' | 'pickup') => {
-    const { item } = selfPickupState;
+    const { item, vendor } = selfPickupState;
     if (item) {
+      const shopStatus = vendor ? VendorStatusManager.getShopStatus(vendor) : null;
+      if (shopStatus && shopStatus.status !== VendorStatus.OPEN) {
+        toast({
+          title: 'Shop is Closed',
+          description: `${vendor?.shopName || 'Vendor'} is currently closed (${shopStatus.msg}).`,
+          variant: 'destructive',
+        });
+        setSelfPickupState({
+          open: false,
+          item: null,
+          vendor: null,
+        });
+        return;
+      }
       const forceSelfPickup = choice === 'pickup';
       addToCart(item, {}, 1, forceSelfPickup);
       toast({
@@ -185,6 +220,12 @@ export default function OrderAgainShelf() {
       >
         <CarouselContent className="-ml-3">
           {repeatItems.map(({ item, lastOrderedVendor }) => {
+            const vendor = vendors.find((v) => v.username === item.vendorUsername);
+            const shopStatus = vendor ? VendorStatusManager.getShopStatus(vendor) : null;
+            const isShopOpen = !shopStatus || shopStatus.status === VendorStatus.OPEN;
+            const isEffectivelyInStock = isItemInStock(item, vendor?.isInventory);
+            const isEffectivelyAvailable = isEffectivelyInStock && isShopOpen;
+
             const inCart = cartItems.some((ci) => ci.id === item.id);
             const price =
               item.isDiscountActive && item.discountPrice
@@ -196,7 +237,10 @@ export default function OrderAgainShelf() {
                 key={item.id}
                 className="basis-[75%] sm:basis-1/2 md:basis-1/3 lg:basis-1/4 pl-3"
               >
-                <div className="group relative bg-card rounded-2xl border border-border/60 hover:border-primary/40 shadow-sm hover:shadow-md transition-all duration-300 p-3 flex items-center gap-3">
+                <div className={cn(
+                  "group relative bg-card rounded-2xl border border-border/60 hover:border-primary/40 shadow-sm hover:shadow-md transition-all duration-300 p-3 flex items-center gap-3 overflow-hidden",
+                  !isEffectivelyAvailable && "opacity-70 grayscale-[25%]"
+                )}>
                   {/* Dish Thumbnail */}
                   <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-muted shrink-0">
                     <Image
@@ -213,6 +257,14 @@ export default function OrderAgainShelf() {
                         }`}
                       />
                     </div>
+                    {/* Closed / Out of Stock Overlay on Thumbnail */}
+                    {!isEffectivelyAvailable && (
+                      <div className="absolute inset-0 bg-background/85 backdrop-blur-[1px] flex items-center justify-center p-1">
+                        <span className="text-foreground font-bold text-[9px] text-center leading-tight">
+                          {!isShopOpen ? (shopStatus?.msg || 'Closed') : 'Out of Stock'}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Dish Info */}
@@ -232,12 +284,16 @@ export default function OrderAgainShelf() {
                   <Button
                     size="sm"
                     variant={inCart ? 'default' : 'outline'}
-                    className={`h-7 px-3 text-xs font-bold rounded-full transition-all shrink-0 ${
-                      inCart
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-primary border-primary/30 hover:bg-primary hover:text-white'
-                    }`}
-                    onClick={(e) => handleQuickAdd(e, item)}
+                    disabled={!isEffectivelyAvailable}
+                    className={cn(
+                      "h-7 px-3 text-xs font-bold rounded-full transition-all shrink-0",
+                      !isEffectivelyAvailable
+                        ? "opacity-60 cursor-not-allowed text-muted-foreground border-border/40"
+                        : inCart
+                        ? "bg-primary text-primary-foreground"
+                        : "text-primary border-primary/30 hover:bg-primary hover:text-white"
+                    )}
+                    onClick={(e) => isEffectivelyAvailable && handleQuickAdd(e, item)}
                   >
                     {inCart ? (
                       <>

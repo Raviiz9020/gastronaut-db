@@ -7,6 +7,8 @@ import { Star, Clock, MapPin, Tag, Utensils, Store } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { Vendor, Offer } from '@/types';
+import { VendorStatus } from '@/types';
+import { VendorStatusManager } from '@/lib/vendorStatusManager';
 import { calculateDistanceInKm } from '@/lib/location-utils';
 import { createSlug, cn } from '@/lib/utils';
 
@@ -83,7 +85,11 @@ export default function VendorCard({
     return <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{text}</p>;
   };
 
-  const isShopOpen = vendor.isShopOpen !== false;
+  const shopStatus = useMemo(() => {
+    return VendorStatusManager.getShopStatus(vendor);
+  }, [vendor]);
+
+  const isShopOpen = shopStatus.status === VendorStatus.OPEN;
 
   return (
     <Link href={vendorUrl} className="block group h-full">
@@ -119,7 +125,7 @@ export default function VendorCard({
             ) : (
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-zinc-900/80 border border-zinc-700/40 text-[10px] font-semibold text-zinc-300 backdrop-blur-md">
                 <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
-                Closed
+                {shopStatus.msg || 'Closed'}
               </span>
             )}
 
