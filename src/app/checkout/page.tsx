@@ -269,24 +269,58 @@ export default function CheckoutPage() {
         setIsQrModalOpen(true);
     };
 
-    const handleSaveQrCode = () => {
+    const handleSaveQrCode = async () => {
         if (!qrCodeUrl || !paymentTargetOrder) return;
         const isIos = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
-        if (isIos) {
-            const win = window.open('', '_blank');
-            if (win) {
-                win.document.write(`<html><head><title>QR Code - Long press to save</title></head><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${qrCodeUrl}" style="max-width:100%;height:auto" /></body></html>`);
-                win.document.close();
+
+        if (isIos && typeof navigator !== 'undefined' && navigator.share) {
+            try {
+                // Convert Base64 dataURL to Blob and File for Web Share API
+                const res = await fetch(qrCodeUrl);
+                const blob = await res.blob();
+                const file = new File([blob], `QR_${paymentTargetOrder.id}.png`, { type: 'image/png' });
+
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        files: [file],
+                        title: `Payment QR - ${paymentTargetOrder.vendorName}`,
+                        text: `Scan or upload in your UPI app to pay ₹${paymentTargetOrder.amount.toFixed(2)} to ${paymentTargetOrder.vendorName}`,
+                    });
+                    toast({ title: "QR Code Ready", description: "Tap 'Save Image' on iOS to save to Apple Photos." });
+                    setIsUpiAppDrawerOpen(true);
+                    return;
+                }
+            } catch (err: any) {
+                // User may dismiss the native share sheet; ignore AbortError
+                if (err.name === 'AbortError') {
+                    setIsUpiAppDrawerOpen(true);
+                    return;
+                }
+                console.warn('Native share failed, falling back to direct download:', err);
             }
-            toast({ title: "Long press to save", description: "Long press the QR image and tap 'Add to Photos'." });
-        } else {
+        }
+
+        // Direct Download (Android, Desktop, or iOS fallback)
+        try {
+            const res = await fetch(qrCodeUrl);
+            const blob = await res.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = `QR_${paymentTargetOrder.id}.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+            toast({ title: "QR Code Saved 🎉", description: "Saved to your device." });
+        } catch (e) {
             const a = document.createElement('a');
             a.href = qrCodeUrl;
             a.download = `QR_${paymentTargetOrder.id}.png`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            toast({ title: "QR Code Saved 🎉", description: "Saved to your device photos." });
+            toast({ title: "QR Code Saved 🎉", description: "Saved to your device." });
         }
         setIsUpiAppDrawerOpen(true);
     };
@@ -655,8 +689,8 @@ export default function CheckoutPage() {
                                 </div>
                                 <p className="text-[11px] text-muted-foreground text-center">
                                     {/iPad|iPhone|iPod/.test(typeof navigator !== 'undefined' ? navigator.userAgent : '') 
-                                        ? "Tap to open → long press to save to Photos" 
-                                        : "Click the QR code to save it."}
+                                        ? "Tap QR to save to Apple Photos & choose UPI app" 
+                                        : "Click the QR code to save & choose UPI app"}
                                 </p>
                             </div>
 
