@@ -15,13 +15,14 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import Image from 'next/image';
 import { Separator } from './ui/separator';
-import { Trash2, Rocket, Plus, Minus, Info, Building, Bike, Home, MessageSquare, Award, ChevronDown, Loader2 } from 'lucide-react';
+import { Trash2, Rocket, Plus, Minus, Info, Building, Bike, Home, MessageSquare, Award, ChevronDown, Loader2, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useCustomer } from '@/context/customer-context';
 import { useAppContext } from '@/app/layout';
 import { useMemo, useState, useEffect, useTransition } from 'react';
 import { cn } from '@/lib/utils';
+import { calculateFeeSavings } from '@/lib/savings-utils';
 import type { DeliveryOption, PaymentMethod } from '@/types';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
@@ -297,6 +298,23 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
                             </div>
                         )}
 
+                        {/* Fee Transparency (Platform Fee & Gateway Fee Waived) */}
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">Platform Fee</span>
+                            <div className="flex items-center gap-1.5 text-xs">
+                                <span className="line-through text-muted-foreground/60">₹{calculateFeeSavings(finalPrice).platformFee.toFixed(2)}</span>
+                                <span className="font-bold text-green-600 dark:text-green-400">FREE</span>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">Payment Gateway (2% + GST)</span>
+                            <div className="flex items-center gap-1.5 text-xs">
+                                <span className="line-through text-muted-foreground/60">₹{calculateFeeSavings(finalPrice).gatewayFee.toFixed(2)}</span>
+                                <span className="font-bold text-green-600 dark:text-green-400">FREE</span>
+                            </div>
+                        </div>
+
                         {redemptionDetails?.canRedeem && (
                             <motion.div
                                 initial={{ opacity: 0, x: 10 }}
@@ -312,6 +330,17 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
                         <div className="flex justify-between items-center font-bold text-lg">
                             <span>Grand Total</span>
                             <span className="text-foreground">₹{finalPrice.toFixed(2)}</span>
+                        </div>
+
+                        {/* Fee Savings Callout Banner */}
+                        <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-2xl p-2.5 flex items-center justify-between gap-2 text-xs font-semibold mt-1">
+                            <div className="flex items-center gap-1.5">
+                                <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                <span>Extra Fees Saved</span>
+                            </div>
+                            <span className="bg-emerald-600 text-white dark:bg-emerald-500 dark:text-emerald-950 px-2 py-0.5 rounded-full text-[11px] font-bold">
+                                ₹{calculateFeeSavings(finalPrice).totalFeeSavings.toFixed(0)} Saved
+                            </span>
                         </div>
 
                         {potentialPoints > 0 && !redemptionDetails?.canRedeem && (

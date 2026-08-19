@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import Header from '@/components/header';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle, Cpu, Home, Loader2, Rocket, Utensils, PackageSearch, Package, History, Bike, Star, Building, MessageSquareReply, Calendar as CalendarIcon, Phone, XCircle, ArrowLeft, QrCode, ClipboardCheck, ShoppingCart, MessageSquare, Award, Download, Minus, Plus } from 'lucide-react';
+import { CheckCircle, Cpu, Home, Loader2, Rocket, Utensils, PackageSearch, Package, History, Bike, Star, Building, MessageSquareReply, Calendar as CalendarIcon, Phone, XCircle, ArrowLeft, QrCode, ClipboardCheck, ShoppingCart, MessageSquare, Award, Download, Minus, Plus, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -31,6 +31,7 @@ import QrCodeDialog from '@/components/qr-code-dialog';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { createSlug } from '@/lib/utils';
+import { calculateFeeSavings } from '@/lib/savings-utils';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
@@ -285,21 +286,26 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
     
     doc.line(15, 40, pageWidth - 15, 40);
 
+    const feeSavings = calculateFeeSavings(order.totalPrice);
+
     // Table
     autoTable(doc, {
       startY: 42,
       head: [['Qty', 'Item', 'Price']],
-      body: order.items.map(item => [
+      body: [
+        ...order.items.map(item => [
           item.quantity.toString(),
           item.name,
           `Rs. ${(item.price * item.quantity).toFixed(2)}`
-      ]),
+        ]),
+        ['1', 'Platform & Gateway Fees', `FREE (Saved Rs. ${feeSavings.totalFeeSavings.toFixed(0)})`]
+      ],
       theme: 'grid',
       headStyles: { fontStyle: 'bold', fillColor: [30, 144, 255] },
       columnStyles: {
           0: { halign: 'right', cellWidth: 15 },
           1: { halign: 'left' },
-          2: { halign: 'right', cellWidth: 30 }
+          2: { halign: 'right', cellWidth: 45 }
       },
     });
 
@@ -547,6 +553,24 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
                                 <span>₹{order.deliveryCharge.toFixed(2)}</span>
                             </div>
                         )}
+
+                        {/* Fee Transparency */}
+                        <div className="flex justify-between text-muted-foreground">
+                            <span>Platform Fee</span>
+                            <div className="flex items-center gap-1.5 text-xs">
+                                <span className="line-through text-muted-foreground/60">₹{calculateFeeSavings(order.totalPrice).platformFee.toFixed(2)}</span>
+                                <span className="font-bold text-green-600 dark:text-green-400">FREE</span>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-between text-muted-foreground">
+                            <span>Payment Gateway (2% + GST)</span>
+                            <div className="flex items-center gap-1.5 text-xs">
+                                <span className="line-through text-muted-foreground/60">₹{calculateFeeSavings(order.totalPrice).gatewayFee.toFixed(2)}</span>
+                                <span className="font-bold text-green-600 dark:text-green-400">FREE</span>
+                            </div>
+                        </div>
+
                         {order.discountAmount !== undefined && order.discountAmount > 0 && (
                             <div className="flex justify-between text-green-600 dark:text-green-400">
                                 <span>Points Discount</span>
@@ -556,6 +580,17 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
                         <div className="flex justify-between font-bold text-sm text-foreground pt-1 border-t border-dashed border-primary/10 mt-1">
                             <span>Grand Total</span>
                             <span className="text-purple-500 font-black">₹{order.totalPrice.toFixed(2)}</span>
+                        </div>
+
+                        {/* Smart Order Savings Callout */}
+                        <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-xl p-2 flex items-center justify-between gap-2 text-xs font-semibold mt-1">
+                            <div className="flex items-center gap-1.5">
+                                <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                <span>Smart Order Savings</span>
+                            </div>
+                            <span className="bg-emerald-600 text-white dark:bg-emerald-500 dark:text-emerald-950 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                ₹{calculateFeeSavings(order.totalPrice).totalFeeSavings.toFixed(0)} Saved
+                            </span>
                         </div>
                     </div>
                 </div>

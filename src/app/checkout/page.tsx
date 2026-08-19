@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
-import { CreditCard, Fingerprint, Rocket, ShieldCheck, Home, Bike, Wallet, QrCode, Smartphone, Info, AlertTriangle, ArrowRight, CheckCircle2, Loader2, Award, Copy, Download } from 'lucide-react';
+import { CreditCard, Fingerprint, Rocket, ShieldCheck, Home, Bike, Wallet, QrCode, Smartphone, Info, AlertTriangle, ArrowRight, CheckCircle2, Loader2, Award, Copy, Download, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/cart-context';
 import { useOrder } from '@/context/order-context';
@@ -16,6 +16,7 @@ import { useState, useMemo, useEffect } from 'react';
 import type { DeliveryOption, PaymentMethod, Vendor } from '@/types';
 import { cn } from '@/lib/utils';
 import { useVendor } from '@/context/vendor-context';
+import { calculateFeeSavings } from '@/lib/savings-utils';
 import QRCode from 'qrcode';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
@@ -549,6 +550,24 @@ export default function CheckoutPage() {
                                                 <span>₹{totalDeliveryCharge.toFixed(2)}</span>
                                             </div>
                                         )}
+
+                                        {/* Fee Transparency */}
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-muted-foreground">Platform Fee</span>
+                                            <div className="flex items-center gap-1.5 text-xs">
+                                                <span className="line-through text-muted-foreground/60">₹{calculateFeeSavings(finalPrice).platformFee.toFixed(2)}</span>
+                                                <span className="font-bold text-green-600 dark:text-green-400">FREE</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-muted-foreground">Payment Gateway (2% + GST)</span>
+                                            <div className="flex items-center gap-1.5 text-xs">
+                                                <span className="line-through text-muted-foreground/60">₹{calculateFeeSavings(finalPrice).gatewayFee.toFixed(2)}</span>
+                                                <span className="font-bold text-green-600 dark:text-green-400">FREE</span>
+                                            </div>
+                                        </div>
+
                                         {redemptionDetails?.canRedeem && (
                                             <div className="flex justify-between items-center text-sm text-green-600 dark:text-green-400">
                                                 <span>Points Discount ({redemptionDetails.pointsToRedeem} points)</span>
@@ -559,6 +578,17 @@ export default function CheckoutPage() {
                                         <div className="flex justify-between items-center font-bold text-xl">
                                             <span>Grand Total</span>
                                             <span className="text-purple-500">₹{finalPrice.toFixed(2)}</span>
+                                        </div>
+
+                                        {/* Savings Callout Banner */}
+                                        <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-2xl p-3 flex items-center justify-between gap-2 text-xs font-semibold mt-2">
+                                            <div className="flex items-center gap-2">
+                                                <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                                <span>You saved ₹{calculateFeeSavings(finalPrice).totalFeeSavings.toFixed(0)} in platform & gateway fees!</span>
+                                            </div>
+                                            <span className="bg-emerald-600 text-white dark:bg-emerald-500 dark:text-emerald-950 px-2.5 py-0.5 rounded-full text-[11px] font-bold shrink-0">
+                                                ₹0 Extra Fees
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -653,95 +683,109 @@ export default function CheckoutPage() {
 
             {/* UPI Payment Modal (Desktop QR / Mobile App Link) */}
             <Dialog open={isQrModalOpen} onOpenChange={setIsQrModalOpen}>
-                <DialogContent className="max-w-sm rounded-3xl bg-card border border-purple-500/20 shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
-                    <DialogHeader className="space-y-2 text-center flex flex-col items-center">
-                        <div className="p-3 bg-purple-500/10 rounded-full text-purple-500 mb-2">
-                            <QrCode className="h-8 w-8" />
+                <DialogContent className="max-w-xs sm:max-w-sm rounded-3xl bg-card border border-purple-500/20 shadow-2xl p-4 sm:p-5 max-h-[95vh] overflow-y-auto">
+                    <DialogHeader className="space-y-1 text-center flex flex-col items-center">
+                        <div className="flex items-center justify-center gap-1.5 text-purple-600 dark:text-purple-400">
+                            <QrCode className="h-5 w-5" />
+                            <DialogTitle className="text-base sm:text-lg font-bold font-headline">
+                                UPI QR Payment
+                            </DialogTitle>
                         </div>
-                        <DialogTitle className="text-xl font-bold font-headline">
-                            UPI QR Payment
-                        </DialogTitle>
-                        <DialogDescription className="text-sm">
-                            Save the QR code and upload it in your UPI app to complete payment.
+                        <DialogDescription className="text-[11px] text-muted-foreground text-center">
+                            Save QR & scan in your UPI app to complete payment
                         </DialogDescription>
                     </DialogHeader>
 
                     {paymentTargetOrder && (
-                        <div className="flex flex-col items-center justify-center p-4 gap-4 bg-muted/10 rounded-3xl border border-purple-500/10 my-3 animate-in fade-in duration-200">
-                            <div className="flex flex-col items-center gap-2">
-                                <p className="text-xs font-semibold text-center text-muted-foreground">Scan QR code to make payment</p>
-                                <div 
-                                    onClick={handleSaveQrCode}
-                                    className="relative bg-white p-3 rounded-3xl overflow-hidden border border-purple-500/20 cursor-pointer hover:border-purple-500 hover:shadow-xl transition-all group"
-                                    title="Click to save QR Code & Choose UPI App"
-                                >
-                                    {qrCodeUrl ? (
-                                        <>
-                                            <Image src={qrCodeUrl} alt={`QR Code for ${paymentTargetOrder.vendorName}`} width={160} height={160} className="object-contain rounded-2xl" />
-                                            <div className="absolute inset-0 bg-black/40 rounded-3xl flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Download className="text-white h-6 w-6 mb-1" />
-                                                <span className="text-white font-bold text-xs bg-black/60 px-3 py-1 rounded-full">Save Image</span>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="w-40 h-40 flex items-center justify-center text-xs text-muted-foreground">Generating QR code...</div>
-                                    )}
-                                </div>
-                                <p className="text-[11px] text-muted-foreground text-center">
-                                    {/iPad|iPhone|iPod/.test(typeof navigator !== 'undefined' ? navigator.userAgent : '') 
-                                        ? "Tap QR to save to Apple Photos & choose UPI app" 
-                                        : "Click the QR code to save & choose UPI app"}
-                                </p>
+                        <div className="flex flex-col items-center justify-center p-3 gap-1.5 bg-muted/10 rounded-2xl border border-purple-500/10 my-1 animate-in fade-in duration-200">
+                            <p className="text-[11px] font-semibold text-center text-muted-foreground">
+                                Scan QR code to make payment
+                            </p>
+
+                            {/* QR Code */}
+                            <div 
+                                onClick={handleSaveQrCode}
+                                className="relative bg-white p-2 rounded-2xl overflow-hidden border border-purple-500/20 cursor-pointer hover:border-purple-500 hover:shadow-lg transition-all group shrink-0"
+                                title="Click to save QR Code & Choose UPI App"
+                            >
+                                {qrCodeUrl ? (
+                                    <>
+                                        <Image src={qrCodeUrl} alt={`QR Code for ${paymentTargetOrder.vendorName}`} width={120} height={120} className="object-contain rounded-xl" />
+                                        <div className="absolute inset-0 bg-black/40 rounded-2xl flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Download className="text-white h-5 w-5 mb-0.5" />
+                                            <span className="text-white font-bold text-[10px] bg-black/60 px-2 py-0.5 rounded-full">Save Image</span>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="w-28 h-28 flex items-center justify-center text-xs text-muted-foreground">Generating QR code...</div>
+                                )}
                             </div>
 
-                            {/* Action to Save & Open Drawer */}
-                            <div className="w-full flex flex-col gap-2 pt-2 border-t border-purple-500/10">
+                            <p className="text-[10px] text-muted-foreground text-center">
+                                {typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) 
+                                    ? "Tap QR to save to Apple Photos & choose UPI app" 
+                                    : "Click the QR code to save & choose UPI app"}
+                            </p>
+
+                            {/* Action Buttons: Save QR + Open UPI Drawer */}
+                            <div className="grid grid-cols-2 gap-2 w-full pt-0.5">
                                 <Button
                                     type="button"
                                     onClick={handleSaveQrCode}
-                                    className="w-full rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs h-11 shadow-md shadow-purple-500/20 flex items-center justify-center gap-2"
+                                    className="w-full rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-[11px] h-8 shadow-xs flex items-center justify-center gap-1"
                                 >
-                                    <Download className="h-4 w-4" />
-                                    <span>Save QR & Choose UPI App</span>
+                                    <Download className="h-3 w-3" />
+                                    <span>Save QR Code</span>
                                 </Button>
                                 <Button
                                     type="button"
                                     variant="outline"
                                     onClick={() => setIsUpiAppDrawerOpen(true)}
-                                    className="w-full rounded-full border-purple-500/20 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 font-semibold text-xs h-9 flex items-center justify-center gap-1.5"
+                                    className="w-full rounded-full border-purple-500/30 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 font-bold text-[11px] h-8 shadow-xs flex items-center justify-center gap-1"
                                 >
-                                    <Smartphone className="h-3.5 w-3.5" />
-                                    <span>Open UPI App Drawer</span>
+                                    <Smartphone className="h-3 w-3" />
+                                    <span>Open UPI App</span>
                                 </Button>
                             </div>
 
-                            <div className="text-center space-y-2 mt-1">
-                                <p className="text-2xl font-black text-purple-500">₹{paymentTargetOrder.amount.toFixed(2)}</p>
-                                <p className="text-xs text-muted-foreground">Paying: <b>{paymentTargetOrder.vendorName}</b></p>
-                                <div className="flex items-center justify-center gap-2 bg-background py-1.5 px-4 rounded-full border border-purple-500/10 mx-auto w-fit shadow-xs">
-                                    <span className="text-[11px] text-muted-foreground font-mono">VPA: {paymentTargetOrder.upiId}</span>
+                            {/* Amount, Vendor & Consistent Savings */}
+                            <div className="text-center space-y-1.5 w-full pt-0.5">
+                                <div className="flex items-baseline justify-center gap-1.5">
+                                    <span className="text-xl font-black text-purple-600 dark:text-purple-400">₹{paymentTargetOrder.amount.toFixed(2)}</span>
+                                    <span className="text-[11px] text-muted-foreground truncate max-w-[150px]">to <b>{paymentTargetOrder.vendorName}</b></span>
+                                </div>
+                                
+                                {/* Consistent Fee Savings Badge matching Cart & Track */}
+                                <div className="flex items-center justify-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 mx-auto w-fit">
+                                    <Sparkles className="h-3 w-3 shrink-0" />
+                                    <span>Saved ₹{calculateFeeSavings(paymentTargetOrder.amount).totalFeeSavings.toFixed(0)} in platform & PG fees</span>
+                                </div>
+
+                                {/* VPA Pill */}
+                                <div className="flex items-center justify-center gap-1.5 bg-background py-1 px-3 rounded-full border border-purple-500/10 mx-auto w-fit shadow-xs text-[10px]">
+                                    <span className="text-muted-foreground font-mono truncate max-w-[180px]">VPA: {paymentTargetOrder.upiId}</span>
                                     <button 
                                         onClick={(e) => {
                                             e.preventDefault();
                                             navigator.clipboard.writeText(paymentTargetOrder.upiId);
                                             toast({ title: "UPI ID Copied", description: "Copied to clipboard." });
                                         }}
-                                        className="p-1 hover:bg-muted rounded-full transition-colors text-purple-500 hover:text-purple-600"
+                                        className="p-0.5 hover:bg-muted rounded-full transition-colors text-purple-500 hover:text-purple-600 shrink-0"
                                         title="Copy UPI ID"
                                     >
-                                        <Copy className="h-3.5 w-3.5" />
+                                        <Copy className="h-3 w-3" />
                                     </button>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    <DialogFooter className="flex flex-col gap-2 sm:flex-col mt-3">
+                    <DialogFooter className="flex flex-col gap-1 sm:flex-col mt-1">
                         <Button 
                             onClick={handleQrDone} 
                             disabled={isButtonDisabled}
                             className={cn(
-                                "w-full rounded-full text-white font-bold py-5 transition-all duration-200 shadow-md",
+                                "w-full rounded-full text-white font-bold h-10 text-xs transition-all duration-200 shadow-md",
                                 isButtonDisabled 
                                     ? "bg-neutral-600 hover:bg-neutral-600 cursor-not-allowed text-neutral-400 shadow-none" 
                                     : "bg-purple-600 hover:bg-purple-700 shadow-purple-500/20"
@@ -750,7 +794,7 @@ export default function CheckoutPage() {
                             {isButtonDisabled ? `I Have Paid (${secondsRemaining}s)` : "I Have Paid Successfully"}
                         </Button>
                         <DialogClose asChild>
-                            <Button variant="ghost" className="w-full rounded-full text-xs text-muted-foreground hover:text-foreground">
+                            <Button variant="ghost" className="w-full rounded-full text-[11px] h-7 text-muted-foreground hover:text-foreground">
                                 Cancel
                             </Button>
                         </DialogClose>

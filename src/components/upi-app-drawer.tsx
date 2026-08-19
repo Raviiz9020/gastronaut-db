@@ -10,9 +10,10 @@ import {
   SheetFooter,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Copy, Image as ImageIcon, Smartphone, Check } from 'lucide-react';
+import { CheckCircle2, Copy, Image as ImageIcon, Smartphone, Check, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { calculateFeeSavings } from '@/lib/savings-utils';
 
 interface UpiAppDrawerProps {
   open: boolean;
@@ -209,18 +210,25 @@ export default function UpiAppDrawer({
         {/* Scrollable Content Body */}
         <div className="px-6 py-2 flex-1 overflow-y-auto space-y-3">
           {/* Order Price & Vendor Pill Container */}
-          <div className="flex items-center justify-between bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-indigo-500/10 border border-purple-500/20 rounded-full px-5 py-3 shadow-xs">
-            <div className="min-w-0 pr-2">
-              <p className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Paying to</p>
-              <h4 className="font-bold text-sm text-foreground truncate max-w-[160px]">
-                {order.vendorName}
-              </h4>
+          <div className="bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-indigo-500/10 border border-purple-500/20 rounded-3xl p-3.5 shadow-xs space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <div className="min-w-0 pr-2">
+                <p className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Paying to</p>
+                <h4 className="font-bold text-sm text-foreground truncate max-w-[160px]">
+                  {order.vendorName}
+                </h4>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Amount</p>
+                <p className="text-xl font-black text-purple-600 dark:text-purple-400">
+                  ₹{order.amount.toFixed(2)}
+                </p>
+              </div>
             </div>
-            <div className="text-right shrink-0">
-              <p className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Amount</p>
-              <p className="text-xl font-black text-purple-600 dark:text-purple-400">
-                ₹{order.amount.toFixed(2)}
-              </p>
+
+            <div className="flex items-center justify-center gap-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 py-1 px-3 rounded-full border border-emerald-500/20 text-center">
+              <Sparkles className="h-3 w-3 shrink-0" />
+              <span>Direct UPI • Saved ₹{calculateFeeSavings(order.amount).totalFeeSavings.toFixed(0)} in platform & PG fees</span>
             </div>
           </div>
 
