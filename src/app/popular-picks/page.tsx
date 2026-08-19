@@ -167,7 +167,6 @@ export default function PopularPicksPage() {
   const handleAddToCartWithDialogCheck = (item: MenuItem, selectedOptions = {}, quantity = 1, forceSelfPickup?: boolean) => {
     if (forceSelfPickup !== undefined) {
         addToCart(item, selectedOptions, quantity, forceSelfPickup);
-        toast({ title: "Item Added!", description: `${quantity}x ${item.name} added to your cart.` });
         return;
     }
     const vendor = vendors.find(v => v.username === item.vendorUsername);
@@ -185,7 +184,6 @@ export default function PopularPicksPage() {
         setSelfPickupDialogState({ open: true, item, selectedOptions, quantity });
     } else {
         addToCart(item, selectedOptions, quantity);
-        toast({ title: "Item Added!", description: `${quantity}x ${item.name} added to your cart.` });
     }
   };
 
@@ -194,7 +192,6 @@ export default function PopularPicksPage() {
     if (decision !== 'cancel' && item) {
         const forceSelfPickup = decision === 'yes';
         addToCart(item, selectedOptions, quantity, forceSelfPickup);
-        toast({ title: "Item Added!", description: `${quantity}x ${item.name} added to your cart.` });
     }
     setSelfPickupDialogState({ open: false, item: null, selectedOptions: {}, quantity: 1 });
   };

@@ -151,10 +151,6 @@ export default function OrderCustomizationSheet({ item, vendor, open, onOpenChan
     } else {
       const wasAdded = addToCart(item, selectedOptions, quantity);
       if (wasAdded) {
-        toast({
-          title: `${quantity}x ${item.name} added!`,
-          description: "Item(s) added to your order with selected customizations.",
-        });
         onOpenChange(false);
       }
     }

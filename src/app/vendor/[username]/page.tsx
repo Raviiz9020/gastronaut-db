@@ -532,7 +532,6 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
   const handleAddToCartWithDialogCheck = (item: MenuItemType, selectedOptions = {}, quantity = 1, forceSelfPickup?: boolean) => {
     if (forceSelfPickup !== undefined) {
       addToCart(item, selectedOptions, quantity, forceSelfPickup);
-      toast({ title: "Item Added!", description: `${quantity}x ${item.name} added to your cart.` });
       return;
     }
 
@@ -544,7 +543,6 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
       setSelfPickupDialogState({ open: true, item, selectedOptions, quantity, items: null });
     } else {
       addToCart(item, selectedOptions, quantity);
-      toast({ title: "Item Added!", description: `${quantity}x ${item.name} added to your cart.` });
     }
   };
 
@@ -554,7 +552,6 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
       const forceSelfPickup = decision === 'yes';
       if (item) {
         addToCart(item, selectedOptions, quantity, forceSelfPickup);
-        toast({ title: "Item Added!", description: `${quantity}x ${item.name} added to your cart.` });
       } else if (items) {
         setDeliveryChoiceForPortionSelect(decision);
         setPortionSelectItems(items);

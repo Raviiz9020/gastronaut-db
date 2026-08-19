@@ -22,6 +22,7 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose, DialogFooter } from '@/components/ui/dialog';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import UpiAppDrawer from '@/components/upi-app-drawer';
 
 export default function CheckoutPage() {
     const { toast } = useToast();
@@ -36,8 +37,9 @@ export default function CheckoutPage() {
     const [isMobile, setIsMobile] = useState(false);
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
     
-    // States for UPI Payment Dialog
+    // States for UPI Payment Dialog & Drawer
     const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+    const [isUpiAppDrawerOpen, setIsUpiAppDrawerOpen] = useState(false);
     const [qrCodeUrl, setQrCodeUrl] = useState('');
     const [paymentTargetOrder, setPaymentTargetOrder] = useState<{ id: string; vendorName: string; amount: number; upiId: string } | null>(null);
 
@@ -267,6 +269,28 @@ export default function CheckoutPage() {
         setIsQrModalOpen(true);
     };
 
+    const handleSaveQrCode = () => {
+        if (!qrCodeUrl || !paymentTargetOrder) return;
+        const isIos = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+        if (isIos) {
+            const win = window.open('', '_blank');
+            if (win) {
+                win.document.write(`<html><head><title>QR Code - Long press to save</title></head><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${qrCodeUrl}" style="max-width:100%;height:auto" /></body></html>`);
+                win.document.close();
+            }
+            toast({ title: "Long press to save", description: "Long press the QR image and tap 'Add to Photos'." });
+        } else {
+            const a = document.createElement('a');
+            a.href = qrCodeUrl;
+            a.download = `QR_${paymentTargetOrder.id}.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            toast({ title: "QR Code Saved 🎉", description: "Saved to your device photos." });
+        }
+        setIsUpiAppDrawerOpen(true);
+    };
+
     const handleUpiPayClick = async (order: typeof placedOrders[0]) => {
         await openUpiPaymentModal(order);
     };
@@ -275,6 +299,7 @@ export default function CheckoutPage() {
         if (!paymentTargetOrder) return;
 
         setIsQrModalOpen(false);
+        setIsUpiAppDrawerOpen(false);
         setIsVerifying(true);
 
         const orderId = paymentTargetOrder.id;
@@ -608,39 +633,20 @@ export default function CheckoutPage() {
                     </DialogHeader>
 
                     {paymentTargetOrder && (
-                        <div className="flex flex-col items-center justify-center p-4 gap-4 bg-muted/10 rounded-2xl border border-purple-500/5 my-4 animate-in fade-in duration-200">
+                        <div className="flex flex-col items-center justify-center p-4 gap-4 bg-muted/10 rounded-3xl border border-purple-500/10 my-3 animate-in fade-in duration-200">
                             <div className="flex flex-col items-center gap-2">
                                 <p className="text-xs font-semibold text-center text-muted-foreground">Scan QR code to make payment</p>
                                 <div 
-                                    onClick={() => {
-                                        if (!qrCodeUrl) return;
-                                        const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent);
-                                        if (isIos) {
-                                            const win = window.open('', '_blank');
-                                            if (win) {
-                                                win.document.write(`<html><head><title>QR Code - Long press to save</title></head><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${qrCodeUrl}" style="max-width:100%;height:auto" /></body></html>`);
-                                                win.document.close();
-                                            }
-                                            toast({ title: "Long press to save", description: "Long press the QR image and tap 'Add to Photos'." });
-                                        } else {
-                                            const a = document.createElement('a');
-                                            a.href = qrCodeUrl;
-                                            a.download = `QR_${paymentTargetOrder.id}.png`;
-                                            document.body.appendChild(a);
-                                            a.click();
-                                            document.body.removeChild(a);
-                                            toast({ title: "QR Code Saved", description: "Saved to your device." });
-                                        }
-                                    }}
-                                    className="relative bg-white p-2 rounded-2xl overflow-hidden border cursor-pointer hover:border-purple-500 hover:shadow-lg transition-all group"
-                                    title="Click to save QR Code"
+                                    onClick={handleSaveQrCode}
+                                    className="relative bg-white p-3 rounded-3xl overflow-hidden border border-purple-500/20 cursor-pointer hover:border-purple-500 hover:shadow-xl transition-all group"
+                                    title="Click to save QR Code & Choose UPI App"
                                 >
                                     {qrCodeUrl ? (
                                         <>
-                                            <Image src={qrCodeUrl} alt={`QR Code for ${paymentTargetOrder.vendorName}`} width={160} height={160} className="object-contain" />
-                                            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Image src={qrCodeUrl} alt={`QR Code for ${paymentTargetOrder.vendorName}`} width={160} height={160} className="object-contain rounded-2xl" />
+                                            <div className="absolute inset-0 bg-black/40 rounded-3xl flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <Download className="text-white h-6 w-6 mb-1" />
-                                                <span className="text-white font-bold text-xs bg-black/50 px-2 py-1 rounded-full">Save Image</span>
+                                                <span className="text-white font-bold text-xs bg-black/60 px-3 py-1 rounded-full">Save Image</span>
                                             </div>
                                         </>
                                     ) : (
@@ -654,42 +660,31 @@ export default function CheckoutPage() {
                                 </p>
                             </div>
 
-                            {/* Quick Launch Tray for Mobile */}
-                            {isMobile && (
-                                <div className="w-full flex flex-col items-center gap-2 mt-2 pt-4 border-t border-purple-500/10">
-                                    <p className="text-xs font-semibold text-primary">Saved the QR? Open your UPI app to upload:</p>
-                                    <div className="flex justify-center gap-2 w-full">
-                                        <Button 
-                                            variant="outline" 
-                                            size="sm"
-                                            className="flex-1 rounded-xl bg-white hover:bg-gray-50 border-gray-200 text-xs shadow-sm h-10"
-                                            onClick={() => window.location.href = 'gpay://'}
-                                        >
-                                            GPay
-                                        </Button>
-                                        <Button 
-                                            variant="outline" 
-                                            size="sm"
-                                            className="flex-1 rounded-xl bg-white hover:bg-gray-50 border-gray-200 text-xs shadow-sm h-10"
-                                            onClick={() => window.location.href = 'phonepe://'}
-                                        >
-                                            PhonePe
-                                        </Button>
-                                        <Button 
-                                            variant="outline" 
-                                            size="sm"
-                                            className="flex-1 rounded-xl bg-white hover:bg-gray-50 border-gray-200 text-xs shadow-sm h-10"
-                                            onClick={() => window.location.href = 'paytmmp://'}
-                                        >
-                                            Paytm
-                                        </Button>
-                                    </div>
-                                </div>
-                            )}
-                            <div className="text-center space-y-2 mt-2">
+                            {/* Action to Save & Open Drawer */}
+                            <div className="w-full flex flex-col gap-2 pt-2 border-t border-purple-500/10">
+                                <Button
+                                    type="button"
+                                    onClick={handleSaveQrCode}
+                                    className="w-full rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs h-11 shadow-md shadow-purple-500/20 flex items-center justify-center gap-2"
+                                >
+                                    <Download className="h-4 w-4" />
+                                    <span>Save QR & Choose UPI App</span>
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setIsUpiAppDrawerOpen(true)}
+                                    className="w-full rounded-full border-purple-500/20 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 font-semibold text-xs h-9 flex items-center justify-center gap-1.5"
+                                >
+                                    <Smartphone className="h-3.5 w-3.5" />
+                                    <span>Open UPI App Drawer</span>
+                                </Button>
+                            </div>
+
+                            <div className="text-center space-y-2 mt-1">
                                 <p className="text-2xl font-black text-purple-500">₹{paymentTargetOrder.amount.toFixed(2)}</p>
                                 <p className="text-xs text-muted-foreground">Paying: <b>{paymentTargetOrder.vendorName}</b></p>
-                                <div className="flex items-center justify-center gap-2 bg-background py-1.5 px-3 rounded-lg border border-purple-500/10 mx-auto w-fit">
+                                <div className="flex items-center justify-center gap-2 bg-background py-1.5 px-4 rounded-full border border-purple-500/10 mx-auto w-fit shadow-xs">
                                     <span className="text-[11px] text-muted-foreground font-mono">VPA: {paymentTargetOrder.upiId}</span>
                                     <button 
                                         onClick={(e) => {
@@ -697,7 +692,7 @@ export default function CheckoutPage() {
                                             navigator.clipboard.writeText(paymentTargetOrder.upiId);
                                             toast({ title: "UPI ID Copied", description: "Copied to clipboard." });
                                         }}
-                                        className="p-1.5 hover:bg-muted rounded-md transition-colors text-purple-500 hover:text-purple-600"
+                                        className="p-1 hover:bg-muted rounded-full transition-colors text-purple-500 hover:text-purple-600"
                                         title="Copy UPI ID"
                                     >
                                         <Copy className="h-3.5 w-3.5" />
@@ -707,27 +702,37 @@ export default function CheckoutPage() {
                         </div>
                     )}
 
-                    <DialogFooter className="flex flex-col gap-2 sm:flex-col mt-4">
+                    <DialogFooter className="flex flex-col gap-2 sm:flex-col mt-3">
                         <Button 
                             onClick={handleQrDone} 
                             disabled={isButtonDisabled}
                             className={cn(
-                                "w-full rounded-xl text-white font-semibold py-5 transition-all duration-200",
+                                "w-full rounded-full text-white font-bold py-5 transition-all duration-200 shadow-md",
                                 isButtonDisabled 
-                                    ? "bg-neutral-600 hover:bg-neutral-600 cursor-not-allowed text-neutral-400" 
-                                    : "bg-purple-600 hover:bg-purple-700 shadow-md shadow-purple-500/10 animate-pulse"
+                                    ? "bg-neutral-600 hover:bg-neutral-600 cursor-not-allowed text-neutral-400 shadow-none" 
+                                    : "bg-purple-600 hover:bg-purple-700 shadow-purple-500/20"
                             )}
                         >
                             {isButtonDisabled ? `I Have Paid (${secondsRemaining}s)` : "I Have Paid Successfully"}
                         </Button>
                         <DialogClose asChild>
-                            <Button variant="ghost" className="w-full rounded-xl text-muted-foreground hover:text-foreground">
+                            <Button variant="ghost" className="w-full rounded-full text-xs text-muted-foreground hover:text-foreground">
                                 Cancel
                             </Button>
                         </DialogClose>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Post-QR Save UPI App Selection Drawer */}
+            <UpiAppDrawer
+                open={isUpiAppDrawerOpen}
+                onOpenChange={setIsUpiAppDrawerOpen}
+                order={paymentTargetOrder}
+                onConfirmPaid={handleQrDone}
+                isButtonDisabled={isButtonDisabled}
+                secondsRemaining={secondsRemaining}
+            />
 
             {/* Non-dismissible verification overlay */}
             {isVerifying && (

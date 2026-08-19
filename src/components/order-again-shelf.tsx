@@ -10,6 +10,8 @@ import { useMenu } from '@/context/menu-context';
 import { useVendor } from '@/context/vendor-context';
 import { useCart } from '@/context/cart-context';
 import { useToast } from '@/hooks/use-toast';
+import { useLocation } from '@/context/location-context';
+import { isVendorServiceable } from '@/lib/location-utils';
 import { VendorStatusManager, isItemInStock } from '@/lib/vendorStatusManager';
 import { VendorStatus } from '@/types';
 import { cn } from '@/lib/utils';
@@ -28,6 +30,7 @@ export default function OrderAgainShelf() {
   const { menuItems, fetchAllItems } = useMenu();
   const { vendors, fetchAllVendors } = useVendor();
   const { addToCart, cartItems } = useCart();
+  const { userLocation } = useLocation();
   const { toast } = useToast();
 
   const [selfPickupState, setSelfPickupState] = useState<{
@@ -87,8 +90,9 @@ export default function OrderAgainShelf() {
 
         if (matchingMenuItem && matchingMenuItem.isAvailable) {
           const vendor = vendors.find((v) => v.username === matchingMenuItem.vendorUsername);
-          // Ensure item is currently in stock
-          if (vendor && isItemInStock(matchingMenuItem, vendor.isInventory)) {
+          // Strictly ensure vendor is approved, has an active shop name, and is serviceable
+          const isServiceable = vendor ? (userLocation ? isVendorServiceable(vendor, userLocation) : true) : false;
+          if (vendor && vendor.isApproved && vendor.shopName && isServiceable && isItemInStock(matchingMenuItem, vendor.isInventory)) {
             const key = matchingMenuItem.id;
             const existing = itemMap.get(key);
             if (existing) {
@@ -98,8 +102,8 @@ export default function OrderAgainShelf() {
                 item: matchingMenuItem,
                 orderCount: 1,
                 lastOrderedVendor:
-                  (order as any).vendorName ||
                   vendor.shopName ||
+                  (order as any).vendorName ||
                   matchingMenuItem.shopName ||
                   matchingMenuItem.vendorUsername,
               });
@@ -110,14 +114,23 @@ export default function OrderAgainShelf() {
     });
 
     return Array.from(itemMap.values()).sort((a, b) => b.orderCount - a.orderCount);
-  }, [customer, orders, menuItems, vendors]);
+  }, [customer, orders, menuItems, vendors, userLocation]);
 
   const handleQuickAdd = (e: React.MouseEvent, item: MenuItemType) => {
     e.preventDefault();
     e.stopPropagation();
 
     const vendor = vendors.find((v) => v.username === item.vendorUsername);
-    const shopStatus = vendor ? VendorStatusManager.getShopStatus(vendor) : null;
+    if (!vendor || !vendor.isApproved) {
+      toast({
+        title: 'Vendor Unavailable',
+        description: 'This vendor is no longer active or approved.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const shopStatus = VendorStatusManager.getShopStatus(vendor);
     if (shopStatus && shopStatus.status !== VendorStatus.OPEN) {
       toast({
         title: 'Shop is Closed',
@@ -127,7 +140,7 @@ export default function OrderAgainShelf() {
       return;
     }
 
-    if (vendor && !isItemInStock(item, vendor.isInventory)) {
+    if (!isItemInStock(item, vendor.isInventory)) {
       toast({
         title: 'Item Unavailable',
         description: `${item.name} is currently out of stock.`,
@@ -150,17 +163,27 @@ export default function OrderAgainShelf() {
       });
     } else {
       addToCart(item, {}, 1);
-      toast({
-        title: 'Added to Cart! 🛒',
-        description: `${item.name} added to your cart.`,
-      });
     }
   };
 
   const handleSelfPickupChoice = (choice: 'delivery' | 'pickup') => {
     const { item, vendor } = selfPickupState;
     if (item) {
-      const shopStatus = vendor ? VendorStatusManager.getShopStatus(vendor) : null;
+      if (!vendor || !vendor.isApproved) {
+        toast({
+          title: 'Vendor Unavailable',
+          description: 'This vendor is no longer active or approved.',
+          variant: 'destructive',
+        });
+        setSelfPickupState({
+          open: false,
+          item: null,
+          vendor: null,
+        });
+        return;
+      }
+
+      const shopStatus = VendorStatusManager.getShopStatus(vendor);
       if (shopStatus && shopStatus.status !== VendorStatus.OPEN) {
         toast({
           title: 'Shop is Closed',
@@ -176,10 +199,6 @@ export default function OrderAgainShelf() {
       }
       const forceSelfPickup = choice === 'pickup';
       addToCart(item, {}, 1, forceSelfPickup);
-      toast({
-        title: 'Added to Cart! 🛒',
-        description: `${item.name} added to your cart.`,
-      });
     }
     setSelfPickupState({
       open: false,

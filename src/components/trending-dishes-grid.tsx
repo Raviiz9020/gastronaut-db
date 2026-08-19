@@ -134,10 +134,6 @@ export default function TrendingDishesGrid() {
       });
     } else {
       addToCart(item, selectedOptions, quantity);
-      toast({
-        title: 'Added to Cart! 🛒',
-        description: `${quantity}x ${item.name} added.`,
-      });
     }
   };
 
@@ -162,10 +158,6 @@ export default function TrendingDishesGrid() {
       }
       const forceSelfPickup = choice === 'pickup';
       addToCart(item, selectedOptions, quantity, forceSelfPickup);
-      toast({
-        title: 'Added to Cart! 🛒',
-        description: `${quantity}x ${item.name} added.`,
-      });
     }
     setSelfPickupState({
       open: false,
