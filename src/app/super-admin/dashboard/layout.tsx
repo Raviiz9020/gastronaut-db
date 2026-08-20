@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { LogOut, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSuperAdmin } from '@/context/super-admin-context';
+import { AiGenerationProvider } from '@/context/ai-generation-context';
+import { AiGenerationDock } from '@/components/super-admin/ai-generation-dock';
 
 export default function SuperAdminDashboardLayout({
     children,
@@ -37,23 +39,27 @@ export default function SuperAdminDashboardLayout({
     }
 
     return (
-        <div className="flex h-screen">
-            <SuperAdminSidebar />
-            <main className="flex-1 flex flex-col overflow-y-auto">
-                <header className="flex items-center justify-end p-4 border-b border-destructive/10 gap-4">
-                    <p className="text-base text-muted-foreground">Welcome, <span className="font-semibold text-foreground">{superAdmin.name}</span>!</p>
-                    <Button
-                      onClick={handleLogout}
-                      className="text-white bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 bg-[length:200%_auto] animate-gradient-move"
-                    >
-                        <LogOut className="mr-2 h-4 w-4"/>
-                        <span>Logout</span>
-                    </Button>
-                </header>
-                <div className="flex-1 overflow-y-auto">
-                   {children}
-                </div>
-            </main>
-        </div>
+        <AiGenerationProvider>
+            <div className="flex h-screen">
+                <SuperAdminSidebar />
+                <main className="flex-1 flex flex-col overflow-y-auto">
+                    <header className="flex items-center justify-end p-4 border-b border-destructive/10 gap-4">
+                        <p className="text-base text-muted-foreground">Welcome, <span className="font-semibold text-foreground">{superAdmin.name}</span>!</p>
+                        <Button
+                          onClick={handleLogout}
+                          className="text-white bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 bg-[length:200%_auto] animate-gradient-move"
+                        >
+                            <LogOut className="mr-2 h-4 w-4"/>
+                            <span>Logout</span>
+                        </Button>
+                    </header>
+                    <div className="flex-1 overflow-y-auto">
+                       {children}
+                    </div>
+                </main>
+                <AiGenerationDock />
+            </div>
+        </AiGenerationProvider>
     );
 }
+

@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service firebase.storage {
@@ -19,8 +18,6 @@ service firebase.storage {
       return getUserId() == 'Zta9BV5i4vhUwJXP5JrzcrEedSh2';
     }
 
-
-
     // --- Read Rules ---
 
     // Publicly readable content: Images for categories, menus, offers, shops, and riders
@@ -30,7 +27,7 @@ service firebase.storage {
     match /menu-images/{vendorUsername}/{imageName} {
       allow read: if true;
     }
-     match /receipt-images/{vendorUsername}/{imageName} {
+    match /receipt-images/{vendorUsername}/{imageName} {
       allow read: if true;
     }
     match /offer-images/{imageName} {
@@ -43,22 +40,19 @@ service firebase.storage {
       allow read: if true;
     }
     
-    
     match /vendor-category-images/{imageName=**} {
       allow read: if true;
     }
     
-   match /site/{fileName} {
-  allow read: if true;
-  allow write: if isSignedIn() && isSuperAdmin();
-
+    match /site/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn() && isSuperAdmin();
     }
 
     // --- Write Rules ---
 
     // Only super admin can write global category images and site logo
-    
-      match /vendor-category-images/{imageName=**} {
+    match /vendor-category-images/{imageName=**} {
       allow write: if isSignedIn() && isSuperAdmin();
     }
     
@@ -67,62 +61,55 @@ service firebase.storage {
     }
     match /site/logo {
       allow write: if isSignedIn() && isSuperAdmin();
-      
-      
     }
-    // --- Campaign Images ---
-// Only the Super Admin can upload or delete campaign-related images.
-// Public read is allowed so banners in emails can display correctly.
-match /campaign-images/{fileName} {
-  allow read: if true;
-  allow write, delete: if isSignedIn() && isSuperAdmin();
-}
     
-    // Only super admin can write offer images
-     //match /offer-images/{imageName} {
-      //allow write: if isSignedIn() && isSuperAdmin();
-    //}
+    // --- Campaign Images ---
+    // Only the Super Admin can upload or delete campaign-related images.
+    match /campaign-images/{fileName} {
+      allow read: if true;
+      allow write, delete: if isSignedIn() && isSuperAdmin();
+    }
 
-// Allow vendors to upload their own offer images OR super admin access
-match /offer-images/{vendorUsername}/{imageName} {
-  allow read: if true;
-  allow write, delete: if isSignedIn() &&
-    (vendorUsername == request.auth.uid || isSuperAdmin());
-}
+    // Allow vendors to upload their own offer images OR super admin access
+    match /offer-images/{vendorUsername}/{imageName} {
+      allow read: if true;
+      allow write, delete: if isSignedIn() &&
+        (vendorUsername == request.auth.uid || isSuperAdmin());
+    }
 
-    // A vendor can write to their own specific folders for shop, menu, receipt, and rider images
+    // A vendor or super admin can write to specific folders for shop, menu, receipt, and rider images
     match /shop-images/{vendorUsername}/{imageName} {
-      allow write: if isSignedIn() && vendorUsername == getUserId();
+      allow write: if isSignedIn() && (vendorUsername == getUserId() || isSuperAdmin());
     }
     match /menu-images/{vendorUsername}/{imageName} {
-      allow write: if isSignedIn() && vendorUsername == getUserId();
+      allow write: if isSignedIn() && (vendorUsername == getUserId() || isSuperAdmin());
     }
-     match /receipt-images/{vendorUsername}/{imageName} {
-      allow write: if isSignedIn() && vendorUsername == getUserId();
+    match /receipt-images/{vendorUsername}/{imageName} {
+      allow write: if isSignedIn() && (vendorUsername == getUserId() || isSuperAdmin());
     }
     match /rider-images/{vendorUsername}/{imageName} {
-      allow write: if isSignedIn() && vendorUsername == getUserId();
+      allow write: if isSignedIn() && (vendorUsername == getUserId() || isSuperAdmin());
     }
     
-     // Allow riders to upload their own verification documents
+    // Allow riders to upload their own verification documents
     match /rider-verification/{userId}/{fileName} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && userId == getUserId();
+      allow write: if isSignedIn() && (userId == getUserId() || isSuperAdmin());
     }
     
     // --- Delete Rules ---
-    // A vendor can delete images from their own folders.
+    // A vendor or super admin can delete images from their folders.
     match /shop-images/{vendorUsername}/{imageName} {
-      allow delete: if isSignedIn() && vendorUsername == getUserId();
+      allow delete: if isSignedIn() && (vendorUsername == getUserId() || isSuperAdmin());
     }
     match /menu-images/{vendorUsername}/{imageName} {
-      allow delete: if isSignedIn() && vendorUsername == getUserId();
+      allow delete: if isSignedIn() && (vendorUsername == getUserId() || isSuperAdmin());
     }
     match /rider-images/{vendorUsername}/{imageName} {
-      allow delete: if isSignedIn() && vendorUsername == getUserId();
+      allow delete: if isSignedIn() && (vendorUsername == getUserId() || isSuperAdmin());
     }
-     match /receipt-images/{vendorUsername}/{imageName} {
-      allow delete: if isSignedIn() && vendorUsername == getUserId();
+    match /receipt-images/{vendorUsername}/{imageName} {
+      allow delete: if isSignedIn() && (vendorUsername == getUserId() || isSuperAdmin());
     }
 
   }
