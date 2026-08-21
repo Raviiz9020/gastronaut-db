@@ -189,18 +189,23 @@ export default function LandingPage() {
         const vendor = vendorMap.get(item.vendorUsername)!;
         let rating = 4.8;
         let reviewCount = 0;
+        let ratingType: 'dish' | 'kitchen' | 'default' = 'default';
+
         if (item.totalRatingSum && item.ratingCount && item.ratingCount > 0) {
           rating = Number((item.totalRatingSum / item.ratingCount).toFixed(1));
           reviewCount = item.ratingCount;
+          ratingType = 'dish';
         } else if (vendor.totalRatingSum && vendor.ratingCount && vendor.ratingCount > 0) {
           rating = Number((vendor.totalRatingSum / vendor.ratingCount).toFixed(1));
           reviewCount = vendor.ratingCount;
+          ratingType = 'kitchen';
         }
         return {
           ...item,
           shopName: vendor.shopName,
           calculatedRating: rating.toFixed(1),
           calculatedReviewCount: reviewCount,
+          ratingType,
         };
       });
 
@@ -217,6 +222,7 @@ export default function LandingPage() {
         shopName: 'Local Kitchens',
         calculatedRating: '4.8',
         calculatedReviewCount: 0,
+        ratingType: 'default' as const,
       },
     ];
   }, [menuItems, vendors, userLocation]);
@@ -465,11 +471,17 @@ export default function LandingPage() {
                           className="text-left"
                         >
                           <span className="text-[10px] font-bold text-foreground">
-                            {(currentHeroDish as any)?.calculatedRating || platformStats.avg} ⭐ Rating
+                            {(currentHeroDish as any)?.calculatedRating || platformStats.avg} ⭐{' '}
+                            {(currentHeroDish as any)?.ratingType === 'dish'
+                              ? 'Dish'
+                              : (currentHeroDish as any)?.ratingType === 'kitchen'
+                              ? 'Kitchen'
+                              : ''}{' '}
+                            Rating
                           </span>
                           <p className="text-[9px] text-muted-foreground">
                             {(currentHeroDish as any)?.calculatedReviewCount > 0
-                              ? `${(currentHeroDish as any).calculatedReviewCount}+ Reviews`
+                              ? `${(currentHeroDish as any).calculatedReviewCount}+ ${(currentHeroDish as any)?.ratingType === 'dish' ? 'Dish' : (currentHeroDish as any)?.ratingType === 'kitchen' ? 'Kitchen' : ''} Reviews`
                               : 'Verified Kitchen'}
                           </p>
                         </motion.div>
