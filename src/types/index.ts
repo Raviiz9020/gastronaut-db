@@ -235,6 +235,8 @@ export interface Order {
     distanceCalculationType?: string;
     commissionPercentage?: number;
     commissionAmount?: number;
+    paymentGatewayFee?: number;
+    amountPaid?: number;
     
     // Admin commission settlement fields
     adminSettlementStatus?: 'pending' | 'payment_sent' | 'settled' | string;

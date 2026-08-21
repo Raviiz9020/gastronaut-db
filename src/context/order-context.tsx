@@ -316,6 +316,10 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
             commissionAmount = Number(((finalPrice * v.commissionPercentage) / 100).toFixed(2));
           }
 
+          const isOnlinePayment = paymentMethod === 'Pay Now' || paymentMethod === 'UPI' || (paymentMethod as any) === 'PAY_NOW';
+          const orderGatewayFee = isOnlinePayment && finalPrice > 0 ? Number((finalPrice * 0.0236).toFixed(2)) : 0;
+          const orderTotalPrice = Number((finalPrice + orderGatewayFee).toFixed(2));
+
           const newOrderData: Omit<Order, 'orderId'> & { tableId?: string | null } = {
             displayId: displayId,
             customer: {
@@ -332,7 +336,9 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
             items: cleanedItems,
             subtotal: originalSubtotal,
             discountAmount: discountAmount,
-            totalPrice: finalPrice,
+            totalPrice: orderTotalPrice,
+            paymentGatewayFee: orderGatewayFee,
+            amountPaid: orderTotalPrice,
             status: isDineInFlow ? 'Processing' : 'Order Placed',
             vendorUsername: v.username,
             createdAt: nowIso,

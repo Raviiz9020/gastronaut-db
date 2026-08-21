@@ -348,7 +348,7 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
                   </div>
                    <div className="text-right">
                         <span className="text-sm font-semibold text-foreground">
-                          ₹{order.totalPrice.toFixed(2)}
+                          ₹{(order.amountPaid || (order.paymentGatewayFee ? order.totalPrice : (order.totalPrice + (order.paymentMethod === 'Pay Now' ? Number((order.totalPrice * 0.0236).toFixed(2)) : 0)))).toFixed(2)}
                         </span>
                         {typeof order.pointsEarned === 'number' && order.pointsEarned > 0 && (
                             <div className={cn(
@@ -558,17 +558,20 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
                         <div className="flex justify-between text-muted-foreground">
                             <span>Platform Fee</span>
                             <div className="flex items-center gap-1.5 text-xs">
-                                <span className="line-through text-muted-foreground/60">₹{calculateFeeSavings(order.totalPrice).platformFee.toFixed(2)}</span>
+                                <span className="line-through text-muted-foreground/60">₹10.00</span>
                                 <span className="font-bold text-green-600 dark:text-green-400">FREE</span>
                             </div>
                         </div>
 
                         <div className="flex justify-between text-muted-foreground">
                             <span>Payment Gateway (2% + GST)</span>
-                            <div className="flex items-center gap-1.5 text-xs">
-                                <span className="line-through text-muted-foreground/60">₹{calculateFeeSavings(order.totalPrice).gatewayFee.toFixed(2)}</span>
-                                <span className="font-bold text-green-600 dark:text-green-400">FREE</span>
-                            </div>
+                            {order.paymentGatewayFee !== undefined && order.paymentGatewayFee > 0 ? (
+                                <span className="text-xs font-medium text-foreground">₹{order.paymentGatewayFee.toFixed(2)}</span>
+                            ) : (order.paymentMethod === 'Pay Now' || order.paymentMethod === 'UPI') ? (
+                                <span className="text-xs font-medium text-foreground">₹{(order.totalPrice * 0.0236).toFixed(2)}</span>
+                            ) : (
+                                <span className="font-bold text-green-600 dark:text-green-400 text-xs">₹0.00 (COD)</span>
+                            )}
                         </div>
 
                         {order.discountAmount !== undefined && order.discountAmount > 0 && (
@@ -579,17 +582,19 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
                         )}
                         <div className="flex justify-between font-bold text-sm text-foreground pt-1 border-t border-dashed border-primary/10 mt-1">
                             <span>Grand Total</span>
-                            <span className="text-purple-500 font-black">₹{order.totalPrice.toFixed(2)}</span>
+                            <span className="text-purple-500 font-black">
+                                ₹{(order.amountPaid || (order.paymentGatewayFee ? order.totalPrice : (order.totalPrice + (order.paymentMethod === 'Pay Now' ? Number((order.totalPrice * 0.0236).toFixed(2)) : 0)))).toFixed(2)}
+                            </span>
                         </div>
 
                         {/* Smart Order Savings Callout */}
                         <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-xl p-2 flex items-center justify-between gap-2 text-xs font-semibold mt-1">
                             <div className="flex items-center gap-1.5">
                                 <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                                <span>Smart Order Savings</span>
+                                <span>Platform Fee Saved</span>
                             </div>
                             <span className="bg-emerald-600 text-white dark:bg-emerald-500 dark:text-emerald-950 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                                ₹{calculateFeeSavings(order.totalPrice).totalFeeSavings.toFixed(0)} Saved
+                                ₹10 Saved
                             </span>
                         </div>
                     </div>
