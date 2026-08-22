@@ -597,7 +597,11 @@ export default function SuperAdminOrdersPage() {
                                 {order.deliveryDistanceKm !== undefined && (
                                   <div className="text-xs text-muted-foreground pt-1 flex items-center justify-between border-t border-border/40">
                                     <span>Distance:</span>
-                                    <span className="font-semibold text-foreground">{order.deliveryDistanceKm} km</span>
+                                    <span className="font-semibold text-foreground">
+                                      {typeof order.deliveryDistanceKm === 'number'
+                                        ? `${order.deliveryDistanceKm.toFixed(2)} km`
+                                        : `${Number(order.deliveryDistanceKm).toFixed(2)} km`}
+                                    </span>
                                   </div>
                                 )}
                               </div>
