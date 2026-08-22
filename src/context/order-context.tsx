@@ -337,6 +337,7 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
             subtotal: originalSubtotal,
             discountAmount: discountAmount,
             totalPrice: orderTotalPrice,
+            paymentGateway: isOnlinePayment ? 'Razorpay' : 'None',
             paymentGatewayFee: orderGatewayFee,
             amountPaid: orderTotalPrice,
             status: isDineInFlow ? 'Processing' : 'Order Placed',

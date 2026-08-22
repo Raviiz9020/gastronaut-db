@@ -929,7 +929,7 @@ export default function MenuPageContent() {
   const { toast } = useToast();
 
   const { offers, fetchAllOffers } = useOffer();
-  const { cartItems, addToCart } = useCart();
+  const { cartItems, addToCart, totalItems } = useCart();
   const [activeOffers, setActiveOffers] = useState<Offer[]>([]);
   const [isOfferOpen, setIsOfferOpen] = useState(false);
   
@@ -1568,7 +1568,10 @@ export default function MenuPageContent() {
         </div>
       </section>
 
-      <div className="container mx-auto px-4 py-6">
+      <div className={cn(
+        "container mx-auto px-4 pt-6 transition-[padding] duration-300",
+        totalItems > 0 ? "pb-36 sm:pb-28" : "pb-12"
+      )}>
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <div className="space-y-6 mb-6">
                 {/* ── STICKY GLASSMORPHIC SEARCH & FILTER BAR ───────────────────────────── */}
@@ -1937,6 +1940,7 @@ export default function MenuPageContent() {
                     <div className="mt-4">
                       {renderMenuItems()}
                     </div>
+                    {totalItems > 0 && <div className="h-28 sm:h-24 w-full shrink-0" aria-hidden="true" />}
                 </>
             ) : (
                 <div className="text-center py-16 flex flex-col items-center gap-4 bg-card/50 rounded-lg">

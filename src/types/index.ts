@@ -235,6 +235,7 @@ export interface Order {
     distanceCalculationType?: string;
     commissionPercentage?: number;
     commissionAmount?: number;
+    paymentGateway?: string;
     paymentGatewayFee?: number;
     amountPaid?: number;
     

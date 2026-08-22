@@ -126,6 +126,7 @@ exports.verifyRazorpayPayment = onRequest(
           const updateData = {
             paymentStatus: 'PAID',
             paymentMethod: 'Pay Now',
+            paymentGateway: 'Razorpay',
             razorpayOrderId: razorpay_order_id,
             razorpayPaymentId: razorpay_payment_id,
             paymentConfirmedAt: nowIso,
