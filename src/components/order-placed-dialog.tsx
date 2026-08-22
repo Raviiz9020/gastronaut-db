@@ -26,8 +26,6 @@ export default function OrderPlacedDialog({
 
   const handleTrackOrderClick = () => {
     onOpenChange(false);
-    // Use a short timeout to ensure the dialog has started its closing animation
-    // before the router navigates, preventing UI freezes.
     setTimeout(() => {
       router.push('/track');
     }, 150);
@@ -35,25 +33,22 @@ export default function OrderPlacedDialog({
   
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-3xl">
-        <DialogHeader>
-          <div className="flex justify-center mb-4">
-            <PartyPopper className="h-16 w-16 text-primary" />
+      <DialogContent className="rounded-3xl max-w-sm sm:max-w-md p-6 sm:p-8 bg-card/95 backdrop-blur-xl border-purple-500/20 shadow-2xl">
+        <DialogHeader className="space-y-3">
+          <div className="flex justify-center mb-1">
+            <div className="h-16 w-16 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-500 animate-bounce">
+              <PartyPopper className="h-8 w-8 text-purple-500" />
+            </div>
           </div>
-          <DialogTitle className="text-center text-2xl font-headline">Thank You for Your Order!</DialogTitle>
-          <DialogDescription className="text-center">
-            Your order has been placed successfully. You can track its progress on the "My Orders" page.
+          <DialogTitle className="text-center text-2xl font-headline font-bold text-purple-500">Order Confirmed! 🎉</DialogTitle>
+          <DialogDescription className="text-center text-sm text-muted-foreground leading-relaxed">
+            Your order is placed and the kitchen has been notified to start preparation. You can follow live updates on the tracking page!
           </DialogDescription>
         </DialogHeader>
-        <Alert className="mt-4 rounded-2xl border-blue-500/50 bg-blue-950 text-blue-200">
-          <AlertT className="font-bold text-white">Advance Payment Information</AlertT>
-          <AlertDesc className="text-blue-200">
-            If you wish to make an advance payment for this order you can do it from your 'Track Order' page. just open QR code and long press the QR code and choose your UPI app
-          </AlertDesc>
-        </Alert>
-        <DialogFooter className="mt-4 flex-col sm:flex-row gap-2">
-           <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full">Continue Shopping</Button>
-           <Button onClick={handleTrackOrderClick} className="w-full">Track My Order</Button>
+
+        <DialogFooter className="mt-6 flex-col sm:flex-row gap-3">
+           <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full rounded-xl">Continue Exploring</Button>
+           <Button onClick={handleTrackOrderClick} className="w-full rounded-xl bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/20">Track Live Order</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

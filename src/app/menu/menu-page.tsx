@@ -277,157 +277,143 @@ const PopularPickItemCard = ({
   };
 
   return (
-    <div className="h-full">
+    <div className="h-full select-none">
       <Link href={getItemUrl(item)} passHref>
-        <div className="h-full">
-          <Card className={cn(
-            "rounded-2xl overflow-hidden group h-full flex flex-col text-left bg-card/80 relative",
-            !isItemEffectivelyAvailable && "opacity-70 grayscale-[25%]"
-          )}>
-            <CardContent className="p-0 flex flex-col flex-1 relative">
-              <div className="w-full aspect-square relative">
-                  <Image
-                    src={item.image}
-                    alt={item.name}
-                    layout="fill"
-                    data-ai-hint={item.aiHint}
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    placeholder={item.blurDataUrl ? 'blur' : 'empty'}
-                    blurDataURL={item.blurDataUrl}
-                    unoptimized={typeof item.image === 'string' && item.image.startsWith('data:')}
-                  />
-                  {/* Smart Discount Badge */}
-                  {(() => {
-                    let maxPct = 0;
-                    if (item.isDiscountActive && item.discountPrice && item.price > 0) {
-                        maxPct = Math.round(((item.price - item.discountPrice) / item.price) * 100);
-                    }
-                    if (item.isDiscountActive) {
-                        item.customizations?.forEach(c => {
-                            c.options.forEach(o => {
-                                if (o.originalPrice && o.originalPrice > o.price) {
-                                    const pct = Math.round(((o.originalPrice - o.price) / o.originalPrice) * 100);
-                                    if (pct > maxPct) maxPct = pct;
-                                }
-                            });
-                        });
-                    }
-                    if (maxPct > 0 && isItemEffectivelyAvailable) {
-                        return (
-                            <div className="absolute top-2 left-2 z-10 bg-destructive text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-lg flex items-center gap-0.5">
-                                <Tag className="h-2 w-2 fill-current" />
-                                {maxPct}% OFF
-                            </div>
-                        );
-                    }
-                    return null;
-                  })()}
+        <Card className={cn(
+          "rounded-2xl overflow-hidden group h-full flex flex-col text-left bg-card/70 hover:bg-card border border-border/50 shadow-xs hover:shadow-md transition-all duration-200",
+          !isItemEffectivelyAvailable && "opacity-65 grayscale-[25%]"
+        )}>
+          <CardContent className="p-1.5 flex flex-col flex-1">
+            {/* Image Container */}
+            <div className="w-full aspect-[4/3] relative rounded-xl overflow-hidden bg-muted">
+                <Image
+                  src={item.image}
+                  alt={item.name}
+                  fill
+                  data-ai-hint={item.aiHint}
+                  className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  placeholder={item.blurDataUrl ? 'blur' : 'empty'}
+                  blurDataURL={item.blurDataUrl}
+                  unoptimized={typeof item.image === 'string' && item.image.startsWith('data:')}
+                />
 
-                  {/* Shop Closed / Out of Stock Overlay */}
-                  {!isItemEffectivelyAvailable && (
-                    <div className="absolute inset-0 bg-background/80 backdrop-blur-[1.5px] flex items-center justify-center z-20 p-2">
-                      <span className="text-foreground font-bold text-[11px] text-center px-2 py-0.5 rounded-full bg-muted/95 border border-border shadow-sm">
-                        {!isShopOpen ? (shopStatus?.msg || 'Closed') : 'Out of Stock'}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              <div className="p-2 flex-1 flex flex-col">
-                <h3 className="font-semibold text-xs flex-1 leading-tight">
+                {/* Smart Discount Badge */}
+                {(() => {
+                  let maxPct = 0;
+                  if (item.isDiscountActive && item.discountPrice && item.price > 0) {
+                      maxPct = Math.round(((item.price - item.discountPrice) / item.price) * 100);
+                  }
+                  if (item.isDiscountActive) {
+                      item.customizations?.forEach(c => {
+                          c.options.forEach(o => {
+                              if (o.originalPrice && o.originalPrice > o.price) {
+                                  const pct = Math.round(((o.originalPrice - o.price) / o.originalPrice) * 100);
+                                  if (pct > maxPct) maxPct = pct;
+                              }
+                          });
+                      });
+                  }
+                  if (maxPct > 0 && isItemEffectivelyAvailable) {
+                      return (
+                          <div className="absolute top-1 left-1 z-10 bg-destructive text-white text-[8px] font-bold px-1 py-0.5 rounded-md shadow flex items-center gap-0.5">
+                              <Tag className="h-2 w-2 fill-current" />
+                              {maxPct}%
+                          </div>
+                      );
+                  }
+                  return null;
+                })()}
+
+                {/* Shop Closed / Out of Stock Overlay */}
+                {!isItemEffectivelyAvailable && (
+                  <div className="absolute inset-0 bg-background/80 backdrop-blur-[1px] flex items-center justify-center z-20 p-1">
+                    <span className="text-foreground font-bold text-[9px] text-center px-1.5 py-0.5 rounded-full bg-muted/95 border border-border shadow-xs">
+                      {!isShopOpen ? (shopStatus?.msg || 'Closed') : 'Sold Out'}
+                    </span>
+                  </div>
+                )}
+            </div>
+
+            {/* Content Details */}
+            <div className="pt-1.5 px-0.5 flex-1 flex flex-col justify-between">
+              <div>
+                <h3 className="font-semibold text-[11px] leading-snug line-clamp-2 h-7 text-foreground" title={item.name}>
                   {item.name}
                 </h3>
                 {vendor && (
-                  <p className="text-[10px] text-muted-foreground mt-1 truncate">
+                  <p className="text-[9px] text-muted-foreground truncate leading-tight mt-0.5">
                     {vendor.shopName}
                   </p>
                 )}
-                {isOutOfStock && isShopOpen && (
-                  <p className="text-[10px] text-destructive font-semibold mt-0.5">
-                    Out of Stock
-                  </p>
-                )}
-                {!isOutOfStock &&
-                  isShopOpen &&
-                  !hasMandatoryVariants &&
-                  typeof item.stock === 'number' &&
-                  !isCustomizable &&
-                  (vendor?.isInventory || vendor?.category === 'Bakery' || item.stock <= 5) && (
-                    <p className={cn(
-                        "text-[10px] font-semibold mt-0.5",
-                        item.stock <= 5 ? "text-destructive" : "text-amber-600"
-                    )}>
-                      {item.stock} available
-                    </p>
-                  )}
-                <div className="flex items-center justify-between mt-1">
-                  <p className="font-semibold text-xs">
-                    {isCustomizable && <span className="text-[8px] block text-muted-foreground font-normal -mb-0.5">From</span>}
-                    {hasDiscount && !isCustomizable ? (
-                      <span className="flex items-baseline gap-1">
-                        <span className="text-red-600">
-                          ₹{item.discountPrice?.toFixed(0)}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground line-through">
-                          ₹{item.price.toFixed(0)}
-                        </span>
+              </div>
+
+              {/* Price & Action Row */}
+              <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-border/30">
+                <div className="font-bold text-[11px] text-foreground">
+                  {hasDiscount && !isCustomizable ? (
+                    <span className="flex items-baseline gap-1">
+                      <span className="text-red-600 dark:text-red-400">
+                        ₹{item.discountPrice?.toFixed(0)}
                       </span>
+                      <span className="text-[9px] text-muted-foreground line-through font-normal">
+                        ₹{item.price.toFixed(0)}
+                      </span>
+                    </span>
+                  ) : (
+                    <span>₹{startingPrice.toFixed(0)}</span>
+                  )}
+                </div>
+
+                <div className="flex items-center">
+                    {!isCustomizable ? (
+                        simpleQuantity > 0 && isItemEffectivelyAvailable ? (
+                            <div className="flex items-center gap-0.5 bg-primary/10 rounded-full px-1 py-0.5">
+                                <button className="h-4 w-4 rounded-full flex items-center justify-center text-primary hover:bg-primary/20 transition-colors" onClick={(e) => handleSimpleQuantityChange(e, -1)}>
+                                    <Minus className="h-2.5 w-2.5"/>
+                                </button>
+                                <span className="font-bold text-[10px] text-primary px-0.5">{simpleQuantity}</span>
+                                <button className="h-4 w-4 rounded-full flex items-center justify-center text-primary hover:bg-primary/20 transition-colors" onClick={(e) => handleSimpleQuantityChange(e, 1)}>
+                                    <Plus className="h-2.5 w-2.5"/>
+                                </button>
+                            </div>
+                        ) : (
+                            <Button
+                              size="icon"
+                              className="h-5 w-5 rounded-full shadow-xs text-primary-foreground bg-primary hover:bg-primary/90"
+                              onClick={(e) => handleAction(e, item)}
+                              disabled={!isItemEffectivelyAvailable}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                        )
                     ) : (
-                      <span>₹{startingPrice.toFixed(0)}</span>
+                        totalQuantity > 0 && isItemEffectivelyAvailable ? (
+                           <div className="flex items-center gap-0.5 bg-purple-500/10 rounded-full px-1.5 py-0.5">
+                               <span className="font-bold text-[10px] text-purple-600 dark:text-purple-400">{totalQuantity}</span>
+                               <button
+                                  className="h-4 w-4 rounded-full flex items-center justify-center text-purple-600 hover:bg-purple-500/20 ml-0.5"
+                                  onClick={(e) => handleAction(e, item)}
+                                >
+                                  <Plus className="h-2.5 w-2.5" />
+                                </button>
+                           </div>
+                        ) : (
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              className="h-5 w-5 rounded-full border-primary/40 text-primary hover:bg-primary hover:text-white"
+                              onClick={(e) => handleAction(e, item)}
+                              disabled={!isItemEffectivelyAvailable}
+                            >
+                              <ChevronDown className="h-2.5 w-2.5" />
+                            </Button>
+                        )
                     )}
-                  </p>
-                  <div className="flex items-center">
-                      {!isCustomizable ? (
-                          simpleQuantity > 0 && isItemEffectivelyAvailable ? (
-                              <div className="flex items-center gap-1">
-                                  <Button variant="outline" size="icon" className="h-6 w-6 rounded-full" onClick={(e) => handleSimpleQuantityChange(e, -1)} disabled={!isItemEffectivelyAvailable}>
-                                      <Minus className="h-3 w-3"/>
-                                  </Button>
-                                  <span className="font-bold w-4 text-center text-xs">{simpleQuantity}</span>
-                                  <Button variant="outline" size="icon" className="h-6 w-6 rounded-full" onClick={(e) => handleSimpleQuantityChange(e, 1)} disabled={!isItemEffectivelyAvailable}>
-                                      <Plus className="h-3 w-3"/>
-                                  </Button>
-                              </div>
-                          ) : (
-                              <Button
-                                size="icon"
-                                className="h-6 w-6 rounded-full"
-                                onClick={(e) => handleAction(e, item)}
-                                disabled={!isItemEffectivelyAvailable}
-                              >
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                          )
-                      ) : (
-                          totalQuantity > 0 && isItemEffectivelyAvailable ? (
-                             <div className="flex items-center gap-1">
-                                 <span className="font-bold w-4 text-center text-xs text-purple-500">{totalQuantity}</span>
-                                 <Button
-                                    size="icon"
-                                    className="h-6 w-6 rounded-full border-purple-500 text-purple-500"
-                                    onClick={(e) => handleAction(e, item)}
-                                    disabled={!isItemEffectivelyAvailable}
-                                    variant="outline"
-                                  >
-                                    <Plus className="h-3 w-3" />
-                                  </Button>
-                             </div>
-                          ) : (
-                              <Button
-                                size="icon"
-                                className="h-6 w-6 rounded-full"
-                                onClick={(e) => handleAction(e, item)}
-                                disabled={!isItemEffectivelyAvailable}
-                              >
-                                <ChevronDown className="h-3 w-3" />
-                              </Button>
-                          )
-                      )}
-                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
       </Link>
     </div>
   );
@@ -1655,48 +1641,34 @@ export default function MenuPageContent() {
                 </div>
 
               {popularPicks.length > 0 && (
-                <section className="py-5 px-4 sm:px-6 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-amber-500/10 border border-amber-500/20 rounded-3xl shadow-sm">
-                  <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <span className="w-7 h-7 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-600">
-                          <Sparkles className="h-4 w-4" />
+                <section className="py-2.5">
+                  <div className="flex justify-between items-center mb-2 px-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-md bg-amber-500/15 flex items-center justify-center text-amber-500 shadow-xs">
+                          <Sparkles className="h-3 w-3" />
                         </span>
-                        <h2 className="text-xl font-bold font-headline text-foreground tracking-wide">Popular Picks</h2>
+                        <h2 className="text-sm sm:text-base font-bold font-headline text-foreground tracking-tight">Popular Picks</h2>
                       </div>
                       <Link href="/popular-picks" passHref>
-                          <Button variant="link" className="text-primary font-semibold pr-0">
-                          See all
+                          <Button variant="ghost" size="sm" className="text-primary hover:text-primary font-semibold text-[11px] h-6 px-2">
+                            See all
                           </Button>
                       </Link>
                     </div>
-                    <div className="mt-4">
-                      <Carousel
-                          plugins={[Autoplay({ delay: 3000, stopOnInteraction: false, stopOnMouseEnter: true })]}
-                          opts={{
-                            align: "start",
-                            loop: true,
-                            slidesToScroll: 3,
-                          }}
-                          className="w-full"
-                      >
-                          <CarouselContent className="-ml-2">
-                              {popularPicks.map((item, index) => {
-                                  const vendor = vendors.find(v => v.username === item.vendorUsername);
-                                  return (
-                                      <CarouselItem key={`${item.id}-${index}`} className="pl-2 basis-1/3 sm:basis-1/4 md:basis-1/5 lg:basis-1/6">
-                                          <PopularPickItemCard
-                                            item={item}
-                                            vendor={vendor}
-                                            onAddToCart={(item) => handleAddToCartWithDialogCheck(item, {}, 1)}
-                                            onCustomise={handleOpenCustomization}
-                                           />
-                                      </CarouselItem>
-                                  );
-                              })}
-                          </CarouselContent>
-                          <CarouselPrevious className="ml-8 flex" />
-                          <CarouselNext className="mr-8 flex" />
-                      </Carousel>
+                    <div className="flex gap-2 overflow-x-auto pb-1.5 pt-0.5 scrollbar-none snap-x -mx-1 px-1">
+                        {popularPicks.map((item, index) => {
+                            const vendor = vendors.find(v => v.username === item.vendorUsername);
+                            return (
+                                <div key={`${item.id}-${index}`} className="flex-shrink-0 w-28 sm:w-32 snap-start">
+                                    <PopularPickItemCard
+                                      item={item}
+                                      vendor={vendor}
+                                      onAddToCart={(item) => handleAddToCartWithDialogCheck(item, {}, 1)}
+                                      onCustomise={handleOpenCustomization}
+                                     />
+                                </div>
+                            );
+                        })}
                     </div>
                 </section>
               )}

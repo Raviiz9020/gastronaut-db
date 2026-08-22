@@ -51,6 +51,7 @@ const formSchema = z.object({
   address: z.string().optional(),
   googleMapsUrl: z.string().optional(),
   minOrderAmount: z.coerce.number().min(0).optional(),
+  freeDeliveryDistanceKm: z.coerce.number().min(0).max(50).optional(),
   category: z.string().nullable().optional(),
   about: z.string().optional(),
   workingHours: z.string().optional(),
@@ -62,7 +63,7 @@ export default function VendorForm({ isOpen, onOpenChange, vendor }: VendorFormP
   const { toast } = useToast();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { username: '', password: '', name: '', shopName: '', contact: '', address: '', googleMapsUrl: '', minOrderAmount: 0, category: null, about: '', workingHours: '' },
+    defaultValues: { username: '', password: '', name: '', shopName: '', contact: '', address: '', googleMapsUrl: '', minOrderAmount: 0, freeDeliveryDistanceKm: 0, category: null, about: '', workingHours: '' },
   });
 
   useEffect(() => {
@@ -75,12 +76,13 @@ export default function VendorForm({ isOpen, onOpenChange, vendor }: VendorFormP
         address: vendor.address || '',
         googleMapsUrl: vendor.googleMapsUrl || '',
         minOrderAmount: vendor.minOrderAmount || 0,
+        freeDeliveryDistanceKm: vendor.freeDeliveryDistanceKm || 0,
         category: vendor.category || null,
         about: vendor.about || '',
         workingHours: vendor.workingHours || '',
        });
     } else {
-      form.reset({ username: '', password: '', name: '', shopName: '', contact: '', address: '', googleMapsUrl: '', minOrderAmount: 0, category: null, about: '', workingHours: '' });
+      form.reset({ username: '', password: '', name: '', shopName: '', contact: '', address: '', googleMapsUrl: '', minOrderAmount: 0, freeDeliveryDistanceKm: 0, category: null, about: '', workingHours: '' });
     }
   }, [vendor, form, isOpen]);
 
@@ -96,6 +98,7 @@ export default function VendorForm({ isOpen, onOpenChange, vendor }: VendorFormP
               address: updateData.address,
               googleMapsUrl: updateData.googleMapsUrl,
               minOrderAmount: updateData.minOrderAmount,
+              freeDeliveryDistanceKm: updateData.freeDeliveryDistanceKm,
               category: updateData.category,
               about: updateData.about,
               workingHours: updateData.workingHours,
@@ -254,6 +257,22 @@ export default function VendorForm({ isOpen, onOpenChange, vendor }: VendorFormP
                     <FormControl>
                       <Input type="number" placeholder="0" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="freeDeliveryDistanceKm"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Free Delivery Distance (km)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.1" min="0" max="50" placeholder="0 (Leave empty or 0 to use global slab)" {...field} />
+                    </FormControl>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Orders within this radius get ₹0 delivery. Outside this radius, platform standard slabs apply.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}

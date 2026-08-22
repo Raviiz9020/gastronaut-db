@@ -32,6 +32,7 @@ export interface VendorCart {
     deliveryOption: DeliveryOption;
     deliveryDistanceKm?: number;
     deliveryCharge?: number;
+    isFreeDelivery?: boolean;
     isOutOfRange?: boolean;
     distanceCalculationType?: string;
     isShopOpen?: boolean;
@@ -307,6 +308,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
         let deliveryDistanceKm = 0;
         let deliveryCharge = 0;
+        let isFreeDelivery = false;
         let isOutOfRange = false;
         let distanceCalculationType = "";
 
@@ -329,9 +331,16 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
                     }
                     
                     if (deliveryConfig.isEnabled === true) {
-                        const slab = deliveryConfig.slabs.find(s => adjustedDist >= s.minKm && adjustedDist <= s.maxKm);
-                        deliveryCharge = slab ? slab.charge : 0;
-                        distanceCalculationType = "SL-1.3";
+                        const vendorFreeKm = vc.vendor.freeDeliveryDistanceKm;
+                        if (typeof vendorFreeKm === 'number' && vendorFreeKm > 0 && adjustedDist <= vendorFreeKm) {
+                            deliveryCharge = 0.0;
+                            isFreeDelivery = true;
+                            distanceCalculationType = "FREE-VENDOR-RADIUS";
+                        } else {
+                            const slab = deliveryConfig.slabs.find(s => adjustedDist >= s.minKm && adjustedDist <= s.maxKm);
+                            deliveryCharge = slab ? slab.charge : 0;
+                            distanceCalculationType = "SL-1.3";
+                        }
                     } else {
                         deliveryCharge = 0.0;
                     }
@@ -349,6 +358,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             deliveryOption: effectiveDeliveryOption,
             deliveryDistanceKm,
             deliveryCharge,
+            isFreeDelivery,
             isOutOfRange,
             distanceCalculationType,
             isShopOpen,

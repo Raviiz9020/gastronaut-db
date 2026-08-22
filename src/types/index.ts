@@ -179,6 +179,7 @@ export interface Vendor {
     latitude?: number;
     longitude?: number;
     deliveryRadius?: number; // in km
+    freeDeliveryDistanceKm?: number; // in km - free delivery radius funded/fulfilled by vendor
 }
 
 export interface SuperAdmin {

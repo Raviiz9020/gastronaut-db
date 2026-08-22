@@ -56,6 +56,7 @@ const formSchema = z.object({
   address: z.string().optional(),
   googleMapsUrl: z.string().optional(),
   minOrderAmount: z.coerce.number().min(0).optional(),
+  freeDeliveryDistanceKm: z.coerce.number().min(0).max(50).optional(),
   category: z.string().nullable().optional(),
   about: z.string().optional(),
   workingHours: z.string().optional(),
@@ -70,7 +71,7 @@ export default function VendorForm({ isOpen, onOpenChange, vendor }: VendorFormP
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { username: '', password: '', name: '', shopName: '', contact: '', address: '', googleMapsUrl: '', minOrderAmount: 0, category: null, about: '', workingHours: '' },
+    defaultValues: { username: '', password: '', name: '', shopName: '', contact: '', address: '', googleMapsUrl: '', minOrderAmount: 0, freeDeliveryDistanceKm: 0, category: null, about: '', workingHours: '' },
   });
 
   useEffect(() => {
@@ -83,13 +84,14 @@ export default function VendorForm({ isOpen, onOpenChange, vendor }: VendorFormP
         address: vendor.address || '',
         googleMapsUrl: vendor.googleMapsUrl || '',
         minOrderAmount: vendor.minOrderAmount || 0,
+        freeDeliveryDistanceKm: vendor.freeDeliveryDistanceKm || 0,
         category: vendor.category || null,
         about: vendor.about || '',
         workingHours: vendor.workingHours || '',
         createdAt: vendor.createdAt ? new Date(vendor.createdAt) : undefined,
        });
     } else {
-      form.reset({ username: '', password: '', name: '', shopName: '', contact: '', address: '', googleMapsUrl: '', minOrderAmount: 0, category: null, about: '', workingHours: '', createdAt: new Date() });
+      form.reset({ username: '', password: '', name: '', shopName: '', contact: '', address: '', googleMapsUrl: '', minOrderAmount: 0, freeDeliveryDistanceKm: 0, category: null, about: '', workingHours: '', createdAt: new Date() });
     }
   }, [vendor, form, isOpen]);
 
@@ -296,6 +298,22 @@ export default function VendorForm({ isOpen, onOpenChange, vendor }: VendorFormP
                     <FormControl>
                       <Input type="number" placeholder="0" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="freeDeliveryDistanceKm"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Free Delivery Distance (km)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.1" min="0" max="50" placeholder="0 (Leave empty or 0 to use global slab)" {...field} />
+                    </FormControl>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Deliveries within this distance are ₹0. Outside this radius, standard global slabs apply.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}

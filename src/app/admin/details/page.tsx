@@ -251,6 +251,7 @@ export default function VendorDetailsPage() {
     const [googleMapsUrl, setGoogleMapsUrl] = useState('');
     const [category, setCategory] = useState('');
     const [minOrderAmount, setMinOrderAmount] = useState(0);
+    const [freeDeliveryDistanceKm, setFreeDeliveryDistanceKm] = useState(0);
     const [about, setAbout] = useState('');
     const [workingHours, setWorkingHours] = useState('');
     const [tagline, setTagline] = useState('');
@@ -279,6 +280,7 @@ export default function VendorDetailsPage() {
         setGoogleMapsUrl(vendor.googleMapsUrl || '');
         setCategory(vendor.category || '');
         setMinOrderAmount(vendor.minOrderAmount || 0);
+        setFreeDeliveryDistanceKm(vendor.freeDeliveryDistanceKm || 0);
         setAbout(vendor.about || '');
         setWorkingHours(vendor.workingHours || '');
         setTagline(vendor.tagline || '');
@@ -355,6 +357,7 @@ export default function VendorDetailsPage() {
                 googleMapsUrl,
                 category, 
                 minOrderAmount, 
+                freeDeliveryDistanceKm,
                 about, 
                 workingHours, 
                 tagline, 
@@ -477,6 +480,20 @@ export default function VendorDetailsPage() {
               <div className="space-y-2">
                   <Label htmlFor="minOrderAmount">Minimum Order Amount (₹)</Label>
                   <Input id="minOrderAmount" type="number" placeholder="0" value={minOrderAmount} onChange={(e) => setMinOrderAmount(Number(e.target.value))} required/>
+              </div>
+              <div className="space-y-2">
+                  <Label htmlFor="freeDeliveryDistanceKm">Free Delivery Distance (km)</Label>
+                  <Input 
+                    id="freeDeliveryDistanceKm" 
+                    type="number" 
+                    step="0.1" 
+                    min="0" 
+                    max="50" 
+                    placeholder="0 (Enter 0 or leave empty for global slab)" 
+                    value={freeDeliveryDistanceKm || ''} 
+                    onChange={(e) => setFreeDeliveryDistanceKm(Number(e.target.value))}
+                  />
+                  <p className="text-xs text-muted-foreground">Deliveries within this distance get ₹0 delivery fee. Outside this radius, platform standard slabs apply.</p>
               </div>
               <div className="space-y-2">
                   <Label>Delivery Options</Label>

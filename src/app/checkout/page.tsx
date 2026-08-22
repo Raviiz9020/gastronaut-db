@@ -30,7 +30,6 @@ export default function CheckoutPage() {
 
     const [paymentMethod, setPaymentMethod] = useState<'PAY_NOW' | 'COD'>('PAY_NOW');
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
-    const [isVerifying, setIsVerifying] = useState(false);
 
     // Load Razorpay Checkout Script dynamically
     useEffect(() => {
@@ -190,7 +189,6 @@ export default function CheckoutPage() {
                     }
                 },
                 handler: async function (response: any) {
-                    setIsVerifying(true);
                     try {
                         // 4. Create the Firestore orders ONLY AFTER payment succeeds
                         const orderIds = await addOrder({
@@ -231,7 +229,6 @@ export default function CheckoutPage() {
                         showOrderPlacedDialog();
                         router.push('/track');
                     } finally {
-                        setIsVerifying(false);
                         setIsPlacingOrder(false);
                     }
                 }
@@ -340,8 +337,19 @@ export default function CheckoutPage() {
                                                         </div>
                                                         <div className="flex justify-between items-center font-medium">
                                                             <span className="text-muted-foreground">Delivery Charge</span>
-                                                            <span>₹{vc.deliveryCharge || 0}</span>
+                                                            {vc.isFreeDelivery ? (
+                                                                <span className="font-bold text-green-600 dark:text-green-400">
+                                                                    FREE
+                                                                </span>
+                                                            ) : (
+                                                                <span>₹{vc.deliveryCharge || 0}</span>
+                                                            )}
                                                         </div>
+                                                        {vc.isFreeDelivery && (
+                                                            <div className="text-[10px] text-green-600 dark:text-green-400 font-semibold flex items-center gap-1 pt-0.5">
+                                                                <span>🎉 Free Delivery (within {vc.vendor.freeDeliveryDistanceKm} km)</span>
+                                                            </div>
+                                                        )}
                                                         {vc.isOutOfRange && (
                                                             <div className="flex items-center gap-1.5 p-1.5 bg-red-500/10 text-red-600 rounded-lg text-[10px] font-semibold mt-1">
                                                                 <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
@@ -466,29 +474,6 @@ export default function CheckoutPage() {
                     </form>
                 </Card>
             </main>
-
-            {/* Non-dismissible verification overlay */}
-            {isVerifying && (
-                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-xl transition-all duration-300">
-                    <div className="bg-card p-8 rounded-3xl border border-green-500/20 box-glow-accent max-w-md w-full mx-4 flex flex-col items-center text-center space-y-6 animate-in fade-in zoom-in-95 duration-200">
-                        <div className="relative flex items-center justify-center">
-                            <div className="h-16 w-16 rounded-full border-4 border-green-500/20 border-t-green-500 animate-spin" />
-                            <div className="absolute h-8 w-8 rounded-full bg-green-500/10 flex items-center justify-center text-green-500 font-bold text-lg animate-pulse">
-                                ✓
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <h3 className="font-headline text-2xl font-bold text-green-500">Verifying Payment</h3>
-                            <p className="text-base text-foreground font-medium px-4">
-                                Confirming your payment with Razorpay. Stay relaxed! 🎉
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                                Please do not close this window or refresh the page.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

@@ -279,9 +279,15 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
               deliveryDistanceKm = parseFloat(adjustedDist.toFixed(2));
               
               if (deliveryConfig.isEnabled === true) {
-                const slab = deliveryConfig.slabs.find(s => adjustedDist >= s.minKm && adjustedDist <= s.maxKm);
-                deliveryCharge = slab ? slab.charge : 0;
-                distanceCalculationType = "SL-1.3";
+                const vendorFreeKm = v.freeDeliveryDistanceKm;
+                if (typeof vendorFreeKm === 'number' && vendorFreeKm > 0 && adjustedDist <= vendorFreeKm) {
+                  deliveryCharge = 0.0;
+                  distanceCalculationType = "FREE-VENDOR-RADIUS";
+                } else {
+                  const slab = deliveryConfig.slabs.find(s => adjustedDist >= s.minKm && adjustedDist <= s.maxKm);
+                  deliveryCharge = slab ? slab.charge : 0;
+                  distanceCalculationType = "SL-1.3";
+                }
               } else {
                 deliveryCharge = 0.0;
               }
