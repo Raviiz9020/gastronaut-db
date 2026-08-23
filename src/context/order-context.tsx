@@ -313,18 +313,21 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
           const cleanedItems = vendorItems.map(item => cleanOrderItem(item));
 
           const isHomeDelivery = vendorDeliveryOption === 'Home Delivery';
-
-          let commissionPercentage = 0;
-          let commissionAmount = 0;
-
-          if (isHomeDelivery && v.isCommissionOn && v.commissionPercentage && v.commissionPercentage > 0) {
-            commissionPercentage = v.commissionPercentage;
-            commissionAmount = Number(((finalPrice * v.commissionPercentage) / 100).toFixed(2));
-          }
+          const isOnlineAppOrder = !isDineInFlow && !tableId;
+          const isCounterWalkIn = isDineInFlow || Boolean(tableId) || vendorDeliveryOption === 'Dine-In' || String(customerForOrder.name).startsWith('Take Away');
 
           const isOnlinePayment = paymentMethod === 'Pay Now' || paymentMethod === 'UPI' || (paymentMethod as any) === 'PAY_NOW';
           const orderGatewayFee = isOnlinePayment && finalPrice > 0 ? Number((finalPrice * 0.0236).toFixed(2)) : 0;
           const orderTotalPrice = Number((finalPrice + orderGatewayFee).toFixed(2));
+
+          let commissionPercentage = 0;
+          let commissionAmount = 0;
+
+          // Charge commission on Home Delivery and Online App Self-Pickup on total amount paid (Exempt counter Take Away & Dine-In)
+          if (isOnlineAppOrder && !isCounterWalkIn && v.isCommissionOn && v.commissionPercentage && v.commissionPercentage > 0) {
+            commissionPercentage = v.commissionPercentage;
+            commissionAmount = Number(((orderTotalPrice * v.commissionPercentage) / 100).toFixed(2));
+          }
 
           const newOrderData: Omit<Order, 'orderId'> & { tableId?: string | null } = {
             displayId: displayId,
@@ -361,7 +364,7 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
             distanceCalculationType: distanceCalculationType || "",
             commissionPercentage,
             commissionAmount,
-            adminSettlementStatus: isHomeDelivery && commissionAmount > 0 ? 'pending' : 'none',
+            adminSettlementStatus: commissionAmount > 0 ? 'pending' : 'none',
             adminSettlementPaymentMode: '',
             adminSettlementMarkedAt: '',
             adminSettlementConfirmedAt: '',

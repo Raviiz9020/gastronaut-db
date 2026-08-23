@@ -268,61 +268,241 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
 
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
 
-    // Header
-    doc.setFontSize(16);
+    // 1. Brand Top Banner (HyperDelivery Signature Purple)
+    doc.setFillColor(147, 51, 234); // Brand Purple
+    doc.roundedRect(14, 12, pageWidth - 28, 22, 3, 3, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(15);
     doc.setFont('helvetica', 'bold');
-    doc.text(vendor.shopName || 'Receipt', pageWidth / 2, 20, { align: 'center' });
-    
+    doc.text('HYPERDELIVERY', 20, 22);
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('OFFICIAL ORDER RECEIPT & TAX INVOICE', 20, 29);
+
+    // Top Right: Order ID & Date
+    doc.setFontSize(10.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`ORDER #${order.displayId || order.orderId}`, pageWidth - 20, 22, { align: 'right' });
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(format(new Date(order.createdAt), 'dd MMM yyyy, hh:mm a'), pageWidth - 20, 29, { align: 'right' });
+
+    // 2. Info Cards (Restaurant & Customer Details)
+    const cardWidth = (pageWidth - 34) / 2;
+    const cardY = 38;
+    const cardHeight = 32;
+
+    // Card Left: Restaurant Details
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(14, cardY, cardWidth, cardHeight, 2, 2, 'FD');
+
+    doc.setTextColor(147, 51, 234);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('BILLED FROM (RESTAURANT)', 18, cardY + 6);
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text(vendor.shopName || vendor.name || 'Partner Restaurant', 18, cardY + 12);
+
+    doc.setTextColor(100, 116, 139);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
     if (vendor.address) {
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text(vendor.address, pageWidth / 2, 26, { align: 'center' });
+      const splitAddress = doc.splitTextToSize(vendor.address, cardWidth - 8);
+      doc.text(splitAddress.slice(0, 2), 18, cardY + 18);
     }
-    
-    doc.setFontSize(10);
-    doc.text(`Order: #${order.displayId}`, 15, 35);
-    doc.text(`Date: ${format(new Date(order.createdAt), 'dd/MM/yyyy hh:mm a')}`, pageWidth - 15, 35, { align: 'right' });
-    
-    doc.line(15, 40, pageWidth - 15, 40);
+    if (vendor.contact) {
+      doc.text(`Phone: ${vendor.contact.replace('+91', '')}`, 18, cardY + 27);
+    }
 
-    const feeSavings = calculateFeeSavings(order.totalPrice);
+    // Card Right: Customer Details
+    const customerDisplayName = order.customer?.name || customer?.name || 'Valued Customer';
+    const customerDisplayContact = order.customer?.contact || customer?.contact || '';
+    const customerDisplayAddress = order.customer?.address || customer?.address || '';
 
-    // Table
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(14 + cardWidth + 6, cardY, cardWidth, cardHeight, 2, 2, 'FD');
+
+    doc.setTextColor(147, 51, 234);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('DELIVERED TO (CUSTOMER)', 14 + cardWidth + 10, cardY + 6);
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text(customerDisplayName, 14 + cardWidth + 10, cardY + 12);
+
+    doc.setTextColor(100, 116, 139);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    
+    if (customerDisplayContact) {
+      doc.text(`Phone: ${customerDisplayContact.replace('+91', '')}`, 14 + cardWidth + 10, cardY + 17);
+    } else {
+      doc.text(`Order Type: ${order.deliveryOption || 'Home Delivery'}`, 14 + cardWidth + 10, cardY + 17);
+    }
+
+    if (customerDisplayAddress) {
+      const splitCustAddr = doc.splitTextToSize(customerDisplayAddress, cardWidth - 8);
+      doc.text(splitCustAddr.slice(0, 1), 14 + cardWidth + 10, cardY + 22);
+    } else if (order.deliveryOption === 'Home Delivery' && order.deliveryDistanceKm) {
+      doc.text(`Distance: ${order.deliveryDistanceKm.toFixed(2)} km`, 14 + cardWidth + 10, cardY + 22);
+    }
+
+    doc.text(`Type: ${order.deliveryOption || 'Home Delivery'}${order.deliveryDistanceKm ? ` • ${order.deliveryDistanceKm.toFixed(2)} km` : ''}`, 14 + cardWidth + 10, cardY + 27);
+
+    // 3. Itemized Food Table
+    const isOnline = order.paymentMethod === 'Pay Now' || order.paymentMethod === 'UPI';
+    const gatewayFee = order.paymentGatewayFee !== undefined && order.paymentGatewayFee > 0
+      ? order.paymentGatewayFee
+      : (isOnline ? parseFloat((order.totalPrice * 0.0236).toFixed(2)) : 0);
+
+    const totalPaidAmount = order.amountPaid !== undefined && order.amountPaid > 0
+      ? order.amountPaid
+      : (order.paymentGatewayFee ? order.totalPrice : (order.totalPrice + (isOnline ? gatewayFee : 0)));
+
+    let itemsSubtotal = 0;
+    const tableBody = order.items.map((item, idx) => {
+      const lineTotal = item.price * item.quantity;
+      itemsSubtotal += lineTotal;
+      const custText = item.customizations && item.customizations.length > 0
+        ? `\n  - ${item.customizations.map((g: any) => g.options ? g.options.map((o: any) => o.name).join(', ') : '').filter(Boolean).join(', ')}`
+        : '';
+      return [
+        (idx + 1).toString(),
+        `${item.name}${custText}`,
+        item.quantity.toString(),
+        `Rs. ${item.price.toFixed(2)}`,
+        `Rs. ${lineTotal.toFixed(2)}`
+      ];
+    });
+
     autoTable(doc, {
-      startY: 42,
-      head: [['Qty', 'Item', 'Price']],
-      body: [
-        ...order.items.map(item => [
-          item.quantity.toString(),
-          item.name,
-          `Rs. ${(item.price * item.quantity).toFixed(2)}`
-        ]),
-        ['1', 'Platform & Gateway Fees', `FREE (Saved Rs. ${feeSavings.totalFeeSavings.toFixed(0)})`]
-      ],
+      startY: 74,
+      head: [['#', 'ITEM DESCRIPTION', 'QTY', 'UNIT PRICE', 'AMOUNT']],
+      body: tableBody,
       theme: 'grid',
-      headStyles: { fontStyle: 'bold', fillColor: [30, 144, 255] },
+      headStyles: {
+        fillColor: [147, 51, 234],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 8,
+        halign: 'left',
+        cellPadding: 3,
+      },
       columnStyles: {
-          0: { halign: 'right', cellWidth: 15 },
-          1: { halign: 'left' },
-          2: { halign: 'right', cellWidth: 45 }
+        0: { halign: 'center', cellWidth: 10 },
+        1: { halign: 'left' },
+        2: { halign: 'center', cellWidth: 14 },
+        3: { halign: 'right', cellWidth: 26 },
+        4: { halign: 'right', cellWidth: 28 },
+      },
+      styles: {
+        fontSize: 8,
+        textColor: [30, 41, 59],
+        lineColor: [226, 232, 240],
+        lineWidth: 0.1,
+        cellPadding: 3,
+      },
+      alternateRowStyles: {
+        fillColor: [250, 245, 255],
       },
     });
 
-    // Total
-    const finalY = (doc as any).lastAutoTable.finalY || 100;
-    doc.line(15, finalY + 5, pageWidth - 15, finalY + 5);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('TOTAL', 15, finalY + 12);
-    doc.text(`Rs. ${order.totalPrice.toFixed(2)}`, pageWidth - 15, finalY + 12, { align: 'right' });
+    const tableEndY = (doc as any).lastAutoTable.finalY || 130;
 
-    // Footer
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'italic');
-    doc.text('Thank you for your order!', pageWidth / 2, finalY + 22, { align: 'center' });
-    
-    doc.save(`receipt-${order.displayId}.pdf`);
+    // 4. Payment Verification Stamp (Left Box)
+    const stampWidth = (pageWidth - 34) * 0.48;
+    doc.setFillColor(240, 253, 244); // Green 50
+    doc.setDrawColor(187, 247, 208); // Green 200
+    doc.roundedRect(14, tableEndY + 4, stampWidth, 38, 2, 2, 'FD');
+
+    doc.setTextColor(22, 101, 52); // Green 800
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('✓ PAYMENT CONFIRMED', 18, tableEndY + 11);
+
+    doc.setTextColor(71, 85, 105);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Payment Mode: ${order.paymentMethod || 'Online'}`, 18, tableEndY + 17);
+    doc.text(`Gateway: ${order.paymentGateway || (isOnline ? 'Razorpay' : 'None (COD)')}`, 18, tableEndY + 22);
+
+    if (order.razorpayPaymentId) {
+      doc.text(`Txn Ref: ${order.razorpayPaymentId}`, 18, tableEndY + 27);
+    }
+    if (order.paymentConfirmedAt || order.createdAt) {
+      doc.text(`Timestamp: ${format(new Date(order.paymentConfirmedAt || order.createdAt), 'dd/MM/yyyy hh:mm a')}`, 18, tableEndY + 32);
+    }
+    doc.text(`Status: ${order.paymentStatus || 'PAID'}`, 18, tableEndY + 37);
+
+    // 5. Billing Summary (Right Box)
+    const summaryX = 14 + stampWidth + 6;
+    const summaryWidth = pageWidth - 14 - summaryX;
+    let summaryY = tableEndY + 7;
+
+    const addSummaryRow = (label: string, value: string, isBold: boolean = false, isGreen: boolean = false) => {
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+      doc.setTextColor(isGreen ? 22 : (isBold ? 15 : 100), isGreen ? 101 : (isBold ? 23 : 116), isGreen ? 52 : (isBold ? 42 : 139));
+      doc.text(label, summaryX, summaryY);
+      doc.text(value, pageWidth - 14, summaryY, { align: 'right' });
+      summaryY += 5;
+    };
+
+    addSummaryRow('Items Subtotal', `Rs. ${itemsSubtotal.toFixed(2)}`);
+
+    if (order.deliveryCharge !== undefined && order.deliveryCharge > 0) {
+      addSummaryRow('Delivery Charges', `Rs. ${order.deliveryCharge.toFixed(2)}`);
+    } else if (order.deliveryOption === 'Home Delivery') {
+      addSummaryRow('Delivery Charges', 'FREE Delivery', false, true);
+    }
+
+    addSummaryRow('Platform Fee', 'FREE (Saved Rs. 10.00)', false, true);
+
+    if (isOnline && gatewayFee > 0) {
+      addSummaryRow('Payment Gateway Fee (2% + GST)', `Rs. ${gatewayFee.toFixed(2)}`);
+    } else if (order.paymentMethod === 'COD') {
+      addSummaryRow('Payment Gateway Fee', 'Rs. 0.00 (COD)');
+    }
+
+    if (order.discountAmount !== undefined && order.discountAmount > 0) {
+      addSummaryRow('HyperPoints Discount', `- Rs. ${order.discountAmount.toFixed(2)}`, false, true);
+    }
+
+    // Grand Total Pill Box
+    summaryY += 1;
+    doc.setFillColor(147, 51, 234);
+    doc.roundedRect(summaryX - 2, summaryY, summaryWidth + 2, 8, 2, 2, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TOTAL PAID', summaryX + 3, summaryY + 5.5);
+    doc.text(`Rs. ${totalPaidAmount.toFixed(2)}`, pageWidth - 16, summaryY + 5.5, { align: 'right' });
+
+    // 6. Professional Footer
+    const footerY = Math.max(summaryY + 22, pageHeight - 16);
+    doc.setDrawColor(226, 232, 240);
+    doc.line(14, footerY - 4, pageWidth - 14, footerY - 4);
+
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    doc.text('HyperDelivery • Official Tax Invoice & Receipt • support@hyperdelivery.in • https://hyperdelivery.in', pageWidth / 2, footerY + 1, { align: 'center' });
+    doc.text('This is a computer-generated tax invoice and does not require a physical signature.', pageWidth / 2, footerY + 6, { align: 'center' });
+
+    doc.save(`HyperDelivery-Receipt-${order.displayId || order.orderId}.pdf`);
   };
 
   return (
