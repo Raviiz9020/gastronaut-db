@@ -103,6 +103,26 @@ const sendCustomerInvoiceFlow = ai.defineFlow(
         </div>
     ` : '';
     
+    const deliveryHtml = order.deliveryCharge !== undefined && order.deliveryCharge > 0 ? `
+        <tr style="color: #555;">
+            <td style="padding: 5px 0;">Delivery Charges</td>
+            <td style="padding: 5px 0; text-align: right;">₹${order.deliveryCharge.toFixed(2)}</td>
+        </tr>
+    ` : order.deliveryOption === 'Home Delivery' ? `
+        <tr style="color: #08979c;">
+            <td style="padding: 5px 0;">Delivery Charges</td>
+            <td style="padding: 5px 0; text-align: right;">FREE Delivery</td>
+        </tr>
+    ` : '';
+
+    const platformFee = order.platformFee !== undefined ? order.platformFee : 5.0;
+    const platformFeeHtml = platformFee > 0 ? `
+        <tr style="color: #555;">
+            <td style="padding: 5px 0;">Platform Fee</td>
+            <td style="padding: 5px 0; text-align: right;">₹${platformFee.toFixed(2)}</td>
+        </tr>
+    ` : '';
+
     const discountHtml = order.discountAmount && order.discountAmount > 0 ? `
         <tr style="color: #08979c;">
             <td style="padding: 5px 0;">Discount</td>
@@ -134,6 +154,7 @@ const sendCustomerInvoiceFlow = ai.defineFlow(
                                     <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Delivery To:</strong> ${order.customer.name}</p>
                                     <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Contact:</strong> ${maskedContact}</p>
                                     <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Address:</strong> ${order.customer.address}</p>
+                                    <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Payment Mode:</strong> ${order.paymentMethod || 'Online'}</p>
                                     </div>
                                     
                                     ${customNotesHtml}
@@ -152,13 +173,15 @@ const sendCustomerInvoiceFlow = ai.defineFlow(
                                         </tbody>
                                         <tfoot>
                                             <tr style="font-weight: bold;">
-                                                <td style="padding: 10px 0 0;">Subtotal</td>
+                                                <td style="padding: 10px 0 0;">Items Subtotal</td>
                                                 <td style="padding: 10px 0 0; text-align: right;">₹${order.subtotal.toFixed(2)}</td>
                                             </tr>
+                                            ${deliveryHtml}
+                                            ${platformFeeHtml}
                                             ${discountHtml}
                                             <tr>
-                                            <td style="padding-top: 15px; font-weight: bold; font-size: 18px; color: #333; border-top: 2px solid #ddd;">Total</td>
-                                            <td style="padding-top: 15px; font-weight: bold; font-size: 18px; text-align: right; color: #333; border-top: 2px solid #ddd;">₹${order.totalPrice.toFixed(2)}</td>
+                                            <td style="padding-top: 15px; font-weight: bold; font-size: 18px; color: #333; border-top: 2px solid #ddd;">Total Paid</td>
+                                            <td style="padding-top: 15px; font-weight: bold; font-size: 18px; text-align: right; color: #8B5CF6; border-top: 2px solid #ddd;">₹${(order.amountPaid || order.totalPrice).toFixed(2)}</td>
                                             </tr>
                                         </tfoot>
                                         </table>

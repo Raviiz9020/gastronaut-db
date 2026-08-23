@@ -751,6 +751,18 @@ export default function SuperAdminOrdersPage() {
                                   <span>₹{order.deliveryCharge.toFixed(2)}</span>
                                 </div>
                               )}
+                              {order.platformFee !== undefined && order.platformFee > 0 && (
+                                <div className="flex justify-between text-muted-foreground text-xs">
+                                  <span>Platform Fee</span>
+                                  <span>₹{order.platformFee.toFixed(2)}</span>
+                                </div>
+                              )}
+                              {order.paymentGatewayFee !== undefined && order.paymentGatewayFee > 0 && (
+                                <div className="flex justify-between text-muted-foreground/70 text-xs">
+                                  <span>PG Fee (Est. Cost)</span>
+                                  <span>₹{order.paymentGatewayFee.toFixed(2)}</span>
+                                </div>
+                              )}
                               {order.commissionAmount !== undefined && order.commissionAmount > 0 && (
                                 <div className="flex justify-between text-muted-foreground text-xs">
                                   <span>Platform Commission ({order.commissionPercentage || 0}%)</span>

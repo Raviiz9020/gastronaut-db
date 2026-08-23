@@ -324,9 +324,9 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
     }
 
     // Card Right: Customer Details
-    const customerDisplayName = order.customer?.name || customer?.name || 'Valued Customer';
-    const customerDisplayContact = order.customer?.contact || customer?.contact || '';
-    const customerDisplayAddress = order.customer?.address || customer?.address || '';
+    const customerDisplayName = order.customer?.name || 'Valued Customer';
+    const customerDisplayContact = order.customer?.contact || '';
+    const customerDisplayAddress = order.customer?.address || '';
 
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(226, 232, 240);
@@ -361,15 +361,10 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
 
     doc.text(`Type: ${order.deliveryOption || 'Home Delivery'}${order.deliveryDistanceKm ? ` • ${order.deliveryDistanceKm.toFixed(2)} km` : ''}`, 14 + cardWidth + 10, cardY + 27);
 
-    // 3. Itemized Food Table
     const isOnline = order.paymentMethod === 'Pay Now' || order.paymentMethod === 'UPI';
-    const gatewayFee = order.paymentGatewayFee !== undefined && order.paymentGatewayFee > 0
-      ? order.paymentGatewayFee
-      : (isOnline ? parseFloat((order.totalPrice * 0.0236).toFixed(2)) : 0);
-
     const totalPaidAmount = order.amountPaid !== undefined && order.amountPaid > 0
       ? order.amountPaid
-      : (order.paymentGatewayFee ? order.totalPrice : (order.totalPrice + (isOnline ? gatewayFee : 0)));
+      : order.totalPrice;
 
     let itemsSubtotal = 0;
     const tableBody = order.items.map((item, idx) => {
@@ -468,12 +463,14 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
       addSummaryRow('Delivery Charges', 'FREE Delivery', false, true);
     }
 
-    addSummaryRow('Platform Fee', 'FREE (Saved Rs. 10.00)', false, true);
+    const pdfPlatformFee = order.platformFee !== undefined ? order.platformFee : 5.0;
+    if (pdfPlatformFee > 0) {
+      addSummaryRow('Platform Fee', `Rs. ${pdfPlatformFee.toFixed(2)}`);
+    }
 
-    if (isOnline && gatewayFee > 0) {
-      addSummaryRow('Payment Gateway Fee (2% + GST)', `Rs. ${gatewayFee.toFixed(2)}`);
-    } else if (order.paymentMethod === 'COD') {
-      addSummaryRow('Payment Gateway Fee', 'Rs. 0.00 (COD)');
+    // Backward-compatibility: only show PG fee row if older order had no platformFee and a positive paymentGatewayFee
+    if (order.platformFee === 0 && order.paymentGatewayFee !== undefined && order.paymentGatewayFee > 0) {
+      addSummaryRow('Payment Gateway Fee (2% + GST)', `Rs. ${order.paymentGatewayFee.toFixed(2)}`);
     }
 
     if (order.discountAmount !== undefined && order.discountAmount > 0) {
@@ -528,7 +525,7 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
                   </div>
                    <div className="text-right">
                         <span className="text-sm font-semibold text-foreground">
-                          ₹{(order.amountPaid || (order.paymentGatewayFee ? order.totalPrice : (order.totalPrice + (order.paymentMethod === 'Pay Now' ? Number((order.totalPrice * 0.0236).toFixed(2)) : 0)))).toFixed(2)}
+                          ₹{(order.amountPaid || order.totalPrice).toFixed(2)}
                         </span>
                         {typeof order.pointsEarned === 'number' && order.pointsEarned > 0 && (
                             <div className={cn(
@@ -734,25 +731,21 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
                             </div>
                         )}
 
-                        {/* Fee Transparency */}
+                        {/* Fee Breakdown */}
                         <div className="flex justify-between text-muted-foreground">
                             <span>Platform Fee</span>
-                            <div className="flex items-center gap-1.5 text-xs">
-                                <span className="line-through text-muted-foreground/60">₹10.00</span>
-                                <span className="font-bold text-green-600 dark:text-green-400">FREE</span>
-                            </div>
+                            <span className="text-xs font-medium text-foreground">
+                                ₹{(order.platformFee !== undefined ? order.platformFee : 5.0).toFixed(2)}
+                            </span>
                         </div>
 
-                        <div className="flex justify-between text-muted-foreground">
-                            <span>Payment Gateway (2% + GST)</span>
-                            {order.paymentGatewayFee !== undefined && order.paymentGatewayFee > 0 ? (
+                        {/* Backward-compatibility: only show if old historical order had PG fee and no platformFee */}
+                        {order.platformFee === 0 && order.paymentGatewayFee !== undefined && order.paymentGatewayFee > 0 && (
+                            <div className="flex justify-between text-muted-foreground">
+                                <span>Payment Gateway (2% + GST)</span>
                                 <span className="text-xs font-medium text-foreground">₹{order.paymentGatewayFee.toFixed(2)}</span>
-                            ) : (order.paymentMethod === 'Pay Now' || order.paymentMethod === 'UPI') ? (
-                                <span className="text-xs font-medium text-foreground">₹{(order.totalPrice * 0.0236).toFixed(2)}</span>
-                            ) : (
-                                <span className="font-bold text-green-600 dark:text-green-400 text-xs">₹0.00 (COD)</span>
-                            )}
-                        </div>
+                            </div>
+                        )}
 
                         {order.discountAmount !== undefined && order.discountAmount > 0 && (
                             <div className="flex justify-between text-green-600 dark:text-green-400">
@@ -763,7 +756,7 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
                         <div className="flex justify-between font-bold text-sm text-foreground pt-1 border-t border-dashed border-primary/10 mt-1">
                             <span>Grand Total</span>
                             <span className="text-purple-500 font-black">
-                                ₹{(order.amountPaid || (order.paymentGatewayFee ? order.totalPrice : (order.totalPrice + (order.paymentMethod === 'Pay Now' ? Number((order.totalPrice * 0.0236).toFixed(2)) : 0)))).toFixed(2)}
+                                ₹{(order.amountPaid || order.totalPrice).toFixed(2)}
                             </span>
                         </div>
 

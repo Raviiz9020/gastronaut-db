@@ -317,8 +317,9 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
           const isCounterWalkIn = isDineInFlow || Boolean(tableId) || vendorDeliveryOption === 'Dine-In' || String(customerForOrder.name).startsWith('Take Away');
 
           const isOnlinePayment = paymentMethod === 'Pay Now' || paymentMethod === 'UPI' || (paymentMethod as any) === 'PAY_NOW';
-          const orderGatewayFee = isOnlinePayment && finalPrice > 0 ? Number((finalPrice * 0.0236).toFixed(2)) : 0;
-          const orderTotalPrice = Number((finalPrice + orderGatewayFee).toFixed(2));
+          const orderPlatformFee = (!isDineInFlow && !tableId) ? 5.0 : 0.0;
+          const orderTotalPrice = Number((finalPrice + orderPlatformFee).toFixed(2));
+          const orderGatewayFee = isOnlinePayment && orderTotalPrice > 0 ? Number((orderTotalPrice * 0.0236).toFixed(2)) : 0;
 
           let commissionPercentage = 0;
           let commissionAmount = 0;
@@ -346,6 +347,7 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
             subtotal: originalSubtotal,
             discountAmount: discountAmount,
             totalPrice: orderTotalPrice,
+            platformFee: orderPlatformFee,
             paymentGateway: isOnlinePayment ? 'Razorpay' : 'None',
             paymentGatewayFee: orderGatewayFee,
             amountPaid: orderTotalPrice,

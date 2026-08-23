@@ -69,15 +69,17 @@ export default function CheckoutPage() {
         return vendorCarts.reduce((sum, vc) => sum + (vc.deliveryCharge || 0), 0);
     }, [vendorCarts]);
 
+    const PLATFORM_FEE = 5.0;
     const baseAmount = totalPrice + totalDeliveryCharge - (redemptionDetails?.discountAmount || 0);
 
-    // Apply exact Payment Gateway Fee (2% MDR + 18% GST on MDR = 2.36%) only for Online Payment
-    const gatewayFee = useMemo(() => {
-        if (paymentMethod !== 'PAY_NOW' || baseAmount <= 0) return 0;
-        return parseFloat((baseAmount * 0.0236).toFixed(2));
-    }, [paymentMethod, baseAmount]);
+    // Customer grand total includes flat ₹5 platform fee
+    const finalPrice = baseAmount > 0 ? parseFloat((baseAmount + PLATFORM_FEE).toFixed(2)) : 0;
 
-    const finalPrice = parseFloat((baseAmount + gatewayFee).toFixed(2));
+    // Internal Razorpay PG Fee calculation (2.36%) for backend verification & admin tracking
+    const gatewayFee = useMemo(() => {
+        if (paymentMethod !== 'PAY_NOW' || finalPrice <= 0) return 0;
+        return parseFloat((finalPrice * 0.0236).toFixed(2));
+    }, [paymentMethod, finalPrice]);
 
     const handlePlaceOrder = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -477,23 +479,13 @@ export default function CheckoutPage() {
                                         </div>
                                     )}
 
-                                    {/* Fee Transparency */}
+                                    {/* Fee Breakdown */}
                                     <div className="flex justify-between items-center">
                                         <span className="text-muted-foreground">Platform Fee</span>
-                                        <div className="flex items-center gap-1.5 text-[11px]">
-                                            <span className="line-through text-muted-foreground/60">₹10.00</span>
-                                            <span className="font-bold text-green-600 dark:text-green-400">FREE</span>
-                                        </div>
+                                        <span className="font-medium text-foreground text-[11px]">₹{PLATFORM_FEE.toFixed(2)}</span>
                                     </div>
 
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-muted-foreground">Gateway Fee (2% + GST)</span>
-                                        {paymentMethod === 'PAY_NOW' ? (
-                                            <span className="font-medium text-foreground text-[11px]">₹{gatewayFee.toFixed(2)}</span>
-                                        ) : (
-                                            <span className="font-bold text-green-600 dark:text-green-400 text-[11px]">₹0.00 (COD)</span>
-                                        )}
-                                    </div>
+
 
                                     {redemptionDetails?.canRedeem && (
                                         <div className="flex justify-between items-center text-green-600 dark:text-green-400 font-semibold">

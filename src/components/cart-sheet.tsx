@@ -68,9 +68,9 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
     return vendorCarts.reduce((sum, vc) => sum + (vc.deliveryCharge || 0), 0);
   }, [vendorCarts]);
 
+  const PLATFORM_FEE = 5.0;
   const basePrice = totalPrice + totalDeliveryCharge - (redemptionDetails?.discountAmount || 0);
-  const gatewayFee = basePrice > 0 ? parseFloat((basePrice * 0.0236).toFixed(2)) : 0;
-  const finalPrice = parseFloat((basePrice + gatewayFee).toFixed(2));
+  const finalPrice = basePrice > 0 ? parseFloat((basePrice + PLATFORM_FEE).toFixed(2)) : 0;
   
   useEffect(() => {
     if (open && totalItems === 0) {
@@ -311,18 +311,10 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
                             </div>
                         )}
 
-                        {/* Fee Transparency */}
+                        {/* Fee Breakdown */}
                         <div className="flex justify-between items-center text-sm">
                             <span className="text-muted-foreground">Platform Fee</span>
-                            <div className="flex items-center gap-1.5 text-xs">
-                                <span className="line-through text-muted-foreground/60">₹10.00</span>
-                                <span className="font-bold text-green-600 dark:text-green-400">FREE</span>
-                            </div>
-                        </div>
-
-                        <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">Payment Gateway (2% + GST)</span>
-                            <span className="text-xs font-medium text-foreground">₹{gatewayFee.toFixed(2)}</span>
+                            <span className="text-xs font-medium text-foreground">₹{PLATFORM_FEE.toFixed(2)}</span>
                         </div>
 
                         {redemptionDetails?.canRedeem && (
@@ -342,14 +334,14 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
                             <span className="text-foreground">₹{finalPrice.toFixed(2)}</span>
                         </div>
 
-                        {/* Fee Savings Callout Banner */}
-                        <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-2xl p-2.5 flex items-center justify-between gap-2 text-xs font-semibold mt-1">
+                        {/* Fee Callout Banner */}
+                        <div className="bg-purple-500/10 border border-purple-500/20 text-purple-700 dark:text-purple-300 rounded-2xl p-2.5 flex items-center justify-between gap-2 text-xs font-semibold mt-1">
                             <div className="flex items-center gap-1.5">
-                                <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                                <span>Platform Fee Saved</span>
+                                <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                                <span>Fair Pricing Guarantee</span>
                             </div>
-                            <span className="bg-emerald-600 text-white dark:bg-emerald-500 dark:text-emerald-950 px-2 py-0.5 rounded-full text-[11px] font-bold">
-                                ₹10 Saved
+                            <span className="bg-purple-600 text-white dark:bg-purple-500 dark:text-purple-950 px-2 py-0.5 rounded-full text-[11px] font-bold">
+                                Flat ₹5 Platform Fee
                             </span>
                         </div>
 
