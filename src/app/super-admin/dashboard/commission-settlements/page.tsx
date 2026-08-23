@@ -248,7 +248,7 @@ export default function CommissionSettlementsPage() {
       const markedAt = orders[0]?.adminSettlementMarkedAt || orders[0]?.createdAt;
 
       const totalCommissionAmount = orders.reduce(
-        (sum, ord) => sum + (ord.commissionAmount || 0),
+        (sum, ord) => sum + (ord.commissionAmount || 0) + (ord.platformFee || 0),
         0
       );
 
@@ -285,7 +285,7 @@ export default function CommissionSettlementsPage() {
       const vendorImage = vendorObj?.shopImage || vendorObj?.imageUrl || '';
 
       const totalOwedAmount = orders.reduce(
-        (sum, ord) => sum + (ord.commissionAmount || 0),
+        (sum, ord) => sum + (ord.commissionAmount || 0) + (ord.platformFee || 0),
         0
       );
 
@@ -767,9 +767,10 @@ export default function CommissionSettlementsPage() {
                                         <tr>
                                           <th className="p-3 pl-4">Order ID</th>
                                           <th className="p-3">Date</th>
-                                          <th className="p-3">Order Price</th>
-                                          <th className="p-3">Commission %</th>
-                                          <th className="p-3 text-right pr-4">Commission Share</th>
+                                          <th className="p-3">Subtotal</th>
+                                          <th className="p-3">Commission</th>
+                                          <th className="p-3">Platform Fee</th>
+                                          <th className="p-3 text-right pr-4">Admin Owed</th>
                                         </tr>
                                       </thead>
                                       <tbody className="divide-y divide-border/40">
@@ -781,14 +782,20 @@ export default function CommissionSettlementsPage() {
                                             <td className="p-3 text-muted-foreground">
                                               {ord.createdAt ? format(new Date(ord.createdAt), 'MMM dd, yyyy HH:mm') : '-'}
                                             </td>
-                                            <td className="p-3 font-semibold">₹{ord.totalPrice}</td>
+                                            <td className="p-3 font-semibold">₹{(ord.subtotal || ord.totalPrice).toFixed(2)}</td>
                                             <td className="p-3 font-mono">
-                                              <Badge variant="outline" className="text-[10px]">
-                                                {ord.commissionPercentage ?? 0}%
-                                              </Badge>
+                                              <div className="flex items-center gap-1.5">
+                                                <span>₹{(ord.commissionAmount ?? 0).toFixed(2)}</span>
+                                                <Badge variant="outline" className="text-[9px] px-1 py-0">
+                                                  {ord.commissionPercentage ?? 0}%
+                                                </Badge>
+                                              </div>
+                                            </td>
+                                            <td className="p-3 text-muted-foreground">
+                                              ₹{(ord.platformFee ?? 0).toFixed(2)}
                                             </td>
                                             <td className="p-3 text-right pr-4 font-extrabold text-amber-600 dark:text-amber-400">
-                                              ₹{ord.commissionAmount ?? 0}
+                                              ₹{((ord.commissionAmount ?? 0) + (ord.platformFee ?? 0)).toFixed(2)}
                                             </td>
                                           </tr>
                                         ))}
@@ -953,9 +960,10 @@ export default function CommissionSettlementsPage() {
                                         <tr>
                                           <th className="p-3 pl-4">Order ID</th>
                                           <th className="p-3">Date</th>
-                                          <th className="p-3">Order Price</th>
-                                          <th className="p-3">Commission %</th>
-                                          <th className="p-3 text-right pr-4">Commission Share</th>
+                                          <th className="p-3">Subtotal</th>
+                                          <th className="p-3">Commission</th>
+                                          <th className="p-3">Platform Fee</th>
+                                          <th className="p-3 text-right pr-4">Admin Total</th>
                                         </tr>
                                       </thead>
                                       <tbody className="divide-y divide-border/40">
@@ -967,14 +975,20 @@ export default function CommissionSettlementsPage() {
                                             <td className="p-3 text-muted-foreground">
                                               {ord.createdAt ? format(new Date(ord.createdAt), 'MMM dd, yyyy HH:mm') : '-'}
                                             </td>
-                                            <td className="p-3 font-semibold">₹{ord.totalPrice}</td>
+                                            <td className="p-3 font-semibold">₹{(ord.subtotal || ord.totalPrice).toFixed(2)}</td>
                                             <td className="p-3 font-mono">
-                                              <Badge variant="outline" className="text-[10px]">
-                                                {ord.commissionPercentage ?? 0}%
-                                              </Badge>
+                                              <div className="flex items-center gap-1.5">
+                                                <span>₹{(ord.commissionAmount ?? 0).toFixed(2)}</span>
+                                                <Badge variant="outline" className="text-[9px] px-1 py-0">
+                                                  {ord.commissionPercentage ?? 0}%
+                                                </Badge>
+                                              </div>
+                                            </td>
+                                            <td className="p-3 text-muted-foreground">
+                                              ₹{(ord.platformFee ?? 0).toFixed(2)}
                                             </td>
                                             <td className="p-3 text-right pr-4 font-extrabold text-green-600 dark:text-green-400">
-                                              ₹{ord.commissionAmount ?? 0}
+                                              ₹{((ord.commissionAmount ?? 0) + (ord.platformFee ?? 0)).toFixed(2)}
                                             </td>
                                           </tr>
                                         ))}

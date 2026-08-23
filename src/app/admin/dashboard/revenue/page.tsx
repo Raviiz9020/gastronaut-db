@@ -49,19 +49,26 @@ export default function AdminRevenuePage() {
         const orderDate = new Date(order.createdAt);
         const fromDate = new Date(dateRange.from!);
         fromDate.setHours(0,0,0,0);
-        const toDate = dateRange.to ? new Date(dateRange.to) : new Date(dateRange.from);
+        const toDate = dateRange.to ? new Date(dateRange.to) : new Date(dateRange.from!);
         toDate.setHours(23,59,59,999);
         return orderDate >= fromDate && orderDate <= toDate;
     });
   }, [deliveredOrders, dateRange]);
 
+  const getVendorOrderRevenue = (order: any) => {
+    if (order.subtotal !== undefined) {
+      return Math.max(0, order.subtotal - (order.discountAmount || 0));
+    }
+    return order.totalPrice;
+  };
+
   const totalRevenue = useMemo(() => {
-    return filteredOrders.reduce((sum, order) => sum + order.totalPrice, 0);
+    return filteredOrders.reduce((sum, order) => sum + getVendorOrderRevenue(order), 0);
   }, [filteredOrders]);
 
   const handleExport = () => {
     const csvContent = "data:text/csv;charset=utf-8," 
-      + ["Order ID", "Customer Name", "Date", "Items", "Total Price"].join(",") + "\n"
+      + ["Order ID", "Customer Name", "Date", "Items", "Amount"].join(",") + "\n"
       + filteredOrders.map(o => {
           const itemsString = o.items.map(item => `${item.quantity}x ${item.name}`).join('; ');
           return [
@@ -69,7 +76,7 @@ export default function AdminRevenuePage() {
             o.customer.name,
             o.createdAt ? format(new Date(o.createdAt), 'dd/MM/yyyy') : 'N/A',
             `"${itemsString}"`,
-            o.totalPrice.toFixed(2)
+            getVendorOrderRevenue(o).toFixed(2)
           ].join(",");
         }).join("\n");
     
@@ -208,7 +215,7 @@ export default function AdminRevenuePage() {
                         ))}
                       </ul>
                     </TableCell>
-                    <TableCell className="text-right">₹{order.totalPrice.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">₹{getVendorOrderRevenue(order).toFixed(2)}</TableCell>
                   </TableRow>
                 ))
               ) : (

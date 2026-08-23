@@ -242,6 +242,7 @@ export interface Order {
     amountPaid?: number;
     razorpayPaymentId?: string;
     razorpayOrderId?: string;
+    tableId?: string;
     
     // Admin commission settlement fields
     adminSettlementStatus?: 'pending' | 'payment_sent' | 'settled' | string;

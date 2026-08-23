@@ -324,13 +324,14 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
           let commissionPercentage = 0;
           let commissionAmount = 0;
 
-          // Charge commission on Home Delivery and Online App Self-Pickup on total amount paid (Exempt counter Take Away & Dine-In)
+          // Charge commission on food subtotal (Exempt counter Take Away & Dine-In)
+          const commissionBase = Math.max(0, originalSubtotal - discountAmount);
           if (isOnlineAppOrder && !isCounterWalkIn && v.isCommissionOn && v.commissionPercentage && v.commissionPercentage > 0) {
             commissionPercentage = v.commissionPercentage;
-            commissionAmount = Number(((orderTotalPrice * v.commissionPercentage) / 100).toFixed(2));
+            commissionAmount = Number(((commissionBase * v.commissionPercentage) / 100).toFixed(2));
           }
 
-          const newOrderData: Omit<Order, 'orderId'> & { tableId?: string | null } = {
+          const newOrderData: Omit<Order, 'orderId'> = {
             displayId: displayId,
             customer: {
               name: customerForOrder.name || 'Unknown',
@@ -360,7 +361,7 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
             customNotes: (customNotes && customNotes[v.username]) ? customNotes[v.username] : '',
             pointsEarned: pointsEarned > 0 ? pointsEarned : 0,
             pointsRedeemed: shouldRedeemPoints ? redemption.pointsToRedeem : 0,
-            tableId: tableId ?? null,
+            ...(tableId ? { tableId: String(tableId) } : {}),
             deliveryDistanceKm: deliveryDistanceKm > 0 ? deliveryDistanceKm : 0,
             deliveryCharge: deliveryCharge > 0 ? deliveryCharge : 0,
             distanceCalculationType: distanceCalculationType || "",
