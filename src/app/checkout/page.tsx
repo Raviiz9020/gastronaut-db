@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { useVendor } from '@/context/vendor-context';
 import { calculateFeeSavings } from '@/lib/savings-utils';
 import { Separator } from '@/components/ui/separator';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function CheckoutPage() {
     const { toast } = useToast();
@@ -31,6 +32,13 @@ export default function CheckoutPage() {
 
     const [paymentMethod, setPaymentMethod] = useState<'PAY_NOW' | 'COD'>('PAY_NOW');
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+    const [paymentProcessingState, setPaymentProcessingState] = useState<{
+        isActive: boolean;
+        message: string;
+    }>({
+        isActive: false,
+        message: ''
+    });
 
     // Load Razorpay Checkout Script dynamically
     useEffect(() => {
@@ -65,6 +73,19 @@ export default function CheckoutPage() {
         return vendorCarts.every(vc => vc.isMinOrderMet && !vc.isOutOfRange);
     }, [vendorCarts]);
 
+    // COD is strictly restricted to Home Delivery only
+    const isCodAllowed = useMemo(() => {
+        if (vendorCarts.length === 0) return false;
+        return vendorCarts.every(vc => vc.deliveryOption === 'Home Delivery');
+    }, [vendorCarts]);
+
+    // Auto-fallback: Switch from COD to PAY_NOW if any vendor cart is set to Self Pickup
+    useEffect(() => {
+        if (!isCodAllowed && paymentMethod === 'COD') {
+            setPaymentMethod('PAY_NOW');
+        }
+    }, [isCodAllowed, paymentMethod]);
+
     const totalDeliveryCharge = useMemo(() => {
         return vendorCarts.reduce((sum, vc) => sum + (vc.deliveryCharge || 0), 0);
     }, [vendorCarts]);
@@ -88,6 +109,15 @@ export default function CheckoutPage() {
 
         if (cartItems.length === 0) {
             toast({ title: "Your cart is empty!", variant: "destructive" });
+            return;
+        }
+
+        if (paymentMethod === 'COD' && !isCodAllowed) {
+            toast({
+                title: "Cash on Delivery Unavailable",
+                description: "Cash on Delivery is only available for Home Delivery orders.",
+                variant: "destructive"
+            });
             return;
         }
 
@@ -192,6 +222,11 @@ export default function CheckoutPage() {
                     }
                 },
                 handler: async function (response: any) {
+                    setPaymentProcessingState({
+                        isActive: true,
+                        message: 'Payment received! Creating your order...'
+                    });
+
                     try {
                         // 4. Create the Firestore orders ONLY AFTER payment succeeds
                         const orderIds = await addOrder({
@@ -202,6 +237,11 @@ export default function CheckoutPage() {
                             deliveryOptions,
                             customNotes,
                             redemption: redemptionDetails
+                        });
+
+                        setPaymentProcessingState({
+                            isActive: true,
+                            message: 'Verifying transaction & notifying the kitchen...'
                         });
 
                         // 5. Verify the signature and mark order as PAID on server
@@ -222,6 +262,11 @@ export default function CheckoutPage() {
                         if (!verifyData.success) {
                             console.warn("Verification warning:", verifyData.error);
                         }
+
+                        setPaymentProcessingState({
+                            isActive: true,
+                            message: 'Order confirmed! Taking you to tracking...'
+                        });
 
                         clearCart();
                         showOrderPlacedDialog();
@@ -447,15 +492,26 @@ export default function CheckoutPage() {
                                         </Label>
                                     </div>
                                     <div>
-                                        <RadioGroupItem value="COD" id="pay-cod" className="peer sr-only" />
+                                        <RadioGroupItem 
+                                            value="COD" 
+                                            id="pay-cod" 
+                                            disabled={!isCodAllowed}
+                                            className="peer sr-only" 
+                                        />
                                         <Label htmlFor="pay-cod" className={cn(
-                                            "flex items-center gap-2.5 rounded-xl border p-2.5 cursor-pointer hover:border-purple-500/40 transition-all duration-200 h-full",
-                                            paymentMethod === 'COD' ? "border-primary bg-primary/10 text-primary shadow-xs" : "border-muted text-muted-foreground bg-muted/10"
+                                            "flex items-center gap-2.5 rounded-xl border p-2.5 transition-all duration-200 h-full",
+                                            !isCodAllowed 
+                                                ? "opacity-50 cursor-not-allowed border-muted bg-muted/5 text-muted-foreground"
+                                                : paymentMethod === 'COD' 
+                                                    ? "cursor-pointer border-primary bg-primary/10 text-primary shadow-xs" 
+                                                    : "cursor-pointer border-muted text-muted-foreground bg-muted/10 hover:border-purple-500/40"
                                         )}>
                                             <Wallet className="h-5 w-5 text-purple-500 flex-shrink-0"/>
                                             <div className="min-w-0">
                                                 <div className="font-bold text-xs text-foreground">Cash on Delivery</div>
-                                                <div className="text-[9px] text-muted-foreground truncate">Pay upon arrival</div>
+                                                <div className="text-[9px] text-muted-foreground truncate">
+                                                    {isCodAllowed ? "Pay upon arrival" : "Unavailable for Self Pickup"}
+                                                </div>
                                             </div>
                                         </Label>
                                     </div>
@@ -528,6 +584,78 @@ export default function CheckoutPage() {
                     </form>
                 </Card>
             </main>
+
+            {/* Full-Screen Payment Processing Splash Overlay */}
+            <AnimatePresence>
+                {paymentProcessingState.isActive && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 backdrop-blur-md p-4"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 10 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: -10 }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                            className="w-full max-w-sm bg-card/95 border border-primary/20 rounded-3xl p-6 sm:p-8 text-center shadow-2xl space-y-6 relative overflow-hidden"
+                        >
+                            {/* Decorative background glow */}
+                            <div className="absolute -top-20 -left-20 w-40 h-40 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
+                            <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
+
+                            {/* Animated Pulse Icon */}
+                            <div className="relative flex items-center justify-center mx-auto my-2">
+                                <motion.div
+                                    animate={{ scale: [1, 1.25, 1], opacity: [0.2, 0.5, 0.2] }}
+                                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                                    className="absolute w-24 h-24 rounded-full bg-primary/30"
+                                />
+                                <motion.div
+                                    animate={{ scale: [1, 1.05, 1] }}
+                                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                                    className="w-20 h-20 rounded-full bg-gradient-to-tr from-primary via-purple-600 to-indigo-600 flex items-center justify-center shadow-xl shadow-primary/30 text-white relative z-10"
+                                >
+                                    <ShieldCheck className="h-10 w-10 text-white animate-pulse" />
+                                </motion.div>
+                            </div>
+
+                            {/* Title & Status */}
+                            <div className="space-y-2 relative z-10">
+                                <h2 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">
+                                    Payment Successful! 🎉
+                                </h2>
+                                <p className="text-xs sm:text-sm text-muted-foreground font-medium min-h-[20px] transition-all">
+                                    {paymentProcessingState.message || "Finalizing your order..."}
+                                </p>
+                            </div>
+
+                            {/* Progress Indicator */}
+                            <div className="space-y-3 pt-2 relative z-10">
+                                <div className="h-2 w-full bg-muted/60 rounded-full overflow-hidden relative">
+                                    <motion.div
+                                        className="h-full bg-gradient-to-r from-primary via-purple-500 to-pink-500 rounded-full"
+                                        animate={{
+                                            x: ['-100%', '100%'],
+                                        }}
+                                        transition={{
+                                            duration: 1.4,
+                                            repeat: Infinity,
+                                            ease: 'easeInOut',
+                                        }}
+                                        style={{ width: '60%' }}
+                                    />
+                                </div>
+                                <div className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                                    <span>Securing transaction with kitchen</span>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

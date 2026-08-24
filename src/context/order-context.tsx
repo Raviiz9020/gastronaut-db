@@ -267,6 +267,11 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
 
           const vendorDeliveryOption = (deliveryOptions && deliveryOptions[v.username]) || (isDineInFlow ? (String(tableId).startsWith('Take Away') ? 'Self Pickup' : 'Dine-In') : 'Home Delivery');
 
+          // Strict Guard: COD is only allowed for Home Delivery
+          if (paymentMethod === 'COD' && vendorDeliveryOption !== 'Home Delivery') {
+            throw new Error(`Cash on Delivery (COD) is not available for Self Pickup, Dine-In, or Take Away orders.`);
+          }
+
           let deliveryDistanceKm = 0;
           let deliveryCharge = 0;
           let distanceCalculationType = "";
