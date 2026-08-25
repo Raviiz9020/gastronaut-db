@@ -33,6 +33,7 @@ import { format } from 'date-fns';
 import MultiOfferSplashDialog from '@/components/multi-offer-splash-dialog';
 import { LocationPicker } from '@/components/location-picker';
 import { useLocation } from '@/context/location-context';
+import { useCustomer } from '@/context/customer-context';
 import { isVendorServiceable } from '@/lib/location-utils';
 import VendorCard from '@/components/vendor-card';
 import HeroSearchBar from '@/components/hero-search-bar';
@@ -126,16 +127,17 @@ export default function LandingPage() {
   const [priceRange, setPriceRange] = useState(50);
   const router = useRouter();
   const { userLocation, isLoading: isLocationLoading } = useLocation();
+  const { customer, isAuthLoading } = useCustomer();
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
 
   useEffect(() => {
-    if (!isLocationLoading && !userLocation) {
+    if (!isLocationLoading && !isAuthLoading && !userLocation && !customer?.latitude) {
       const timer = setTimeout(() => {
         setIsLocationDialogOpen(true);
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [isLocationLoading, userLocation]);
+  }, [isLocationLoading, isAuthLoading, userLocation, customer]);
 
   const { orders } = useOrder();
 

@@ -92,8 +92,8 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <SuperAdminProvider>
-          <LocationProvider>
-            <CustomerProvider>
+          <CustomerProvider>
+            <LocationProvider>
                 <VendorProvider>
                     <RiderProvider>
                     <RiderManagementProvider>
@@ -122,8 +122,8 @@ export default function RootLayout({
                     </RiderManagementProvider>
                     </RiderProvider>
                 </VendorProvider>
-            </CustomerProvider>
-          </LocationProvider>
+            </LocationProvider>
+          </CustomerProvider>
         </SuperAdminProvider>
       </body>
     </html>

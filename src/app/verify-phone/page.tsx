@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { sendOtp, clearRecaptcha } from "@/services/otpService";
 import { auth, db } from "@/lib/firebase";
 import { updateDoc, doc } from "firebase/firestore";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Phone, KeyRound, Loader2, Rocket, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { ConfirmationResult } from "firebase/auth";
 import { useCustomer } from "@/context/customer-context";
 import Link from "next/link";
@@ -16,24 +16,26 @@ import { PhoneAuthProvider, updatePhoneNumber } from "firebase/auth";
 import { motion } from 'framer-motion';
 import { cn } from "@/lib/utils";
 
-export default function VerifyPhonePage() {
+function VerifyPhoneContent() {
   const [otp, setOtp] = useState("");
   const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get('redirect');
   const { customer, isAuthLoading } = useCustomer();
   const [phone, setPhone] = useState<string>('');
 
   useEffect(() => {
       if (!isAuthLoading && customer) {
           if (customer.isDemoCustomer) {
-              router.replace('/menu');
+              router.replace(redirectUrl || '/menu');
               return;
           }
           setPhone(customer.contact || "");
       }
-  }, [customer, isAuthLoading, router]);
+  }, [customer, isAuthLoading, router, redirectUrl]);
 
   // On mount, ensure the reCAPTCHA container exists. On unmount, clear it.
   useEffect(() => {
@@ -103,8 +105,8 @@ export default function VerifyPhonePage() {
       
         clearRecaptcha();
 
-        toast({ title: "Phone Verified!", description: "You can now proceed to place orders."});
-        router.push('/menu');
+        toast({ title: "Phone Verified!", description: "You can now proceed."});
+        router.push(redirectUrl || '/menu');
 
     } catch (err: any) {
       console.error("Verification failed:", err);
@@ -132,9 +134,9 @@ export default function VerifyPhonePage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full"
+        className="w-full max-w-md"
       >
-        <Card className="w-full max-w-md bg-card/80 backdrop-blur-sm border-purple-500/20 box-glow-accent rounded-3xl">
+        <Card className="w-full bg-card/80 backdrop-blur-sm border-purple-500/20 box-glow-accent rounded-3xl">
             <CardHeader className="text-center">
                 <div className="flex items-center justify-center gap-3 mb-2">
                     <ShieldCheck className="h-8 w-8 text-purple-500"/>
@@ -170,11 +172,25 @@ export default function VerifyPhonePage() {
             </CardContent>
             <CardFooter className="justify-center">
                  <Button asChild variant="link" className="text-sm text-muted-foreground">
-                    <Link href="/customer-details">Entered the wrong number?</Link>
+                    <Link href={redirectUrl ? `/customer-details?redirect=${encodeURIComponent(redirectUrl)}` : "/customer-details"}>
+                        Entered the wrong number?
+                    </Link>
                  </Button>
             </CardFooter>
         </Card>
       </motion.div>
     </main>
   );
+}
+
+export default function VerifyPhonePage() {
+    return (
+        <Suspense fallback={
+            <div className="flex h-[60vh] items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        }>
+            <VerifyPhoneContent />
+        </Suspense>
+    );
 }

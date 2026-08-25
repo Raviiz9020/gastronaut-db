@@ -70,7 +70,7 @@ export default function CheckoutPage() {
                 description: "Please set your address and GPS location before checking out.",
                 variant: "destructive"
             });
-            router.replace('/customer-details');
+            router.replace('/customer-details?redirect=/checkout');
         }
     }, [customer, router, toast]);
 
@@ -361,7 +361,7 @@ export default function CheckoutPage() {
                                                 )}
                                             </div>
                                         </div>
-                                        <Link href="/customer-details" passHref className="flex-shrink-0">
+                                        <Link href="/customer-details?redirect=/checkout" passHref className="flex-shrink-0">
                                             <Button type="button" variant="outline" size="sm" className="h-7 text-[11px] font-semibold rounded-full border-primary/30 hover:bg-primary/10 hover:text-primary gap-1.5 px-3 shadow-xs">
                                                 <Edit3 className="h-3 w-3" />
                                                 Change
@@ -380,7 +380,7 @@ export default function CheckoutPage() {
                                             <span className="text-muted-foreground">You will collect directly from shop(s).</span>
                                         </div>
                                     </div>
-                                    <Link href="/customer-details" passHref className="flex-shrink-0">
+                                    <Link href="/customer-details?redirect=/checkout" passHref className="flex-shrink-0">
                                         <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px] rounded-full text-muted-foreground hover:text-foreground px-2.5">
                                             Profile
                                         </Button>

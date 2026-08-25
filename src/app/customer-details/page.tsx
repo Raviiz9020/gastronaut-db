@@ -1,13 +1,13 @@
 
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { User, Utensils, Mail, Loader2, Phone, ShieldCheck, AlertCircle, Navigation } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useCustomer } from '@/context/customer-context';
 import { useLocation } from '@/context/location-context';
@@ -334,11 +334,13 @@ const formSchema = z.object({
 });
 
 
-export default function CustomerDetailsPage() {
+function CustomerDetailsContent() {
     const { toast } = useToast();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const redirectUrl = searchParams.get('redirect');
     const { customer, updateDetails, loginWithGoogle } = useCustomer();
-    const { userLocation, detectLocation, isLoading: isLocating, error: locationError } = useLocation();
+    const { userLocation, detectLocation, setLocation, isLoading: isLocating, error: locationError } = useLocation();
     const [isTermsDialogOpen, setIsTermsDialogOpen] = useState(false);
     const [hasClickedDetect, setHasClickedDetect] = useState(false);
     const [displayPlaceName, setDisplayPlaceName] = useState<string | null>(null);
@@ -466,13 +468,21 @@ export default function CustomerDetailsPage() {
                     longitude: values.longitude,
                 });
                 
+                setLocation({
+                    latitude: values.latitude,
+                    longitude: values.longitude,
+                    addressName: 'Home',
+                    fullAddress: finalAddress,
+                    isHome: true
+                });
+
                 toast({ title: "Details Saved!", description: "Your information has been updated." });
 
                 // Skip phone verification redirect for demo customers
                 if (!customer?.isDemoCustomer && values.contact && (contactChanged || !customer?.phoneVerified)) {
-                    router.push('/verify-phone');
+                    router.push(redirectUrl ? `/verify-phone?redirect=${encodeURIComponent(redirectUrl)}` : '/verify-phone');
                 } else {
-                    router.push('/menu');
+                    router.push(redirectUrl || '/menu');
                 }
             } catch (error: any) {
                 toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -722,12 +732,12 @@ export default function CustomerDetailsPage() {
           <Button type="submit" size="lg" className="w-full text-lg border-neutral-700" variant="outline" disabled={isSaveDisabled}>
               {isLoading ? <Loader2 className="animate-spin" /> : 'Save and Continue'}
           </Button>
-          {/* Only show Back to Menu if profile is already complete (editing, not onboarding) */}
+          {/* Only show Back to Menu / Checkout if profile is already complete (editing, not onboarding) */}
           {customer?.latitude && customer?.longitude && customer?.termsAccepted && customer?.address && (
-            <Link href="/menu" passHref className="w-full">
+            <Link href={redirectUrl || "/menu"} passHref className="w-full">
               <Button variant="outline" size="lg" className="w-full text-lg border-neutral-700" type="button">
                   <Utensils className="mr-2 h-5 w-5"/>
-                  Back to Menu
+                  {redirectUrl === '/checkout' ? 'Back to Checkout' : 'Back to Menu'}
               </Button>
             </Link>
           )}
@@ -740,4 +750,16 @@ export default function CustomerDetailsPage() {
     <TermsDialog isOpen={isTermsDialogOpen} onOpenChange={setIsTermsDialogOpen} />
     </>
   );
+}
+
+export default function CustomerDetailsPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex h-[60vh] items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        }>
+            <CustomerDetailsContent />
+        </Suspense>
+    );
 }
