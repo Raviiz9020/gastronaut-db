@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import Header from '@/components/header';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle, Cpu, Home, Loader2, Rocket, Utensils, PackageSearch, Package, History, Bike, Star, Building, MessageSquareReply, Calendar as CalendarIcon, Phone, XCircle, ArrowLeft, QrCode, ClipboardCheck, ShoppingCart, MessageSquare, Award, Download, Minus, Plus, Sparkles } from 'lucide-react';
+import { CheckCircle, Cpu, Home, Loader2, Rocket, Utensils, PackageSearch, Package, History, Bike, Star, Building, MessageSquareReply, Calendar as CalendarIcon, Phone, XCircle, ArrowLeft, QrCode, ClipboardCheck, ShoppingCart, MessageSquare, Award, Download, Minus, Plus, Sparkles, Navigation, MapPin, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -263,6 +263,16 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
     return qrCodeStatuses.includes(order.status);
   }, [order.status, vendor?.upiId]);
 
+  const directionsUrl = useMemo(() => {
+    if (vendor?.googleMapsUrl && vendor.googleMapsUrl.trim() !== '') {
+      return vendor.googleMapsUrl.trim();
+    }
+    if (vendor?.latitude && vendor?.longitude) {
+      return `https://www.google.com/maps/dir/?api=1&destination=${vendor.latitude},${vendor.longitude}`;
+    }
+    return null;
+  }, [vendor?.googleMapsUrl, vendor?.latitude, vendor?.longitude]);
+
   const generatePdfReceipt = () => {
     if (!vendor) return;
 
@@ -509,15 +519,28 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
                   <div>
                     <h3 className="text-xs text-primary">{order.displayId || order.orderId}</h3>
                     {vendor && (
-                         <div className="text-xs mt-1 flex items-center gap-4">
-                            <div className="flex items-center gap-2">
+                         <div className="text-xs mt-1 flex items-center gap-3 flex-wrap">
+                            <div className="flex items-center gap-1.5">
                                 <Building className="h-3 w-3 text-muted-foreground"/>
                                 <span className="text-xs text-foreground font-semibold">From: {vendor.shopName || vendor.name}</span>
                             </div>
                             {vendor.contact && (
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5">
                                     <Phone className="h-3 w-3 text-muted-foreground"/>
                                     <a href={`tel:${vendor.contact}`} className="text-xs text-muted-foreground hover:underline">{vendor.contact.replace('+91','')}</a>
+                                </div>
+                            )}
+                            {directionsUrl && order.deliveryOption === 'Self Pickup' && (
+                                <div className="flex items-center gap-1">
+                                    <MapPin className="h-3 w-3 text-purple-500"/>
+                                    <a 
+                                        href={directionsUrl} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer" 
+                                        className="text-xs text-purple-600 dark:text-purple-400 font-semibold hover:underline flex items-center gap-0.5"
+                                    >
+                                        Map <ExternalLink className="h-2.5 w-2.5 opacity-70" />
+                                    </a>
                                 </div>
                             )}
                         </div>
@@ -676,10 +699,24 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
                                     )}
                                 </>
                             ) : (
-                                <>
-                                    <Home className="h-4 w-4 text-purple-500" />
-                                    <span>Self Pickup</span>
-                                </>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <div className="flex items-center gap-1">
+                                        <Home className="h-4 w-4 text-purple-500" />
+                                        <span>Self Pickup</span>
+                                    </div>
+                                    {directionsUrl && (
+                                        <a
+                                            href={directionsUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 text-[11px] font-bold transition-colors shadow-xs"
+                                        >
+                                            <Navigation className="h-3 w-3" />
+                                            Directions
+                                            <ExternalLink className="h-2.5 w-2.5 opacity-70" />
+                                        </a>
+                                    )}
+                                </div>
                             )}
                         </div>
                     </div>
@@ -687,10 +724,10 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
                     <div className="space-y-1 text-right">
                         <span className="text-[10px] text-muted-foreground uppercase tracking-wider block font-bold">Payment Method & Status</span>
                         <div className="flex items-center gap-2 justify-end">
-                            {order.paymentMethod === 'UPI' ? (
+                            {(order.paymentMethod === 'Pay Now' || order.paymentMethod === 'UPI' || order.paymentGateway === 'Razorpay') ? (
                                 <>
-                                    <span className="text-xs bg-purple-500/10 text-purple-600 px-2 py-0.5 rounded-full font-bold">UPI</span>
-                                    {(order.paymentStatus === 'CONFIRMED BY VENDOR' || order.paymentStatus === 'CONFIRMED BY RIDER') ? (
+                                    <span className="text-xs bg-purple-500/10 text-purple-600 px-2 py-0.5 rounded-full font-bold">Online</span>
+                                    {(order.paymentStatus === 'PAID' || order.paymentStatus === 'CONFIRMED BY VENDOR' || order.paymentStatus === 'CONFIRMED BY RIDER') ? (
                                         <span className="text-xs bg-green-500/10 text-green-500 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
                                             <CheckCircle className="h-3 w-3" /> Paid
                                         </span>
@@ -699,15 +736,26 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
                                             <Loader2 className="h-3 w-3 animate-spin" /> Awaiting Verification
                                         </span>
                                     ) : (
-                                        <span className="text-xs bg-red-500/10 text-red-500 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
-                                            Awaiting Payment
+                                        <span className="text-xs bg-green-500/10 text-green-500 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                                            <CheckCircle className="h-3 w-3" /> Paid Online
                                         </span>
                                     )}
+                                </>
+                            ) : order.paymentMethod === 'Pay at Counter' ? (
+                                <>
+                                    <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-bold">Counter</span>
+                                    <span className="text-xs bg-blue-500/10 text-blue-600 px-2.5 py-0.5 rounded-full font-bold">Pay at Counter</span>
                                 </>
                             ) : (
                                 <>
                                     <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-bold">COD</span>
-                                    <span className="text-xs bg-blue-500/10 text-blue-600 px-2.5 py-0.5 rounded-full font-bold">Pay on Delivery</span>
+                                    {(order.paymentStatus === 'CONFIRMED BY VENDOR' || order.paymentStatus === 'CONFIRMED BY RIDER' || order.paymentStatus === 'PAID') ? (
+                                        <span className="text-xs bg-green-500/10 text-green-500 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                                            <CheckCircle className="h-3 w-3" /> Paid
+                                        </span>
+                                    ) : (
+                                        <span className="text-xs bg-blue-500/10 text-blue-600 px-2.5 py-0.5 rounded-full font-bold">Pay on Delivery</span>
+                                    )}
                                 </>
                             )}
                         </div>
@@ -760,16 +808,26 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
                             </span>
                         </div>
 
-                        {/* Smart Order Savings Callout */}
-                        <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-xl p-2 flex items-center justify-between gap-2 text-xs font-semibold mt-1">
-                            <div className="flex items-center gap-1.5">
-                                <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                                <span>Platform Fee Saved</span>
+                        {/* Real Order Savings Callout (Only shown when real discounts or free delivery apply) */}
+                        {((typeof order.discountAmount === 'number' && order.discountAmount > 0) || (order.deliveryOption === 'Home Delivery' && order.deliveryCharge === 0 && Boolean(order.deliveryDistanceKm && order.deliveryDistanceKm > 0))) && (
+                            <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-xl p-2 flex items-center justify-between gap-2 text-xs font-semibold mt-1">
+                                <div className="flex items-center gap-1.5">
+                                    <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                    <span>
+                                        {(typeof order.discountAmount === 'number' && order.discountAmount > 0 && order.deliveryOption === 'Home Delivery' && order.deliveryCharge === 0) 
+                                            ? "Points & Free Delivery Applied" 
+                                            : (typeof order.discountAmount === 'number' && order.discountAmount > 0) 
+                                            ? "Points Discount Applied" 
+                                            : "Free Delivery Applied"}
+                                    </span>
+                                </div>
+                                <span className="bg-emerald-600 text-white dark:bg-emerald-500 dark:text-emerald-950 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                    {(typeof order.discountAmount === 'number' && order.discountAmount > 0) 
+                                        ? `₹${order.discountAmount.toFixed(0)} Saved` 
+                                        : "FREE Delivery"}
+                                </span>
                             </div>
-                            <span className="bg-emerald-600 text-white dark:bg-emerald-500 dark:text-emerald-950 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                                ₹10 Saved
-                            </span>
-                        </div>
+                        )}
                     </div>
                 </div>
           </CardContent>

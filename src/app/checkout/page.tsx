@@ -14,8 +14,8 @@ import { useOrder } from '@/context/order-context';
 import { useCustomer } from '@/context/customer-context';
 import { useAppContext } from '@/app/layout';
 import { useState, useMemo, useEffect } from 'react';
-import type { DeliveryOption } from '@/types';
-import { cn } from '@/lib/utils';
+import type { DeliveryOption, Vendor } from '@/types';
+import { cn, createSlug } from '@/lib/utils';
 import { useVendor } from '@/context/vendor-context';
 import { calculateFeeSavings } from '@/lib/savings-utils';
 import { Separator } from '@/components/ui/separator';
@@ -29,6 +29,12 @@ export default function CheckoutPage() {
     const { addOrder } = useOrder();
     const { customer } = useCustomer();
     const { showOrderPlacedDialog } = useAppContext();
+
+    const getVendorMenuUrl = (vendor?: Vendor | null) => {
+        if (!vendor) return '/menu';
+        const identifier = vendor.slug || (vendor.shopName ? createSlug(vendor.shopName) : vendor.username);
+        return `/menu?vendor=${identifier}`;
+    };
 
     const [paymentMethod, setPaymentMethod] = useState<'PAY_NOW' | 'COD'>('PAY_NOW');
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
@@ -463,6 +469,22 @@ export default function CheckoutPage() {
                                                         <span>Out of Delivery Range (Max {deliveryConfig?.maxDeliveryRadiusKm} km)</span>
                                                     </div>
                                                 )}
+
+                                                {!vc.isMinOrderMet && (
+                                                    <div className="flex items-center justify-between gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/25 text-amber-900 dark:text-amber-200 rounded-full text-[10px] font-semibold">
+                                                        <div className="flex items-center gap-1.5 min-w-0">
+                                                            <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+                                                            <span className="truncate">
+                                                                Min. order ₹{vc.vendor.minOrderAmount} (Add ₹{Math.max(0, (vc.vendor.minOrderAmount || 0) - vc.subtotal).toFixed(0)} more)
+                                                            </span>
+                                                        </div>
+                                                        <Link href={getVendorMenuUrl(vc.vendor)} passHref className="flex-shrink-0">
+                                                            <Button type="button" size="sm" variant="outline" className="h-6 text-[10px] px-3 font-bold border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/30 text-amber-900 dark:text-amber-100 rounded-full">
+                                                                + Add Items
+                                                            </Button>
+                                                        </Link>
+                                                    </div>
+                                                )}
                                             </CardContent>
                                         </Card>
                                     ))}
@@ -501,10 +523,10 @@ export default function CheckoutPage() {
                                         <Label htmlFor="pay-cod" className={cn(
                                             "flex items-center gap-2.5 rounded-xl border p-2.5 transition-all duration-200 h-full",
                                             !isCodAllowed 
-                                                ? "opacity-50 cursor-not-allowed border-muted bg-muted/5 text-muted-foreground"
-                                                : paymentMethod === 'COD' 
-                                                    ? "cursor-pointer border-primary bg-primary/10 text-primary shadow-xs" 
-                                                    : "cursor-pointer border-muted text-muted-foreground bg-muted/10 hover:border-purple-500/40"
+                                                 ? "opacity-50 cursor-not-allowed border-muted bg-muted/5 text-muted-foreground"
+                                                 : paymentMethod === 'COD' 
+                                                     ? "cursor-pointer border-primary bg-primary/10 text-primary shadow-xs" 
+                                                     : "cursor-pointer border-muted text-muted-foreground bg-muted/10 hover:border-purple-500/40"
                                         )}>
                                             <Wallet className="h-5 w-5 text-purple-500 flex-shrink-0"/>
                                             <div className="min-w-0">
@@ -558,28 +580,55 @@ export default function CheckoutPage() {
                             </div>
                         </CardContent>
 
-                        <CardFooter className="p-3 sm:p-4 bg-purple-900/5 border-t border-purple-500/10 flex flex-col sm:flex-row gap-2.5 justify-between items-center">
-                            <div className="text-[10px] text-muted-foreground text-center sm:text-left">
-                                By placing this order, you agree to our Terms & Conditions.
+                        <CardFooter className="p-3 sm:p-4 bg-purple-900/5 border-t border-purple-500/10 flex flex-col gap-3">
+                            {!canCheckout && (
+                                <div className="w-full px-3.5 py-2 rounded-2xl sm:rounded-full bg-destructive/10 border border-destructive/20 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-destructive font-medium">
+                                    <div className="flex items-center gap-2">
+                                        <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                                        <span>
+                                            {vendorCarts.some(vc => !vc.isMinOrderMet) 
+                                                ? "Minimum order amount not met for Home Delivery. Please add more items to proceed."
+                                                : vendorCarts.some(vc => vc.isOutOfRange)
+                                                ? "Some items in your cart are out of delivery range."
+                                                : "Some vendors in your cart are currently closed."}
+                                        </span>
+                                    </div>
+                                    {vendorCarts.some(vc => !vc.isMinOrderMet) && (
+                                        <Link 
+                                            href={getVendorMenuUrl(vendorCarts.find(vc => !vc.isMinOrderMet)?.vendor)} 
+                                            passHref 
+                                            className="flex-shrink-0"
+                                        >
+                                            <Button type="button" size="sm" variant="destructive" className="h-7 text-xs px-4 font-semibold rounded-full shadow-xs">
+                                                Add More Items
+                                            </Button>
+                                        </Link>
+                                    )}
+                                </div>
+                            )}
+                            <div className="w-full flex flex-col sm:flex-row gap-2.5 justify-between items-center">
+                                <div className="text-[10px] text-muted-foreground text-center sm:text-left">
+                                    By placing this order, you agree to our Terms & Conditions.
+                                </div>
+                                <Button 
+                                    type="submit" 
+                                    size="default" 
+                                    className="w-full sm:w-auto text-sm px-6 py-2.5 rounded-xl font-bold text-white bg-purple-600 hover:bg-purple-700 shadow-md shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed" 
+                                    disabled={!canCheckout || isPlacingOrder}
+                                >
+                                    {isPlacingOrder ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Initiating Payment...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Rocket className="mr-2 h-4 w-4"/>
+                                            {paymentMethod === 'COD' ? `Place Order (COD) • ₹${finalPrice.toFixed(2)}` : `Pay Now • ₹${finalPrice.toFixed(2)}`}
+                                        </>
+                                    )}
+                                </Button>
                             </div>
-                            <Button 
-                                type="submit" 
-                                size="default" 
-                                className="w-full sm:w-auto text-sm px-6 py-2.5 rounded-xl font-bold text-white bg-purple-600 hover:bg-purple-700 shadow-md shadow-purple-500/20" 
-                                disabled={!canCheckout || isPlacingOrder}
-                            >
-                                {isPlacingOrder ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Initiating Payment...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Rocket className="mr-2 h-4 w-4"/>
-                                        {paymentMethod === 'COD' ? `Place Order (COD) • ₹${finalPrice.toFixed(2)}` : `Pay Now • ₹${finalPrice.toFixed(2)}`}
-                                    </>
-                                )}
-                            </Button>
                         </CardFooter>
                     </form>
                 </Card>
