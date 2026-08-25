@@ -57,35 +57,45 @@ interface OrderContextType {
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
 
 const cleanOrderItem = (item: any) => {
-  // If it's already cleaned (i.e. has menuItemId and no customizationDetails), return it as is.
-  if (item.menuItemId && !item.customizationDetails) {
-    return item;
-  }
-
-  const itemId = item.id || item.menuItemId;
+  const itemId = item.id || item.menuItemId || '';
   const customizationDetails = item.customizationDetails || {};
+
+  // If it's already cleaned (i.e. has menuItemId and no customizationDetails), return with safe fallbacks.
+  if (item.menuItemId && !item.customizationDetails) {
+    return {
+      menuItemId: item.menuItemId,
+      name: item.name || '',
+      price: item.price ?? 0,
+      quantity: item.quantity ?? 1,
+      image: item.image || '',
+      shopName: item.shopName || '',
+      vendorUsername: item.vendorUsername || '',
+      cartItemId: item.cartItemId || item.menuItemId || `${Date.now()}`,
+      customizations: item.customizations || []
+    };
+  }
 
   const filteredCustomizations = (item.customizations || []).map((group: any) => {
     const selectedValue = customizationDetails[group.id];
     if (!selectedValue) return null;
 
     const selectedIds = Array.isArray(selectedValue) ? selectedValue : [selectedValue];
-    const filteredOptions = group.options.filter((opt: any) => selectedIds.includes(opt.id));
+    const filteredOptions = (group.options || []).filter((opt: any) => selectedIds.includes(opt.id));
 
     if (filteredOptions.length === 0) return null;
 
     return {
-      id: group.id,
-      name: group.name,
+      id: group.id || '',
+      name: group.name || '',
       minSelect: group.minSelect ?? 0,
       options: filteredOptions.map((opt: any) => ({
-        id: opt.id,
-        name: opt.name,
-        price: opt.price,
+        id: opt.id || '',
+        name: opt.name || '',
+        price: opt.price ?? 0,
         originalPrice: opt.originalPrice ?? null,
         isAvailable: opt.isAvailable ?? true,
         stock: opt.stock ?? null,
-        type: group.type,
+        type: group.type || 'SINGLE',
         priceModifier: opt.priceModifier ?? null
       }))
     };
@@ -93,13 +103,13 @@ const cleanOrderItem = (item: any) => {
 
   return {
     menuItemId: itemId,
-    name: item.name,
-    price: item.price,
-    quantity: item.quantity,
+    name: item.name || '',
+    price: item.price ?? 0,
+    quantity: item.quantity ?? 1,
     image: item.image || '',
     shopName: item.shopName || '',
-    vendorUsername: item.vendorUsername,
-    cartItemId: item.cartItemId,
+    vendorUsername: item.vendorUsername || '',
+    cartItemId: item.cartItemId || itemId || `${Date.now()}`,
     customizations: filteredCustomizations
   };
 };
@@ -349,7 +359,7 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
               } : {})
             },
             customerUsername: customerUsername,
-            items: cleanedItems,
+            items: cleanedItems as any,
             subtotal: originalSubtotal,
             discountAmount: discountAmount,
             totalPrice: orderTotalPrice,

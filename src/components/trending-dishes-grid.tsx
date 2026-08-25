@@ -76,11 +76,13 @@ export default function TrendingDishesGrid() {
       }
     });
 
-    // 3. Filter available & in-stock items
+    // 3. Filter available & in-stock items (exclude low-ticket utility items < ₹40 like water bottles/tea)
     const availableItems = menuItems.filter((item) => {
       const vendor = vendorMap.get(item.vendorUsername);
       if (!vendor) return false;
       if (!item.isAvailable) return false;
+      const effectivePrice = item.isDiscountActive && item.discountPrice ? item.discountPrice : item.price;
+      if (effectivePrice < 40) return false;
       return isItemInStock(item, vendor.isInventory);
     });
 
