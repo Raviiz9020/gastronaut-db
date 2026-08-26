@@ -9,6 +9,7 @@ import React, { createContext, useContext, useState, ReactNode, useMemo, useCall
 import { useToast } from '@/hooks/use-toast';
 import { useVendor } from './vendor-context';
 import { useCustomer } from './customer-context';
+import { useLocation } from './location-context';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { calculateDistanceInKm } from '@/lib/location-utils';
@@ -81,6 +82,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
   const { vendors } = useVendor();
   const { customer } = useCustomer();
+  const { userLocation } = useLocation();
 
   // Real-time listener for delivery settings
   useEffect(() => {
@@ -313,16 +315,19 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         let distanceCalculationType = "";
 
         if (effectiveDeliveryOption === 'Home Delivery') {
-            if (customer?.latitude && customer?.longitude && vc.vendor.latitude && vc.vendor.longitude) {
+            const targetLat = userLocation?.latitude || customer?.latitude;
+            const targetLng = userLocation?.longitude || customer?.longitude;
+
+            if (targetLat && targetLng && vc.vendor.latitude && vc.vendor.longitude) {
                 const rawDist = calculateDistanceInKm(
-                    customer.latitude,
-                    customer.longitude,
+                    targetLat,
+                    targetLng,
                     vc.vendor.latitude,
                     vc.vendor.longitude
                 );
                 
                 const multiplier = deliveryConfig?.distanceMultiplier ?? 1.0;
-                const adjustedDist = rawDist * multiplier;
+                const adjustedDist = parseFloat((rawDist * multiplier).toFixed(2));
                 deliveryDistanceKm = adjustedDist;
 
                 if (deliveryConfig) {
@@ -365,7 +370,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             shopStatusMsg,
         };
     });
-  }, [cartItems, vendors, vendorDeliveryOptions, getVendorDeliveryOption, deliveryConfig, customer]);
+  }, [cartItems, vendors, vendorDeliveryOptions, getVendorDeliveryOption, deliveryConfig, customer, userLocation]);
 
   const canCheckout = useMemo(() => {
     if (vendorCarts.length === 0) return false;

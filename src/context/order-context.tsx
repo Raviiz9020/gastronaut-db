@@ -37,6 +37,13 @@ interface OrderContextType {
     deliveryOptions?: Record<string, DeliveryOption>; // Optional now
     tableId?: string;
     customNotes?: Record<string, string>;
+    paymentDetails?: {
+      razorpay_order_id?: string;
+      razorpay_payment_id?: string;
+      razorpay_signature?: string;
+      status?: string;
+      gatewayFee?: number;
+    };
     redemption?: {
       canRedeem: boolean;
       pointsToRedeem: number;
@@ -144,7 +151,7 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
   }, [toast]);
 
   const addOrder: OrderContextType['addOrder'] = async ({
-    cartItems, customer: cust, allVendors, paymentMethod, deliveryOptions, tableId, customNotes, redemption
+    cartItems, customer: cust, allVendors, paymentMethod, deliveryOptions, tableId, customNotes, paymentDetails, redemption
   }) => {
     const user = auth.currentUser;
     const isDineInFlow = !!tableId;
@@ -386,7 +393,13 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
             adminSettlementPaymentMode: '',
             adminSettlementMarkedAt: '',
             adminSettlementConfirmedAt: '',
-            paymentStatus: 'PENDING',
+            paymentStatus: paymentDetails?.status === 'Success' ? 'PAID' : 'PENDING',
+            ...(paymentDetails ? {
+              razorpayOrderId: paymentDetails.razorpay_order_id,
+              razorpayPaymentId: paymentDetails.razorpay_payment_id,
+              paymentGateway: 'Razorpay',
+              paymentGatewayFee: paymentDetails.gatewayFee,
+            } : {}),
             ...(isHomeDelivery ? {
               riderPayout: deliveryCharge,
               paymentConfirmedAt: "",
@@ -594,7 +607,7 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
         // For other status updates, a simple update is fine
         await updateDoc(orderRef, { status });
 
-        // Handle email for delivery status
+        // Handle email and COD unlock for delivery status
         if (status === 'Delivered') {
           const orderSnap = await getDoc(orderRef);
           if (orderSnap.exists()) {
@@ -605,6 +618,33 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
                 const vendorData = vendorSnap.data() as Vendor;
                 const dineInCustomerAsVendor = { ...order.customer, email: vendorData.email };
                 sendCustomerInvoice({ order: JSON.parse(JSON.stringify(order)), customer: JSON.parse(JSON.stringify(dineInCustomerAsVendor)) }).catch(console.error);
+              }
+            } else if (order.customerUsername) {
+              // Unlock COD for this customer address if it was a new/modified address
+              try {
+                const custRef = doc(db, 'customers', order.customerUsername);
+                const custSnap = await getDoc(custRef);
+                if (custSnap.exists()) {
+                  const custData = custSnap.data() as Customer;
+                  if (custData.savedAddresses && custData.savedAddresses.length > 0) {
+                    let changed = false;
+                    const updatedAddrs = custData.savedAddresses.map(addr => {
+                      const matches = order.customer?.latitude && order.customer?.longitude &&
+                        Math.abs(addr.latitude - order.customer.latitude) < 0.001 &&
+                        Math.abs(addr.longitude - order.customer.longitude) < 0.001;
+                      if (matches && !addr.hasCompletedOrder) {
+                        changed = true;
+                        return { ...addr, hasCompletedOrder: true };
+                      }
+                      return addr;
+                    });
+                    if (changed) {
+                      await updateDoc(custRef, { savedAddresses: updatedAddrs });
+                    }
+                  }
+                }
+              } catch (unlockErr) {
+                console.error('Error unlocking COD for address upon delivery:', unlockErr);
               }
             }
           }

@@ -6,13 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { User, Utensils, Mail, Loader2, Phone, ShieldCheck, AlertCircle, Navigation } from 'lucide-react';
+import { User, Utensils, Mail, Loader2, Phone, ShieldCheck, AlertCircle, Navigation, Home, Briefcase, Users, Building, Edit3, Trash2, Star, Check, Map, Plus, MapPin } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useCustomer } from '@/context/customer-context';
 import { useLocation } from '@/context/location-context';
 import Link from 'next/link';
-import type { EmailPreferences } from '@/types';
+import type { EmailPreferences, SavedAddress } from '@/types';
+import { MapLocationPickerDialog } from '@/components/map-location-picker-dialog';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose, DialogFooter } from '@/components/ui/dialog';
@@ -238,99 +239,13 @@ const TermsDialog = ({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChange: 
     );
 };
 
-const parseAddress = (address: string | undefined | null) => {
-  const result = {
-    houseFlatNo: '',
-    buildingSocietyName: '',
-    floorNo: '',
-    areaLocality: '',
-    landmark: ''
-  };
-
-  if (!address) return result;
-
-  const trimmedAddress = address.trim();
-  const dotIndex = trimmedAddress.indexOf('.');
-
-  if (dotIndex !== -1) {
-    const leftPart = trimmedAddress.substring(0, dotIndex).trim();
-    const rightPart = trimmedAddress.substring(dotIndex + 1).trim();
-
-    // Parse left part: "houseFlatNo, buildingSocietyName"
-    const commaIndex = leftPart.indexOf(',');
-    if (commaIndex !== -1) {
-      result.houseFlatNo = leftPart.substring(0, commaIndex).trim();
-      result.buildingSocietyName = leftPart.substring(commaIndex + 1).trim();
-    } else {
-      result.buildingSocietyName = leftPart;
-    }
-
-    // Parse right part: "[Floor X, ] areaLocality [, landmark]"
-    let rest = rightPart;
-    if (rest.startsWith('Floor ')) {
-      const firstComma = rest.indexOf(',');
-      if (firstComma !== -1) {
-        result.floorNo = rest.substring(6, firstComma).trim();
-        rest = rest.substring(firstComma + 1).trim();
-      } else {
-        result.floorNo = rest.substring(6).trim();
-        rest = '';
-      }
-    }
-
-    if (rest) {
-      const lastComma = rest.lastIndexOf(',');
-      if (lastComma !== -1) {
-        result.areaLocality = rest.substring(0, lastComma).trim();
-        result.landmark = rest.substring(lastComma + 1).trim();
-      } else {
-        result.areaLocality = rest;
-      }
-    }
-  } else {
-    // Legacy parsing fallback
-    const parts = trimmedAddress.split(/\s+/);
-    if (parts.length === 3) {
-      // Legacy LR format: "Sector Building FlatNo" (e.g., "R2 B 1802")
-      result.houseFlatNo = parts[2];
-      result.buildingSocietyName = parts[1];
-      result.areaLocality = `Life Republic ${parts[0]}`;
-    } else {
-      // Fallback
-      result.buildingSocietyName = trimmedAddress;
-      result.areaLocality = 'Life Republic';
-    }
-  }
-
-  return result;
-};
-
-const formatAddress = (values: {
-  houseFlatNo: string;
-  buildingSocietyName: string;
-  floorNo?: string;
-  areaLocality: string;
-  landmark?: string;
-}) => {
-  const floorPart = values.floorNo?.trim() ? `Floor ${values.floorNo.trim()}, ` : '';
-  const landmarkPart = values.landmark?.trim() ? `, ${values.landmark.trim()}` : '';
-  return `${values.houseFlatNo.trim()}, ${values.buildingSocietyName.trim()}. ${floorPart}${values.areaLocality.trim()}${landmarkPart}`;
-};
-
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   contact: z.string().length(10, { message: "Please enter a valid 10-digit number." }),
-  houseFlatNo: z.string().min(1, { message: "House / Flat Number is required." }).refine(val => val.trim().length > 0, { message: "House / Flat Number is required." }),
-  buildingSocietyName: z.string().min(1, { message: "Building / Society Name is required." }).refine(val => val.trim().length > 0, { message: "Building / Society Name is required." }),
-  floorNo: z.string().optional(),
-  areaLocality: z.string().min(1, { message: "Area / Locality is required." }).refine(val => val.trim().length > 0, { message: "Area / Locality is required." }),
-  landmark: z.string().optional(),
   termsAccepted: z.boolean().refine(val => val === true, { message: "You must accept the terms and conditions." }),
   emailPreferences: z.object({
       campaigns: z.boolean(),
   }),
-  latitude: z.number({ required_error: "Please select your current location.", invalid_type_error: "Please select your current location." }),
-  longitude: z.number({ required_error: "Please select your current location.", invalid_type_error: "Please select your current location." }),
 });
 
 
@@ -339,11 +254,11 @@ function CustomerDetailsContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const redirectUrl = searchParams.get('redirect');
-    const { customer, updateDetails, loginWithGoogle } = useCustomer();
-    const { userLocation, detectLocation, setLocation, isLoading: isLocating, error: locationError } = useLocation();
+    const { customer, updateDetails, loginWithGoogle, setDefaultAddress, deleteSavedAddress } = useCustomer();
+    const { userLocation, selectSavedAddress } = useLocation();
     const [isTermsDialogOpen, setIsTermsDialogOpen] = useState(false);
-    const [hasClickedDetect, setHasClickedDetect] = useState(false);
-    const [displayPlaceName, setDisplayPlaceName] = useState<string | null>(null);
+    const [isMapDialogOpen, setIsMapDialogOpen] = useState(false);
+    const [editingAddress, setEditingAddress] = useState<SavedAddress | null>(null);
     const [isLoading, startTransition] = useTransition();
 
     const form = useForm<z.infer<typeof formSchema>>({
@@ -351,17 +266,10 @@ function CustomerDetailsContent() {
         defaultValues: {
             name: '',
             contact: '',
-            houseFlatNo: '',
-            buildingSocietyName: '',
-            floorNo: '',
-            areaLocality: '',
-            landmark: '',
             termsAccepted: false,
             emailPreferences: {
                 campaigns: true,
             },
-            latitude: undefined,
-            longitude: undefined,
         }
     });
     
@@ -373,116 +281,36 @@ function CustomerDetailsContent() {
             return;
         }
 
-        const parsed = parseAddress(customer.address);
-
         form.reset({
             name: customer.name || '',
             contact: (customer.contact || '').replace('+91', ''),
-            houseFlatNo: parsed.houseFlatNo,
-            buildingSocietyName: parsed.buildingSocietyName,
-            floorNo: parsed.floorNo,
-            areaLocality: parsed.areaLocality,
-            landmark: parsed.landmark,
             termsAccepted: customer.termsAccepted || false,
             emailPreferences: {
                 campaigns: customer.emailPreferences?.campaigns ?? true,
             },
-            latitude: (customer.latitude !== undefined && customer.latitude !== null) ? customer.latitude : undefined,
-            longitude: (customer.longitude !== undefined && customer.longitude !== null) ? customer.longitude : undefined,
         });
 
     }, [customer, router, form]);
 
-    useEffect(() => {
-        if (hasClickedDetect && !isLocating) {
-            if (userLocation?.latitude && userLocation?.longitude && !locationError) {
-                form.setValue('latitude', userLocation.latitude, { shouldValidate: true });
-                form.setValue('longitude', userLocation.longitude, { shouldValidate: true });
-                toast({
-                    title: "Location Captured Successfully",
-                    description: `${userLocation.addressName ? userLocation.addressName + ' — ' : ''}Lat: ${userLocation.latitude.toFixed(6)}, Lng: ${userLocation.longitude.toFixed(6)}`,
-                });
-            }
-            setHasClickedDetect(false);
-        }
-    }, [userLocation, isLocating, locationError, hasClickedDetect, form, toast]);
-
-    const formLat = form.watch('latitude');
-    const formLng = form.watch('longitude');
-
-    useEffect(() => {
-        if (!formLat || !formLng) {
-            setDisplayPlaceName(null);
-            return;
-        }
-
-        // If it matches the newly detected location, use its cached name
-        if (userLocation && formLat === userLocation.latitude && formLng === userLocation.longitude && userLocation.addressName) {
-            setDisplayPlaceName(userLocation.addressName);
-            return;
-        }
-
-        // Otherwise, reverse geocode it (e.g. for the saved profile location)
-        let isMounted = true;
-        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${formLat}&lon=${formLng}&format=json`)
-            .then(res => res.json())
-            .then(data => {
-                if (!isMounted) return;
-                if (data && data.address) {
-                    const placeName = data.address.city || data.address.town || data.address.village || data.address.suburb || data.address.county;
-                    if (placeName) {
-                        setDisplayPlaceName(placeName);
-                    } else {
-                        setDisplayPlaceName(null);
-                    }
-                }
-            })
-            .catch(err => {
-                console.error("Failed to reverse geocode:", err);
-                if (isMounted) setDisplayPlaceName(null);
-            });
-
-        return () => { isMounted = false; };
-    }, [formLat, formLng, userLocation]);
-
     const onSubmit = (values: z.infer<typeof formSchema>) => {
         startTransition(async () => {
-            const finalAddress = formatAddress({
-                houseFlatNo: values.houseFlatNo.trim(),
-                buildingSocietyName: values.buildingSocietyName.trim(),
-                floorNo: values.floorNo?.trim() || '',
-                areaLocality: values.areaLocality.trim(),
-                landmark: values.landmark?.trim() || ''
-            });
-
             try {
                 const contactChanged = values.contact !== (customer?.contact || '').replace('+91', '');
                 
                 await updateDetails({ 
                     name: values.name.trim(), 
                     contact: values.contact.trim(), 
-                    address: finalAddress, 
                     termsAccepted: values.termsAccepted,
                     emailPreferences: values.emailPreferences,
-                    latitude: values.latitude,
-                    longitude: values.longitude,
-                });
-                
-                setLocation({
-                    latitude: values.latitude,
-                    longitude: values.longitude,
-                    addressName: 'Home',
-                    fullAddress: finalAddress,
-                    isHome: true
                 });
 
-                toast({ title: "Details Saved!", description: "Your information has been updated." });
+                toast({ title: "Profile Saved!", description: "Your details have been updated." });
 
                 // Skip phone verification redirect for demo customers
                 if (!customer?.isDemoCustomer && values.contact && (contactChanged || !customer?.phoneVerified)) {
                     router.push(redirectUrl ? `/verify-phone?redirect=${encodeURIComponent(redirectUrl)}` : '/verify-phone');
-                } else {
-                    router.push(redirectUrl || '/menu');
+                } else if (redirectUrl) {
+                    router.push(redirectUrl);
                 }
             } catch (error: any) {
                 toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -499,15 +327,16 @@ function CustomerDetailsContent() {
     }
 
     const isSaveDisabled = isLoading;
+    const savedAddresses = customer?.savedAddresses || [];
 
   return (
     <>
-    <div className="flex flex-col flex-1 items-center justify-center p-4">
+    <div className="flex flex-col flex-1 items-center justify-center p-4 max-w-2xl mx-auto w-full">
       <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="w-full max-w-2xl"
+          className="w-full"
       >
         {customer && !customer.email && (
              <Alert variant="destructive" className="mb-6">
@@ -531,17 +360,18 @@ function CustomerDetailsContent() {
             </Alert>
         )}
 
+      {/* 1. Personal Profile Card */}
       <Card className="w-full bg-card/80 backdrop-blur-sm border-purple-500/20 box-glow-accent rounded-3xl">
           <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
+          <form id="customer-profile-form" onSubmit={form.handleSubmit(onSubmit)}>
         <CardHeader>
           <div className="flex items-center justify-center gap-3 mb-2">
               <User className="h-8 w-8 text-purple-500"/>
-              <CardTitle className="font-headline text-4xl text-center text-purple-500">Your Details</CardTitle>
+              <CardTitle className="font-headline text-3xl sm:text-4xl text-center text-purple-500">Your Details</CardTitle>
           </div>
-          <CardDescription className="text-center">Please provide your contact and delivery information.</CardDescription>
+          <CardDescription className="text-center">Please provide your contact information and preferences.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-5">
             <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem>
                     <FormLabel>Full Name</FormLabel>
@@ -568,113 +398,8 @@ function CustomerDetailsContent() {
                     <FormMessage />
                 </FormItem>
             )}/>
-            {/* Delivery Address Section */}
-            <div className="space-y-4 pt-2">
-                <FormLabel className="text-base font-semibold">Delivery Address</FormLabel>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField control={form.control} name="houseFlatNo" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-xs text-muted-foreground">House / Flat Number <span className="text-destructive">*</span></FormLabel>
-                            <FormControl><Input placeholder="e.g. 1801" {...field} /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}/>
-                    <FormField control={form.control} name="buildingSocietyName" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-xs text-muted-foreground">Building / Society Name <span className="text-destructive">*</span></FormLabel>
-                            <FormControl><Input placeholder="e.g. Building A" {...field} /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}/>
-                    <FormField control={form.control} name="floorNo" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-xs text-muted-foreground">Floor Number <span className="text-muted-foreground/60">(Optional)</span></FormLabel>
-                            <FormControl><Input placeholder="e.g. 18" {...field} /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}/>
-                    <FormField control={form.control} name="areaLocality" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-xs text-muted-foreground">Area / Locality <span className="text-destructive">*</span></FormLabel>
-                            <FormControl><Input placeholder="e.g. Life Republic R1" {...field} /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}/>
-                    <FormField control={form.control} name="landmark" render={({ field }) => (
-                        <FormItem className="sm:col-span-2">
-                            <FormLabel className="text-xs text-muted-foreground">Landmark <span className="text-muted-foreground/60">(Optional)</span></FormLabel>
-                            <FormControl><Input placeholder="e.g. Near Jambe Bus Stop" {...field} /></FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}/>
-                </div>
-            </div>
 
-            {/* Current Location Section */}
-            <div className="space-y-3 pt-2 border-t border-primary/10">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <FormLabel className="text-base font-semibold">Current Location <span className="text-destructive">*</span></FormLabel>
-                        <p className="text-xs text-muted-foreground mt-0.5">Required for vendor discovery near you.</p>
-                    </div>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        className="gap-2 rounded-xl border-purple-500/50 text-purple-500 hover:bg-purple-500/10"
-                        onClick={() => {
-                            setHasClickedDetect(true);
-                            detectLocation();
-                        }}
-                        disabled={isLocating}
-                    >
-                        {isLocating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Navigation className="h-4 w-4" />}
-                        {isLocating ? 'Detecting...' : 'Select Current Location'}
-                    </Button>
-                </div>
-
-                {/* Location status feedback */}
-                {form.watch('latitude') && form.watch('longitude') ? (
-                    <motion.div
-                        initial={{ opacity: 0, y: -4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex items-center gap-2 rounded-xl bg-green-500/10 border border-green-500/30 px-4 py-3"
-                    >
-                        <ShieldCheck className="h-4 w-4 text-green-500 flex-shrink-0" />
-                        <div>
-                            <p className="text-sm font-medium text-green-600 dark:text-green-400">Location captured</p>
-                            {displayPlaceName && (
-                                <p className="text-sm font-semibold text-foreground">📍 {displayPlaceName}</p>
-                            )}
-                            <p className="text-xs text-muted-foreground">
-                                Lat: {form.watch('latitude')?.toFixed(6)}, Lng: {form.watch('longitude')?.toFixed(6)}
-                            </p>
-                        </div>
-                    </motion.div>
-                ) : locationError ? (
-                    <motion.div
-                        initial={{ opacity: 0, y: -4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex items-center gap-2 rounded-xl bg-destructive/10 border border-destructive/30 px-4 py-3"
-                    >
-                        <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
-                        <div>
-                            <p className="text-sm font-medium text-destructive">
-                                {locationError === 'User denied Geolocation'
-                                    ? 'Location permission denied. Please enable it in your browser settings.'
-                                    : locationError}
-                            </p>
-                        </div>
-                    </motion.div>
-                ) : (
-                    <p className="text-xs text-muted-foreground px-1">Click "Select Current Location" to detect your GPS coordinates. This is mandatory to proceed.</p>
-                )}
-                {/* Show Zod validation error for latitude if not captured */}
-                {form.formState.errors.latitude && (
-                    <p className="text-sm text-destructive font-medium">{form.formState.errors.latitude.message}</p>
-                )}
-            </div>
-
-              <div className="space-y-2 pt-4 border-t border-primary/10">
+              <div className="space-y-2 pt-2 border-t border-primary/10">
                 <FormField
                     control={form.control}
                     name="emailPreferences.campaigns"
@@ -710,7 +435,7 @@ function CustomerDetailsContent() {
               </div>
 
              <FormField control={form.control} name="termsAccepted" render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 pt-4">
+                <FormItem className="flex flex-row items-start space-x-3 pt-2">
                      <FormControl>
                         <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
@@ -728,25 +453,213 @@ function CustomerDetailsContent() {
                 </FormItem>
             )}/>
         </CardContent>
-        <CardFooter className="flex-col gap-4">
-          <Button type="submit" size="lg" className="w-full text-lg border-neutral-700" variant="outline" disabled={isSaveDisabled}>
-              {isLoading ? <Loader2 className="animate-spin" /> : 'Save and Continue'}
-          </Button>
-          {/* Only show Back to Menu / Checkout if profile is already complete (editing, not onboarding) */}
-          {customer?.latitude && customer?.longitude && customer?.termsAccepted && customer?.address && (
-            <Link href={redirectUrl || "/menu"} passHref className="w-full">
-              <Button variant="outline" size="lg" className="w-full text-lg border-neutral-700" type="button">
-                  <Utensils className="mr-2 h-5 w-5"/>
-                  {redirectUrl === '/checkout' ? 'Back to Checkout' : 'Back to Menu'}
-              </Button>
-            </Link>
-          )}
-        </CardFooter>
         </form>
         </Form>
       </Card>
       </motion.div>
+
+      {/* 2. Saved Addresses Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.15 }}
+        className="w-full mt-6"
+      >
+        <Card className="w-full bg-card/80 backdrop-blur-sm border-purple-500/20 box-glow-accent rounded-3xl">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-6 w-6 text-purple-500" />
+                <CardTitle className="font-headline text-2xl text-purple-500">Saved Addresses</CardTitle>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => { setEditingAddress(null); setIsMapDialogOpen(true); }}
+                className="gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-xs font-semibold shadow-xs"
+              >
+                <Plus className="h-3.5 w-3.5" /> Add New
+              </Button>
+            </div>
+            <CardDescription>Manage delivery locations, door numbers, and default destination.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {savedAddresses.length > 0 ? (
+              savedAddresses.map((addr) => {
+                const getTagIcon = (tag?: string) => {
+                  switch (tag) {
+                    case 'Home': return Home;
+                    case 'Parents': return Users;
+                    case 'Work': return Briefcase;
+                    default: return Building;
+                  }
+                };
+                const ItemIcon = getTagIcon(addr.tag);
+                const isActive = userLocation &&
+                  Math.abs(userLocation.latitude - addr.latitude) < 0.0005 &&
+                  Math.abs(userLocation.longitude - addr.longitude) < 0.0005;
+                const canDelete = savedAddresses.length > 1;
+
+                return (
+                  <div key={addr.id} className="space-y-0">
+                    {/* Address Card */}
+                    <div className={cn(
+                      "p-3.5 rounded-t-2xl border border-b-0 transition-all text-left space-y-1.5",
+                      isActive
+                        ? "bg-primary/10 border-primary/40"
+                        : "bg-card border-border"
+                    )}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <div className={cn(
+                            "w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0",
+                            isActive ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                          )}>
+                            <ItemIcon className="h-4 w-4" />
+                          </div>
+                          <span className="font-bold text-sm text-foreground">
+                            {addr.label || addr.tag}
+                          </span>
+                          {addr.isDefault && (
+                            <span className="text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 border border-amber-200 dark:border-amber-700">
+                              <Star className="h-2.5 w-2.5 fill-current" /> DEFAULT
+                            </span>
+                          )}
+                          {isActive && (
+                            <span className="text-[10px] font-bold text-green-600 dark:text-green-400 flex items-center gap-1 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
+                              <Check className="h-3 w-3" /> ACTIVE
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-foreground/80 font-medium line-clamp-2 leading-relaxed pl-[34px]">
+                        {addr.address}
+                      </p>
+
+                      {(addr.recipientName || addr.recipientContact) && (
+                        <div className="pl-[34px]">
+                          <span className="text-[10px] text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                            👤 {addr.recipientName || 'N/A'} {addr.recipientContact ? `(${addr.recipientContact})` : ''}
+                          </span>
+                        </div>
+                      )}
+
+                      {!addr.hasCompletedOrder && (
+                        <div className="pl-[34px]">
+                          <span className="text-[10px] text-orange-600 dark:text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full inline-flex items-center gap-1 border border-orange-500/20">
+                            🔒 COD locked — first online order required
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions Bar */}
+                    <div className={cn(
+                      "flex items-center justify-between px-3.5 py-2 rounded-b-2xl border transition-colors",
+                      isActive
+                        ? "bg-primary/5 border-primary/40"
+                        : "bg-muted/30 border-border"
+                    )}>
+                      <div>
+                        {addr.isDefault ? (
+                          <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                            <Star className="h-3 w-3 fill-current" /> Default Delivery Address
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={async () => { try { await setDefaultAddress(addr.id); } catch {} }}
+                            className="text-[11px] font-semibold text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400 flex items-center gap-1 transition-colors"
+                          >
+                            <Star className="h-3 w-3" /> Set as Default
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => { setEditingAddress(addr); setIsMapDialogOpen(true); }}
+                          className="h-7 px-3 rounded-full border border-border/70 bg-background hover:bg-muted text-[11px] font-medium text-muted-foreground hover:text-foreground flex items-center gap-1 transition-all shadow-2xs"
+                        >
+                          <Edit3 className="h-3 w-3" /> Edit
+                        </button>
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (confirm(`Delete "${addr.label || addr.tag}" address?`)) {
+                                try { await deleteSavedAddress(addr.id); } catch {}
+                              }
+                            }}
+                            className="h-7 px-3 rounded-full border border-border/70 bg-background hover:bg-destructive/10 hover:border-destructive/30 text-[11px] font-medium text-muted-foreground hover:text-destructive flex items-center gap-1 transition-all shadow-2xs"
+                          >
+                            <Trash2 className="h-3 w-3" /> Delete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-6 border border-dashed rounded-2xl p-4 bg-muted/20 space-y-3">
+                <Map className="h-8 w-8 text-muted-foreground mx-auto" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">No saved addresses found</p>
+                  <p className="text-xs text-muted-foreground">Add your home or office address to start ordering.</p>
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => { setEditingAddress(null); setIsMapDialogOpen(true); }}
+                  className="rounded-xl gap-2 font-semibold text-xs bg-gradient-to-r from-purple-600 to-pink-600 text-white"
+                >
+                  <Plus className="h-4 w-4" /> Add Delivery Address on Map 🗺️
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* 3. Page Bottom Action Buttons */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+        className="w-full mt-6 space-y-3"
+      >
+        <Button
+          type="submit"
+          form="customer-profile-form"
+          size="lg"
+          className="w-full text-base sm:text-lg border-neutral-700 font-semibold shadow-md"
+          variant="outline"
+          disabled={isSaveDisabled}
+        >
+          {isLoading ? <Loader2 className="animate-spin" /> : 'Save Details'}
+        </Button>
+
+        {customer?.termsAccepted && customer?.name && (
+          <Link href={redirectUrl || "/menu"} passHref className="w-full block">
+            <Button variant="ghost" size="lg" className="w-full text-base border-neutral-700" type="button">
+              <Utensils className="mr-2 h-5 w-5"/>
+              {redirectUrl === '/checkout' ? 'Back to Checkout' : 'Back to Menu'}
+            </Button>
+          </Link>
+        )}
+      </motion.div>
     </div>
+
+    {/* Map Picker Dialog for Add/Edit from profile */}
+    <MapLocationPickerDialog
+      open={isMapDialogOpen}
+      onOpenChange={setIsMapDialogOpen}
+      editingAddress={editingAddress}
+      onAddressSaved={(saved) => {
+        selectSavedAddress(saved);
+      }}
+    />
     <TermsDialog isOpen={isTermsDialogOpen} onOpenChange={setIsTermsDialogOpen} />
     </>
   );

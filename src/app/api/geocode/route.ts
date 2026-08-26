@@ -3,9 +3,11 @@ import { NextResponse } from 'next/server';
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const address = searchParams.get('address');
+  const lat = searchParams.get('lat');
+  const lng = searchParams.get('lng');
 
-  if (!address) {
-    return NextResponse.json({ error: 'Address parameter is required' }, { status: 400 });
+  if (!address && (!lat || !lng)) {
+    return NextResponse.json({ error: 'Address or lat/lng parameters are required' }, { status: 400 });
   }
 
   // Use either server-only or public env variable
@@ -17,9 +19,11 @@ export async function GET(request: Request) {
   }
 
   try {
-    const res = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`
-    );
+    const url = address
+      ? `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`
+      : `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`;
+
+    const res = await fetch(url);
     
     if (!res.ok) {
       return NextResponse.json({ error: 'Failed to fetch from Google' }, { status: res.status });

@@ -6,20 +6,35 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
-import { CreditCard, Rocket, ShieldCheck, Home, Bike, Wallet, AlertTriangle, CheckCircle2, Loader2, Sparkles, MapPin, Edit3 } from 'lucide-react';
+import { 
+    CreditCard, Rocket, ShieldCheck, Home, Bike, Wallet, AlertTriangle, 
+    CheckCircle2, Loader2, Sparkles, MapPin, Edit3, Lock, Users, Briefcase, Building, Plus, Check 
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '@/context/cart-context';
 import { useOrder } from '@/context/order-context';
 import { useCustomer } from '@/context/customer-context';
+import { useLocation } from '@/context/location-context';
 import { useAppContext } from '@/app/layout';
 import { useState, useMemo, useEffect } from 'react';
-import type { DeliveryOption, Vendor } from '@/types';
+import type { DeliveryOption, Vendor, SavedAddress, Customer } from '@/types';
 import { cn, createSlug } from '@/lib/utils';
 import { useVendor } from '@/context/vendor-context';
 import { calculateFeeSavings } from '@/lib/savings-utils';
 import { Separator } from '@/components/ui/separator';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { MapLocationPickerDialog } from '@/components/map-location-picker-dialog';
+
+const getTagIcon = (tag?: string) => {
+    switch (tag) {
+        case 'Home': return Home;
+        case 'Parents': return Users;
+        case 'Work': return Briefcase;
+        default: return Building;
+    }
+};
 
 export default function CheckoutPage() {
     const { toast } = useToast();
@@ -28,7 +43,11 @@ export default function CheckoutPage() {
     const { vendors } = useVendor();
     const { addOrder } = useOrder();
     const { customer } = useCustomer();
+    const { userLocation, selectSavedAddress } = useLocation();
     const { showOrderPlacedDialog } = useAppContext();
+
+    const [isAddressSwitchDialogOpen, setIsAddressSwitchDialogOpen] = useState(false);
+    const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
 
     const getVendorMenuUrl = (vendor?: Vendor | null) => {
         if (!vendor) return '/menu';
@@ -74,18 +93,75 @@ export default function CheckoutPage() {
         }
     }, [customer, router, toast]);
 
+    // Active Saved Delivery Address Resolution
+    const activeAddress = useMemo<SavedAddress | null>(() => {
+        if (!customer) return null;
+        
+        // 1. Try to match from Location Context address ID
+        if (userLocation?.addressId && customer.savedAddresses) {
+            const matchedById = customer.savedAddresses.find(a => a.id === userLocation.addressId);
+            if (matchedById) return matchedById;
+        }
+
+        // 2. Try to match by close coordinates
+        if (userLocation?.latitude && userLocation?.longitude && customer.savedAddresses) {
+            const matchedByCoords = customer.savedAddresses.find(a =>
+                Math.abs(a.latitude - userLocation.latitude) < 0.0005 &&
+                Math.abs(a.longitude - userLocation.longitude) < 0.0005
+            );
+            if (matchedByCoords) return matchedByCoords;
+        }
+
+        // 3. Match default address
+        const defaultAddr = customer.savedAddresses?.find(a => a.isDefault || a.id === customer.defaultAddressId);
+        if (defaultAddr) return defaultAddr;
+
+        // 4. First saved address
+        if (customer.savedAddresses && customer.savedAddresses.length > 0) {
+            return customer.savedAddresses[0];
+        }
+
+        // 5. Fallback to customer profile
+        if (customer.address && customer.latitude && customer.longitude) {
+            return {
+                id: 'addr_default_home',
+                tag: 'Home',
+                label: 'Home',
+                address: customer.address,
+                areaLocality: '',
+                latitude: customer.latitude,
+                longitude: customer.longitude,
+                recipientName: customer.name,
+                recipientContact: customer.contact,
+                isDefault: true,
+                hasCompletedOrder: true,
+                createdAt: customer.createdAt || new Date().toISOString()
+            };
+        }
+
+        return null;
+    }, [customer, userLocation]);
+
     const canCheckout = useMemo(() => {
         if (vendorCarts.length === 0) return false;
         return vendorCarts.every(vc => vc.isMinOrderMet && !vc.isOutOfRange);
     }, [vendorCarts]);
 
-    // COD is strictly restricted to Home Delivery only
-    const isCodAllowed = useMemo(() => {
+    // 1. Check if all carts are Home Delivery
+    const isAllHomeDelivery = useMemo(() => {
         if (vendorCarts.length === 0) return false;
         return vendorCarts.every(vc => vc.deliveryOption === 'Home Delivery');
     }, [vendorCarts]);
 
-    // Auto-fallback: Switch from COD to PAY_NOW if any vendor cart is set to Self Pickup
+    // 2. COD Security Lock: Must have completed at least one order on this address (or hasCompletedOrder !== false)
+    const isAddressCodEligible = useMemo(() => {
+        if (!activeAddress) return false;
+        return activeAddress.hasCompletedOrder !== false;
+    }, [activeAddress]);
+
+    const isCodAllowed = isAllHomeDelivery && isAddressCodEligible;
+
+    // Auto-fallback: Switch from COD to PAY_NOW if COD is not allowed
     useEffect(() => {
         if (!isCodAllowed && paymentMethod === 'COD') {
             setPaymentMethod('PAY_NOW');
@@ -121,7 +197,9 @@ export default function CheckoutPage() {
         if (paymentMethod === 'COD' && !isCodAllowed) {
             toast({
                 title: "Cash on Delivery Unavailable",
-                description: "Cash on Delivery is only available for Home Delivery orders.",
+                description: !isAllHomeDelivery
+                    ? "Cash on Delivery is only available for Home Delivery orders."
+                    : "For security, Cash on Delivery unlocks after your first completed prepaid order at this address.",
                 variant: "destructive"
             });
             return;
@@ -154,11 +232,21 @@ export default function CheckoutPage() {
                 return acc;
             }, {} as Record<string, DeliveryOption>);
 
+            // Construct Snapshot with active delivery address coordinates & recipient info
+            const customerSnapshot: Customer = {
+                ...customer,
+                address: activeAddress?.address || customer.address,
+                latitude: activeAddress?.latitude || customer.latitude,
+                longitude: activeAddress?.longitude || customer.longitude,
+                name: activeAddress?.recipientName || customer.name,
+                contact: activeAddress?.recipientContact || customer.contact,
+            };
+
             // 1. If Cash on Delivery, place order in Firestore immediately
             if (paymentMethod === 'COD') {
                 await addOrder({
                     cartItems,
-                    customer,
+                    customer: customerSnapshot,
                     allVendors: vendors,
                     paymentMethod: 'COD',
                     deliveryOptions,
@@ -183,74 +271,44 @@ export default function CheckoutPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     amount: finalPrice,
+                    currency: 'INR',
                     receipt: tempReceipt,
-                    notes: {
-                        customerName: customer.name,
-                        customerContact: customer.contact,
-                        customerEmail: customer.email || ''
-                    }
+                    customerUsername: customer.username,
+                    customerEmail: customer.email || `${customer.username}@hyperplate.app`
                 })
             });
 
-            const createData = await createRes.json();
-
-            if (!createData.success || !createData.orderId) {
-                throw new Error(createData.error || 'Failed to initialize payment gateway.');
+            if (!createRes.ok) {
+                const errData = await createRes.json().catch(() => ({}));
+                throw new Error(errData.error || 'Failed to initialize payment gateway.');
             }
 
-            // 3. Launch Razorpay Checkout Modal
-            if (!(window as any).Razorpay) {
-                throw new Error('Razorpay SDK failed to load. Please refresh and try again.');
-            }
+            const razorpayOrder = await createRes.json();
+            const { orderId: rzpOrderId, amount: rzpAmount, keyId: rzpKeyId } = razorpayOrder;
 
+            // 3. Open Razorpay Modal
             const options = {
-                key: createData.keyId || razorpayKeyId,
-                amount: createData.amount,
-                currency: createData.currency || 'INR',
+                key: rzpKeyId || razorpayKeyId,
+                amount: rzpAmount,
+                currency: 'INR',
                 name: 'HyperDelivery',
-                description: `Order Total: ₹${finalPrice.toFixed(2)}`,
-                order_id: createData.orderId,
+                description: `Order Payment (${cartItems.length} items)`,
+                order_id: rzpOrderId,
                 prefill: {
-                    name: customer.name,
-                    contact: customer.contact,
-                    email: customer.email || `${customer.contact}@hyperdelivery.in`
+                    name: customerSnapshot.name || 'Valued Customer',
+                    contact: customerSnapshot.contact || '',
+                    email: customerSnapshot.email || ''
                 },
                 theme: {
-                    color: '#9333ea'
-                },
-                modal: {
-                    ondismiss: function () {
-                        setIsPlacingOrder(false);
-                        toast({
-                            title: "Payment Incomplete",
-                            description: "No amount was deducted. Your items are safe in your cart — you can retry or select Cash on Delivery.",
-                        });
-                    }
+                    color: '#7c3aed'
                 },
                 handler: async function (response: any) {
-                    setPaymentProcessingState({
-                        isActive: true,
-                        message: 'Payment received! Creating your order...'
-                    });
-
                     try {
-                        // 4. Create the Firestore orders ONLY AFTER payment succeeds
-                        const orderIds = await addOrder({
-                            cartItems,
-                            customer,
-                            allVendors: vendors,
-                            paymentMethod: 'Pay Now',
-                            deliveryOptions,
-                            customNotes,
-                            redemption: redemptionDetails
-                        });
-
                         setPaymentProcessingState({
                             isActive: true,
-                            message: 'Verifying transaction & notifying the kitchen...'
+                            message: 'Payment received! Creating your order...'
                         });
 
-                        // 5. Verify the signature and mark order as PAID on server
                         const verifyRes = await fetch(verifyPaymentUrl, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -258,15 +316,14 @@ export default function CheckoutPage() {
                                 razorpay_order_id: response.razorpay_order_id,
                                 razorpay_payment_id: response.razorpay_payment_id,
                                 razorpay_signature: response.razorpay_signature,
-                                orderIds: orderIds,
-                                paymentGatewayFee: gatewayFee,
-                                amountPaid: finalPrice
+                                expectedAmount: finalPrice,
+                                customerUsername: customer.username
                             })
                         });
 
-                        const verifyData = await verifyRes.json();
-                        if (!verifyData.success) {
-                            console.warn("Verification warning:", verifyData.error);
+                        if (!verifyRes.ok) {
+                            const errData = await verifyRes.json().catch(() => ({}));
+                            throw new Error(errData.error || 'Payment signature verification failed.');
                         }
 
                         setPaymentProcessingState({
@@ -274,48 +331,118 @@ export default function CheckoutPage() {
                             message: 'Order confirmed! Taking you to tracking...'
                         });
 
+                        // 4. Create Order only AFTER successful signature verification
+                        await addOrder({
+                            cartItems,
+                            customer: customerSnapshot,
+                            allVendors: vendors,
+                            paymentMethod: 'Pay Now',
+                            deliveryOptions,
+                            customNotes,
+                            paymentDetails: {
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature,
+                                status: 'Success',
+                                gatewayFee: gatewayFee
+                            },
+                            redemption: redemptionDetails
+                        });
+
                         clearCart();
+                        setPaymentProcessingState({ isActive: false, message: '' });
                         showOrderPlacedDialog();
                         router.push('/track');
+
                     } catch (verifyErr: any) {
-                        console.error('Payment post-process error:', verifyErr);
-                        clearCart();
-                        showOrderPlacedDialog();
-                        router.push('/track');
-                    } finally {
+                        console.error('Payment verification error:', verifyErr);
+                        setPaymentProcessingState({ isActive: false, message: '' });
                         setIsPlacingOrder(false);
+                        toast({
+                            title: 'Payment Verification Failed',
+                            description: verifyErr.message || 'We could not verify your payment. If money was debited, it will be refunded automatically.',
+                            variant: 'destructive'
+                        });
+                    }
+                },
+                modal: {
+                    ondismiss: function () {
+                        setIsPlacingOrder(false);
+                        setPaymentProcessingState({ isActive: false, message: '' });
+                        toast({
+                            title: 'Payment Cancelled',
+                            description: 'You cancelled the payment. Your cart items are safe.',
+                        });
                     }
                 }
             };
 
             const rzp = new (window as any).Razorpay(options);
-            rzp.on('payment.failed', function (failRes: any) {
+            rzp.on('payment.failed', function (response: any) {
                 setIsPlacingOrder(false);
+                setPaymentProcessingState({ isActive: false, message: '' });
                 toast({
-                    title: "Transaction Declined",
-                    description: failRes.error?.description || "Your bank declined the transaction. No amount was deducted. Please retry or choose Cash on Delivery.",
-                    variant: "destructive"
+                    title: 'Payment Failed',
+                    description: response.error?.description || 'Your transaction was declined by the bank.',
+                    variant: 'destructive'
                 });
             });
 
             rzp.open();
+
         } catch (error: any) {
-            console.error('Checkout error:', error);
+            console.error("Order Placement Error:", error);
+            setIsPlacingOrder(false);
+            setPaymentProcessingState({ isActive: false, message: '' });
             toast({
-                title: "Payment Gateway Notice",
-                description: error.message || "Could not initialize payment. Please try again or choose Cash on Delivery.",
+                title: "Order Failed",
+                description: error.message || "An error occurred while initiating payment.",
                 variant: "destructive"
             });
-            setIsPlacingOrder(false);
         }
     };
+
+    const savedAddresses = customer?.savedAddresses || [];
+    const ActiveTagIcon = getTagIcon(activeAddress?.tag);
 
     return (
         <div className="flex flex-col min-h-screen bg-background">
             <Header />
-            <main className="flex-1 container mx-auto px-3 sm:px-4 py-4 sm:py-8 flex items-center justify-center">
-                <Card className="w-full max-w-3xl bg-card/90 backdrop-blur-md border-purple-500/20 box-glow-accent rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl">
-                    <CardHeader className="bg-purple-900/10 border-b border-purple-500/10 py-3 sm:py-4 px-4 sm:px-6">
+
+            {/* Payment Processing Overlay */}
+            {paymentProcessingState.isActive && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md">
+                    <div className="flex flex-col items-center gap-4 p-8 rounded-3xl bg-card border border-purple-500/20 shadow-2xl max-w-sm text-center">
+                        <div className="relative flex items-center justify-center">
+                            <div className="w-16 h-16 rounded-full bg-purple-500/10 border-2 border-purple-500/30 animate-ping" />
+                            <Loader2 className="h-8 w-8 animate-spin text-purple-600 dark:text-purple-400 absolute" />
+                        </div>
+                        <div className="space-y-1">
+                            <h3 className="font-headline text-lg font-bold">Processing Order</h3>
+                            <p className="text-xs text-muted-foreground">{paymentProcessingState.message}</p>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground bg-muted px-3 py-1 rounded-full font-medium">
+                            Please do not refresh or close this window
+                        </span>
+                    </div>
+                </div>
+            )}
+
+            <main className="flex-1 container mx-auto px-4 py-8 max-w-4xl">
+                <div className="mb-6 flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl sm:text-3xl font-headline font-bold text-foreground">Checkout</h1>
+                        <p className="text-xs sm:text-sm text-muted-foreground">Confirm details and place your order</p>
+                    </div>
+                    <Link href="/menu" passHref>
+                        <Button variant="ghost" size="sm" className="text-xs font-semibold rounded-full text-muted-foreground hover:text-foreground">
+                            ← Back to Menu
+                        </Button>
+                    </Link>
+                </div>
+
+                <Card className="rounded-3xl border-primary/20 shadow-xl overflow-hidden">
+                    <CardHeader className="bg-gradient-to-r from-purple-600/10 via-pink-600/10 to-purple-600/10 p-4 sm:p-6 border-b border-primary/10">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6 text-purple-500 flex-shrink-0 animate-pulse"/>
@@ -335,38 +462,44 @@ export default function CheckoutPage() {
                         <CardContent className="p-3.5 sm:p-6 space-y-4">
                             {/* Delivery Address / Customer Destination Card */}
                             {vendorCarts.some(vc => vc.deliveryOption === 'Home Delivery') ? (
-                                <div className="rounded-xl border border-purple-500/20 bg-gradient-to-r from-purple-500/10 via-primary/5 to-purple-500/10 p-3 shadow-xs">
+                                <div className="rounded-2xl border border-purple-500/20 bg-gradient-to-r from-purple-500/10 via-primary/5 to-purple-500/10 p-3.5 shadow-xs">
                                     <div className="flex items-start justify-between gap-2.5">
                                         <div className="flex items-start gap-2.5 flex-1 min-w-0">
-                                            <div className="w-7 h-7 rounded-lg bg-primary/15 border border-primary/20 flex items-center justify-center text-primary flex-shrink-0 mt-0.5">
-                                                <MapPin className="h-4 w-4" />
+                                            <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center text-primary flex-shrink-0 mt-0.5">
+                                                <ActiveTagIcon className="h-4 w-4" />
                                             </div>
                                             <div className="flex-1 min-w-0 space-y-0.5">
                                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                                    <span className="font-bold text-xs text-foreground">Delivering To</span>
-                                                    {customer && customer.name && (
+                                                    <span className="font-bold text-xs text-foreground">
+                                                        Delivering to: {activeAddress?.label || activeAddress?.tag || 'Home'}
+                                                    </span>
+                                                    {(activeAddress?.recipientName || customer?.name) && (
                                                         <span className="text-[11px] text-muted-foreground truncate font-medium">
-                                                            • {customer.name} ({customer.contact || ''})
+                                                            • {activeAddress?.recipientName || customer?.name} ({activeAddress?.recipientContact || customer?.contact || ''})
                                                         </span>
                                                     )}
                                                 </div>
                                                 <p className="text-[11px] text-foreground/85 leading-snug font-medium line-clamp-2">
-                                                    {customer?.address || "No address provided"}
+                                                    {activeAddress?.address || customer?.address || "No address provided"}
                                                 </p>
-                                                {Boolean(customer?.latitude && customer?.longitude) && (
+                                                {Boolean(activeAddress?.latitude && activeAddress?.longitude) && (
                                                     <div className="flex items-center gap-1 text-[10px] text-green-600 dark:text-green-400 font-semibold pt-0.5">
                                                         <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
-                                                        <span>GPS Location pinned for live tracking</span>
+                                                        <span>GPS Location verified for live navigation</span>
                                                     </div>
                                                 )}
                                             </div>
                                         </div>
-                                        <Link href="/customer-details?redirect=/checkout" passHref className="flex-shrink-0">
-                                            <Button type="button" variant="outline" size="sm" className="h-7 text-[11px] font-semibold rounded-full border-primary/30 hover:bg-primary/10 hover:text-primary gap-1.5 px-3 shadow-xs">
-                                                <Edit3 className="h-3 w-3" />
-                                                Change
-                                            </Button>
-                                        </Link>
+                                        <Button 
+                                            type="button" 
+                                            variant="outline" 
+                                            size="sm" 
+                                            onClick={() => setIsAddressSwitchDialogOpen(true)}
+                                            className="h-7 text-[11px] font-semibold rounded-full border-primary/30 hover:bg-primary/10 hover:text-primary gap-1.5 px-3 shadow-xs flex-shrink-0"
+                                        >
+                                            <Edit3 className="h-3 w-3" />
+                                            Change
+                                        </Button>
                                     </div>
                                 </div>
                             ) : (
@@ -446,43 +579,22 @@ export default function CheckoutPage() {
                                                     ))}
                                                 </div>
 
-                                                {vc.deliveryOption === 'Home Delivery' && (
-                                                    <div className="flex items-center justify-between p-1.5 bg-muted/40 rounded-lg text-[10px] border border-border/40">
-                                                        <span className="text-muted-foreground">
-                                                            Dist: <strong className="text-foreground">{vc.deliveryDistanceKm ? `${vc.deliveryDistanceKm.toFixed(2)} km` : '0.00 km'}</strong>
-                                                        </span>
-                                                        <div>
-                                                            {vc.isFreeDelivery ? (
-                                                                <span className="font-bold text-green-600 dark:text-green-400 flex items-center gap-1">
-                                                                    🎉 Free Delivery
-                                                                </span>
-                                                            ) : (
-                                                                <span>Fee: <strong className="text-foreground">₹{vc.deliveryCharge || 0}</strong></span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {vc.isOutOfRange && (
-                                                    <div className="flex items-center gap-1 p-1.5 bg-red-500/10 text-red-600 rounded-lg text-[10px] font-semibold">
+                                                {vc.deliveryOption === 'Home Delivery' && vc.isOutOfRange && (
+                                                    <div className="flex items-center gap-1.5 p-1.5 bg-destructive/10 text-destructive rounded-lg text-[10px] font-semibold border border-destructive/20">
                                                         <AlertTriangle className="h-3 w-3 flex-shrink-0" />
-                                                        <span>Out of Delivery Range (Max {deliveryConfig?.maxDeliveryRadiusKm} km)</span>
+                                                        <span>Out of delivery range ({vc.deliveryDistanceKm} km away). Switch to Pickup or select nearby address.</span>
                                                     </div>
                                                 )}
 
-                                                {!vc.isMinOrderMet && (
-                                                    <div className="flex items-center justify-between gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/25 text-amber-900 dark:text-amber-200 rounded-full text-[10px] font-semibold">
-                                                        <div className="flex items-center gap-1.5 min-w-0">
-                                                            <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
-                                                            <span className="truncate">
-                                                                Min. order ₹{vc.vendor.minOrderAmount} (Add ₹{Math.max(0, (vc.vendor.minOrderAmount || 0) - vc.subtotal).toFixed(0)} more)
-                                                            </span>
-                                                        </div>
-                                                        <Link href={getVendorMenuUrl(vc.vendor)} passHref className="flex-shrink-0">
-                                                            <Button type="button" size="sm" variant="outline" className="h-6 text-[10px] px-3 font-bold border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/30 text-amber-900 dark:text-amber-100 rounded-full">
-                                                                + Add Items
-                                                            </Button>
-                                                        </Link>
+                                                {vc.deliveryOption === 'Home Delivery' && !vc.isOutOfRange && (
+                                                    <div className="flex items-center justify-between p-1.5 bg-muted/40 rounded-lg text-[10px] border border-border/40">
+                                                        <span className="text-muted-foreground flex items-center gap-1">
+                                                            <MapPin className="h-3 w-3 text-primary" />
+                                                            {vc.deliveryDistanceKm !== undefined ? `${vc.deliveryDistanceKm} km away` : 'Calculating distance...'}
+                                                        </span>
+                                                        <span className="font-semibold text-foreground">
+                                                            {vc.deliveryCharge ? `₹${vc.deliveryCharge.toFixed(2)} delivery` : 'Free delivery'}
+                                                        </span>
                                                     </div>
                                                 )}
                                             </CardContent>
@@ -491,20 +603,23 @@ export default function CheckoutPage() {
                                 </div>
                             </div>
 
-                            <Separator className="bg-purple-500/10 my-1" />
-
-                            {/* 2. Payment Method Selection */}
+                            {/* 2. Payment Method */}
                             <div className="space-y-2">
                                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 px-0.5">
-                                    <Wallet className="h-3.5 w-3.5 text-primary" /> Payment Method
+                                    <CreditCard className="h-3.5 w-3.5 text-primary" /> Payment Method
                                 </h3>
-                                
-                                <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as 'PAY_NOW' | 'COD')} className="grid grid-cols-2 gap-2.5">
+                                <RadioGroup 
+                                    value={paymentMethod} 
+                                    onValueChange={(val: any) => setPaymentMethod(val)} 
+                                    className="grid grid-cols-2 gap-2.5"
+                                >
                                     <div>
                                         <RadioGroupItem value="PAY_NOW" id="pay-now" className="peer sr-only" />
                                         <Label htmlFor="pay-now" className={cn(
-                                            "flex items-center gap-2.5 rounded-xl border p-2.5 cursor-pointer hover:border-purple-500/40 transition-all duration-200 h-full",
-                                            paymentMethod === 'PAY_NOW' ? "border-primary bg-primary/10 text-primary shadow-xs" : "border-muted text-muted-foreground bg-muted/10"
+                                            "flex items-center gap-2.5 rounded-xl border p-2.5 cursor-pointer transition-all duration-200 h-full",
+                                            paymentMethod === 'PAY_NOW' 
+                                                ? "border-primary bg-primary/10 text-primary shadow-xs" 
+                                                : "border-muted text-muted-foreground bg-muted/10 hover:border-purple-500/40"
                                         )}>
                                             <CreditCard className="h-5 w-5 text-purple-500 flex-shrink-0"/>
                                             <div className="min-w-0">
@@ -530,14 +645,31 @@ export default function CheckoutPage() {
                                         )}>
                                             <Wallet className="h-5 w-5 text-purple-500 flex-shrink-0"/>
                                             <div className="min-w-0">
-                                                <div className="font-bold text-xs text-foreground">Cash on Delivery</div>
+                                                <div className="font-bold text-xs text-foreground flex items-center gap-1">
+                                                    Cash on Delivery
+                                                    {!isAddressCodEligible && <Lock className="h-3 w-3 text-amber-500 flex-shrink-0" />}
+                                                </div>
                                                 <div className="text-[9px] text-muted-foreground truncate">
-                                                    {isCodAllowed ? "Pay upon arrival" : "Unavailable for Self Pickup"}
+                                                    {!isAllHomeDelivery 
+                                                        ? "Unavailable for Self Pickup"
+                                                        : !isAddressCodEligible
+                                                        ? "Locked on new address"
+                                                        : "Pay upon arrival"}
                                                 </div>
                                             </div>
                                         </Label>
                                     </div>
                                 </RadioGroup>
+
+                                {/* COD Security Notice for New/Modified Addresses */}
+                                {isAllHomeDelivery && !isAddressCodEligible && (
+                                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-2 text-[11px] text-amber-700 dark:text-amber-300">
+                                        <Lock className="h-3.5 w-3.5 flex-shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                                        <span>
+                                            <strong>Security Notice:</strong> Cash on Delivery is locked for your first order at this address. Pay Online once to permanently unlock COD.
+                                        </span>
+                                    </div>
+                                )}
                             </div>
 
                             <Separator className="bg-purple-500/10 my-1" />
@@ -562,8 +694,6 @@ export default function CheckoutPage() {
                                         <span className="text-muted-foreground">Platform Fee</span>
                                         <span className="font-medium text-foreground text-[11px]">₹{PLATFORM_FEE.toFixed(2)}</span>
                                     </div>
-
-
 
                                     {redemptionDetails?.canRedeem && (
                                         <div className="flex justify-between items-center text-green-600 dark:text-green-400 font-semibold">
@@ -599,42 +729,135 @@ export default function CheckoutPage() {
                                             passHref 
                                             className="flex-shrink-0"
                                         >
-                                            <Button type="button" size="sm" variant="destructive" className="h-7 text-xs px-4 font-semibold rounded-full shadow-xs">
-                                                Add More Items
+                                            <Button type="button" size="sm" variant="ghost" className="h-6 text-[10px] font-bold text-destructive hover:bg-destructive/10">
+                                                Add More Items →
                                             </Button>
                                         </Link>
                                     )}
                                 </div>
                             )}
-                            <div className="w-full flex flex-col sm:flex-row gap-2.5 justify-between items-center">
-                                <div className="text-[10px] text-muted-foreground text-center sm:text-left">
-                                    By placing this order, you agree to our Terms & Conditions.
-                                </div>
-                                <Button 
-                                    type="submit" 
-                                    size="default" 
-                                    className="w-full sm:w-auto text-sm px-6 py-2.5 rounded-xl font-bold text-white bg-purple-600 hover:bg-purple-700 shadow-md shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed" 
-                                    disabled={!canCheckout || isPlacingOrder}
-                                >
-                                    {isPlacingOrder ? (
-                                        <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Initiating Payment...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Rocket className="mr-2 h-4 w-4"/>
-                                            {paymentMethod === 'COD' ? `Place Order (COD) • ₹${finalPrice.toFixed(2)}` : `Pay Now • ₹${finalPrice.toFixed(2)}`}
-                                        </>
-                                    )}
-                                </Button>
-                            </div>
+
+                            <Button 
+                                type="submit" 
+                                disabled={!canCheckout || isPlacingOrder} 
+                                className="w-full h-12 rounded-2xl text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-md gap-2"
+                            >
+                                {isPlacingOrder ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Processing Order...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Rocket className="h-4 w-4" />
+                                        {paymentMethod === 'PAY_NOW' ? `Pay ₹${finalPrice.toFixed(2)} Online` : `Place COD Order (₹${finalPrice.toFixed(2)})`}
+                                    </>
+                                )}
+                            </Button>
                         </CardFooter>
                     </form>
                 </Card>
             </main>
 
-            {/* Full-Screen Payment Processing Splash Overlay */}
+            {/* Address Switcher Dialog */}
+            <Dialog open={isAddressSwitchDialogOpen} onOpenChange={setIsAddressSwitchDialogOpen}>
+                <DialogContent className="sm:max-w-md rounded-3xl p-5 max-h-[85vh] flex flex-col">
+                    <DialogHeader className="pb-1">
+                        <DialogTitle className="font-headline text-xl font-bold flex items-center gap-2">
+                            <MapPin className="h-5 w-5 text-primary" />
+                            Select Delivery Address
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    <div className="space-y-3 overflow-y-auto pr-1 flex-1 py-1">
+                        {savedAddresses.map((addr) => {
+                            const ItemIcon = getTagIcon(addr.tag);
+                            const isSelected = activeAddress?.id === addr.id || (
+                                activeAddress &&
+                                Math.abs(activeAddress.latitude - addr.latitude) < 0.0005 &&
+                                Math.abs(activeAddress.longitude - addr.longitude) < 0.0005
+                            );
+
+                            return (
+                                <div
+                                    key={addr.id}
+                                    onClick={() => {
+                                        selectSavedAddress(addr);
+                                        setIsAddressSwitchDialogOpen(false);
+                                    }}
+                                    className={cn(
+                                        "p-3 rounded-2xl border transition-all cursor-pointer text-left space-y-1 relative group",
+                                        isSelected 
+                                            ? "bg-primary/10 border-primary/40 shadow-xs"
+                                            : "bg-card border-border hover:border-primary/30 hover:bg-muted/40"
+                                    )}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1.5">
+                                            <div className={cn(
+                                                "w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0",
+                                                isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                                            )}>
+                                                <ItemIcon className="h-3.5 w-3.5" />
+                                            </div>
+                                            <span className="font-bold text-xs text-foreground">
+                                                {addr.label || addr.tag}
+                                            </span>
+                                            {addr.isDefault && (
+                                                <span className="text-[9px] bg-primary/15 text-primary font-semibold px-1.5 py-0.2 rounded-full">
+                                                    Default
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {isSelected ? (
+                                            <span className="text-[10px] font-bold text-green-600 dark:text-green-400 flex items-center gap-1 bg-green-500/10 px-2 py-0.5 rounded-full">
+                                                <Check className="h-3 w-3" /> Selected
+                                            </span>
+                                        ) : (
+                                            <span className="text-[10px] text-primary font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                                                Deliver Here →
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <p className="text-[11px] text-foreground/80 font-medium line-clamp-2 leading-relaxed pl-7.5">
+                                        {addr.address}
+                                    </p>
+                                    {addr.recipientName && (
+                                        <p className="text-[10px] text-muted-foreground pl-7.5">
+                                            Receiver: {addr.recipientName} {addr.recipientContact ? `(${addr.recipientContact})` : ''}
+                                        </p>
+                                    )}
+                                </div>
+                            );
+                        })}
+
+                        <Button
+                            type="button"
+                            onClick={() => {
+                                setIsAddressSwitchDialogOpen(false);
+                                setIsMapPickerOpen(true);
+                            }}
+                            className="w-full h-12 rounded-2xl gap-2 font-semibold text-xs sm:text-sm bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-md text-white mt-2"
+                        >
+                            <Plus className="h-4 w-4" />
+                            + Add New Address on Map 🗺️
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Interactive Map Picker for adding new address from Checkout */}
+            <MapLocationPickerDialog 
+                open={isMapPickerOpen}
+                onOpenChange={setIsMapPickerOpen}
+                onAddressSaved={(saved) => {
+                    selectSavedAddress(saved);
+                }}
+            />
+
+            {/* Full-Screen Payment Processing / Success Splash Overlay */}
             <AnimatePresence>
                 {paymentProcessingState.isActive && (
                     <motion.div
@@ -676,7 +899,7 @@ export default function CheckoutPage() {
                                     Payment Successful! 🎉
                                 </h2>
                                 <p className="text-xs sm:text-sm text-muted-foreground font-medium min-h-[20px] transition-all">
-                                    {paymentProcessingState.message || "Finalizing your order..."}
+                                    {paymentProcessingState.message || "Payment received! Creating your order..."}
                                 </p>
                             </div>
 

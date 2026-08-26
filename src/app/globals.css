@@ -121,3 +121,21 @@
     animation: firework 0.6s ease-out forwards;
   }
 }
+
+/* Leaflet + Tailwind Fix: Tailwind preflight sets img { max-width: 100% } which breaks Leaflet tiles */
+.leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 380px !important;
+  z-index: 1 !important;
+}
+.leaflet-container img {
+  max-width: none !important;
+  max-height: none !important;
+}
+.leaflet-tile {
+  visibility: inherit !important;
+}
+.leaflet-tile-pane {
+  opacity: 1 !important;
+}

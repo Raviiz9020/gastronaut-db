@@ -64,6 +64,25 @@ export interface EmailPreferences {
   systemNotifications?: boolean;
 }
 
+export interface SavedAddress {
+    id: string;
+    tag: 'Home' | 'Work' | 'Parents' | 'Other';
+    label?: string;
+    address: string;
+    houseFlatNo?: string;
+    buildingSocietyName?: string;
+    floorNo?: string;
+    areaLocality: string;
+    landmark?: string;
+    latitude: number;
+    longitude: number;
+    recipientName?: string;
+    recipientContact?: string;
+    isDefault?: boolean;
+    hasCompletedOrder?: boolean;
+    createdAt?: string;
+}
+
 export interface Customer {
     username: string; // This is the Firebase Auth UID
     email?: string;
@@ -83,6 +102,8 @@ export interface Customer {
     isDemoCustomer?: boolean;
     latitude?: number;
     longitude?: number;
+    savedAddresses?: SavedAddress[];
+    defaultAddressId?: string;
 }
 
 export interface VendorCategory {
