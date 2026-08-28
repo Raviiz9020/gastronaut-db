@@ -87,7 +87,11 @@ export const VendorProvider = ({ children }: { children: ReactNode }) => {
         const vendorRef = doc(db, "vendors", firebaseUser.uid);
         const docSnap = await getDoc(vendorRef);
         if (docSnap.exists()) {
-          const vendorData = { username: docSnap.id, ...docSnap.data() } as Vendor;
+          const docData = docSnap.data();
+          if (!docData.username) {
+            await setDoc(vendorRef, { username: firebaseUser.uid }, { merge: true });
+          }
+          const vendorData = { username: docSnap.id, ...docData } as Vendor;
           setCurrentVendor(vendorData);
         } else {
           // Firebase user exists but is not a vendor, so log them out of the vendor context
@@ -201,10 +205,15 @@ export const VendorProvider = ({ children }: { children: ReactNode }) => {
             // SCENARIO B: Existing vendor logging in.
             // Read data from Firestore as the source of truth. DO NOT write or "correct" the email here.
             vendorData = { username: uid, authUid: uid, ...docSnap.data() } as Vendor;
+            // Backfill username field if not present in the document
+            if (!docSnap.data().username) {
+                await setDoc(vendorRef, { username: uid }, { merge: true });
+            }
         } else {
             // SCENARIO A: This is a new vendor signing up with Google. Create their document.
             // THIS is the only time loginWithGoogle should write to the DB.
-            const newVendorData: Omit<Vendor, 'username'> = {
+            const newVendorData: Vendor = {
+                username: uid,
                 authUid: uid,
                 email: firebaseUser.email || '',
                 name: firebaseUser.displayName || `vendor-${uid.substring(0, 5)}`,
@@ -225,7 +234,7 @@ export const VendorProvider = ({ children }: { children: ReactNode }) => {
             };
             
             await setDoc(vendorRef, newVendorData);
-            vendorData = { username: uid, ...newVendorData };
+            vendorData = newVendorData;
             
             if (process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL) {
               sendNewVendorEmail({
@@ -285,7 +294,8 @@ export const VendorProvider = ({ children }: { children: ReactNode }) => {
 
         if (!docSnap.exists()) {
             // Create a minimal profile if it doesn't exist so they can onboard
-            const newDemoData: Omit<Vendor, 'username'> = {
+            const newDemoData: Vendor = {
+                username: firebaseUser.uid,
                 authUid: firebaseUser.uid,
                 email: firebaseUser.email || '',
                 name: 'Demo Vendor',
@@ -306,8 +316,11 @@ export const VendorProvider = ({ children }: { children: ReactNode }) => {
                 createdAt: new Date().toISOString(),
             };
             await setDoc(vendorRef, newDemoData);
-            vendorData = { username: firebaseUser.uid, ...newDemoData };
+            vendorData = newDemoData;
         } else {
+            if (!docSnap.data().username) {
+                await setDoc(vendorRef, { username: firebaseUser.uid }, { merge: true });
+            }
             vendorData = { username: firebaseUser.uid, ...docSnap.data() } as Vendor;
         }
 
@@ -398,7 +411,8 @@ export const VendorProvider = ({ children }: { children: ReactNode }) => {
         
         const slug = details?.shopName ? await generateUniqueSlug(details.shopName) : '';
 
-        const newVendorData: Omit<Vendor, 'username'> = {
+        const newVendorData: Vendor = {
+            username: firebaseUser.uid,
             authUid: firebaseUser.uid,
             password,
             name: details?.name || username,
@@ -421,7 +435,7 @@ export const VendorProvider = ({ children }: { children: ReactNode }) => {
             createdAt: details?.createdAt || new Date().toISOString(),
         };
 
-        const newVendor = { ...newVendorData, username: firebaseUser.uid };
+        const newVendor = newVendorData;
 
         await setDoc(doc(db, "vendors", firebaseUser.uid), newVendorData);
         fetchAllVendors(); // Re-fetch all vendors
@@ -457,7 +471,7 @@ export const VendorProvider = ({ children }: { children: ReactNode }) => {
 
     const vendorRef = doc(db, 'vendors', uid);
     
-    const payload: Record<string, any> = { ...details, updatedAt: new Date().toISOString() };
+    const payload: Record<string, any> = { username: uid, ...details, updatedAt: new Date().toISOString() };
 
     if (details.contact) {
         const formattedContact = formatPhoneNumber(details.contact);
