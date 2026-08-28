@@ -148,15 +148,22 @@ export default function AdminMenuPage() {
 
     const handleStockUpdate = () => {
         if (isMenuEditDisabled) return;
-        const newStock = Number(localStock);
-        if (isNaN(newStock) || newStock === item.stock) {
+        const trimmed = String(localStock).trim();
+        const newStock = trimmed === '' ? null : Number(trimmed);
+        if (newStock !== null && isNaN(newStock)) {
             setLocalStock(item.stock ?? '');
+            return;
+        }
+        if (newStock === (item.stock ?? null)) {
             return;
         }
 
         startUpdate(async () => {
-            await updateMenuItem({ ...item, stock: newStock });
-            toast({ title: "Stock updated!", description: `${item.name} now has ${newStock} items.` });
+            await updateMenuItem({ ...item, stock: newStock === null ? undefined : newStock });
+            toast({ 
+                title: "Stock updated!", 
+                description: newStock === null ? `${item.name} now has unlimited stock.` : `${item.name} now has ${newStock} items.` 
+            });
         });
     };
 

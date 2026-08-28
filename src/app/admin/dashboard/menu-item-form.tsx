@@ -56,13 +56,13 @@ const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   description: z.string().optional(),
   price: z.coerce.number().min(0, { message: 'Price must be 0 or greater.' }),
-  discountPrice: z.coerce.number().optional(),
+  discountPrice: z.preprocess((val) => (val === '' || val === null || val === undefined ? undefined : Number(val)), z.number().optional()),
   category: z.string().min(1, { message: 'Please select a category.' }),
   image: z.string().nullable(),
   imageDataUrl: z.string().optional(),
   blurDataUrl: z.string().optional(),
   aiHint: z.string().optional(),
-  stock: z.coerce.number().optional(),
+  stock: z.preprocess((val) => (val === '' || val === null || val === undefined ? undefined : Number(val)), z.number().optional()),
   customizations: z.array(z.object({
     id: z.string(),
     name: z.string().min(1, 'Group name is required'),
@@ -72,9 +72,9 @@ const formSchema = z.object({
       id: z.string(),
       name: z.string().min(1, 'Option name is required'),
       price: z.coerce.number().min(0),
-      originalPrice: z.coerce.number().optional(),
+      originalPrice: z.preprocess((val) => (val === '' || val === null || val === undefined ? undefined : Number(val)), z.number().optional()),
       isAvailable: z.boolean().default(true),
-      stock: z.coerce.number().optional()
+      stock: z.preprocess((val) => (val === '' || val === null || val === undefined ? undefined : Number(val)), z.number().optional())
     })).min(1, 'At least one option is required')
   })).optional()
 }).refine((data) => {
@@ -177,7 +177,7 @@ const CustomizationGroupFields = ({ control, index, removeGroup, isMandatory, is
                Options
                <HelpCircle className="h-3 w-3" />
             </Label>
-            <Button type="button" variant="outline" size="sm" onClick={() => append({ id: Math.random().toString(36).substr(2, 9), name: '', price: 0, originalPrice: undefined, isAvailable: true })} className="h-7 text-[10px] px-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => append({ id: Math.random().toString(36).substr(2, 9), name: '', price: 0, originalPrice: undefined, stock: undefined, isAvailable: true })} className="h-7 text-[10px] px-2">
               <Plus className="h-3 w-3 mr-1" /> Add Option
             </Button>
           </div>
@@ -247,29 +247,33 @@ const CustomizationGroupFields = ({ control, index, removeGroup, isMandatory, is
                       )}
                     />
                  </div>
-                 {isInventoryEnabled && (
-                   <div className="col-span-4 md:col-span-2">
-                      <FormField
-                        control={control}
-                        name={`customizations.${index}.options.${optIndex}.stock`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                {...field} 
-                                value={field.value ?? ''} 
-                                onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} 
-                                className="h-8 text-[11px] px-2 border-blue-200 bg-blue-50 focus-visible:bg-white transition-colors shadow-none text-blue-700 font-bold rounded-xl" 
-                                placeholder="Stock" 
-                              />
-                            </FormControl>
-                            <FormMessage className="text-[9px]" />
-                          </FormItem>
-                        )}
-                      />
-                   </div>
-                 )}
+                  {isInventoryEnabled && (
+                    <div className="col-span-4 md:col-span-2">
+                       <FormField
+                         control={control}
+                         name={`customizations.${index}.options.${optIndex}.stock`}
+                         render={({ field }) => (
+                           <FormItem>
+                             <FormControl>
+                               <Input 
+                                 type="number" 
+                                 step="1"
+                                 {...field}
+                                 value={field.value === undefined || field.value === null ? '' : field.value} 
+                                 onChange={e => {
+                                   const val = e.target.value;
+                                   field.onChange(val === '' ? null : Number(val));
+                                 }} 
+                                 className="h-8 text-[11px] px-2 border-blue-200 bg-blue-50 focus-visible:bg-white transition-colors shadow-none text-blue-700 font-bold rounded-xl" 
+                                 placeholder="Stock"
+                               />
+                             </FormControl>
+                             <FormMessage className="text-[9px]" />
+                           </FormItem>
+                         )}
+                       />
+                    </div>
+                  )}
                  <div className="col-span-12 md:col-span-2 flex items-center justify-end gap-1 px-1">
                     <FormField
                       control={control}
@@ -380,12 +384,13 @@ export default function MenuItemForm({ isOpen, onOpenChange, menuItem }: MenuIte
         const mappedCustomizations = menuItem.customizations?.map(group => ({
             ...group,
             options: group.options.map(opt => {
+                const stockVal = (opt.stock === null || opt.stock === undefined || isNaN(opt.stock as number)) ? undefined : opt.stock;
                 if (opt.originalPrice && opt.originalPrice > 0) {
                     // It was on sale: Original (100) -> Price box, Sale (80) -> Sale Price box
-                    return { ...opt, price: opt.originalPrice, originalPrice: opt.price };
+                    return { ...opt, price: opt.originalPrice, originalPrice: opt.price, stock: stockVal };
                 }
                 // No sale: Price (20) -> Price box, Sale Price box empty
-                return { ...opt, price: opt.price, originalPrice: undefined };
+                return { ...opt, price: opt.price, originalPrice: undefined, stock: stockVal };
             })
         })) || [];
 
@@ -501,7 +506,7 @@ export default function MenuItemForm({ isOpen, onOpenChange, menuItem }: MenuIte
                 }
 
                 // Final safety cleanup: Firestore doesn't like 'undefined'
-                if (cleanedOpt.stock === undefined) {
+                if (cleanedOpt.stock === undefined || cleanedOpt.stock === null || isNaN(cleanedOpt.stock)) {
                     delete cleanedOpt.stock;
                 }
 
@@ -650,13 +655,11 @@ export default function MenuItemForm({ isOpen, onOpenChange, menuItem }: MenuIte
                             <FormControl>
                             <Input 
                                 type="number" 
+                                step="1"
                                 placeholder="Leave empty for infinite stock" 
                                 {...field} 
                                 value={field.value ?? ''}
-                                onChange={e => {
-                                    const value = e.target.value;
-                                    field.onChange(value === '' ? undefined : parseInt(value, 10));
-                                }}
+                                onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
                                 className={cn(watchedCustomizations && watchedCustomizations.length > 0 && "bg-slate-50 text-slate-400")}
                                 disabled={watchedCustomizations && watchedCustomizations.length > 0}
                             />

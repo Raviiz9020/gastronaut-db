@@ -180,6 +180,10 @@ export const MenuProvider = ({ children }: { children: ReactNode }) => {
        delete dataToUpdate.discountPrice;
     }
 
+    if (dataToUpdate.stock === undefined) {
+       dataToUpdate.stock = null as any;
+    }
+
     const itemRef = doc(db, 'menuItems', updatedItem.id);
     await updateDoc(itemRef, dataToUpdate);
   };
