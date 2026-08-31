@@ -27,6 +27,7 @@ import { RiderManagementProvider } from '@/context/rider-management-context';
 import { Loader2 } from 'lucide-react';
 import type { Customer } from '@/types';
 import { LocationProvider } from '@/context/location-context';
+import MobileBottomNav from '@/components/mobile-bottom-nav';
 
 // Create a context for the dialog
 interface AppContextType {
@@ -58,11 +59,12 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
      <AppContext.Provider value={{ isOrderPlacedDialogOpen, showOrderPlacedDialog, closeOrderPlacedDialog }}>
         <OrderProvider setCurrentCustomer={setCurrentCustomer}>
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col pb-16 lg:pb-0">
                 <main className={cn("flex-1 flex flex-col")}>
                 {children}
                 </main>
             </div>
+            <MobileBottomNav />
             <OrderPlacedDialog isOpen={isOrderPlacedDialogOpen} onOpenChange={setIsOrderPlacedDialogOpen} />
         </OrderProvider>
     </AppContext.Provider>

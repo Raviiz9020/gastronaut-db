@@ -7,7 +7,7 @@ import { useVendor } from '@/context/vendor-context';
 import { useOffer } from '@/context/offer-context';
 import { useLocation } from '@/context/location-context';
 import { isVendorServiceable } from '@/lib/location-utils';
-import { Loader2, Store, MapPin } from 'lucide-react';
+import { Loader2, Store, MapPin, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -39,6 +39,15 @@ export default function VendorDetailsPage() {
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8 md:py-12">
+        <div className="mb-4">
+          <Link href="/" passHref>
+            <Button variant="outline" size="sm" className="rounded-full gap-2 border-primary/20 hover:bg-primary/10">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Home
+            </Button>
+          </Link>
+        </div>
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

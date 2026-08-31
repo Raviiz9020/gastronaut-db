@@ -4,6 +4,7 @@
 import { useState, useEffect, ReactNode } from 'react';
 import Header from '@/components/header';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { 
     Heart, 
     Users, 
@@ -12,15 +13,17 @@ import {
     Gift, 
     Star, 
     Package, 
-    Store,
-    LayoutDashboard,
-    Sparkles,
-    BarChart,
-    Users2
+    Store, 
+    LayoutDashboard, 
+    Sparkles, 
+    BarChart, 
+    Users2,
+    ArrowLeft
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import Link from 'next/link';
 
 const customerBenefits = [
   { icon: <ChefHat className="h-6 w-6 text-blue-400" />, title: "Discover Hidden Gems", description: "Explore unique dishes from talented home chefs and local shops you won't find anywhere else." },
@@ -117,14 +120,23 @@ export default function BenefitsPage() {
        <AnimatePresence>
         {selectedImage && <ZoomedImageOverlay selectedImage={selectedImage} onClose={() => setSelectedImage(null)} />}
       </AnimatePresence>
-      <main className="flex-1 container mx-auto px-4 py-12 flex items-center justify-center">
+      <main className="flex-1 container mx-auto px-4 py-8 md:py-12 flex flex-col items-center justify-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="w-full"
+          className="w-full max-w-5xl"
         >
-          <Card className="w-full max-w-5xl mx-auto bg-card/80 backdrop-blur-sm border-primary/20 box-glow-primary rounded-3xl">
+          <div className="mb-4">
+            <Link href="/" passHref>
+              <Button variant="outline" size="sm" className="rounded-full gap-2 border-primary/20 hover:bg-primary/10">
+                <ArrowLeft className="h-4 w-4" />
+                Back to Home
+              </Button>
+            </Link>
+          </div>
+
+          <Card className="w-full bg-card/80 backdrop-blur-sm border-primary/20 box-glow-primary rounded-3xl">
             <CardHeader className="text-center">
               <div className="flex items-center justify-center gap-3 mb-4">
                 <Heart className="h-8 w-8 text-primary animate-pulse" />

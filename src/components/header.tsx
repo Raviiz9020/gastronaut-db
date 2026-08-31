@@ -82,8 +82,6 @@ export default function Header({ pageVendor }: HeaderProps) {
     '/customer-details', 
     '/forgot-password', 
     '/reset-password', 
-    '/about', 
-    '/vendor-details',
   ];
 
   if (isAdminRoute || authRoutes.includes(pathname)) {
@@ -151,7 +149,7 @@ export default function Header({ pageVendor }: HeaderProps) {
         </div>
       )}
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 sm:gap-6">
             <Link href="/" className="flex items-center gap-2">
              <motion.div
               animate={{ rotateY: 360 }}
@@ -179,7 +177,7 @@ export default function Header({ pageVendor }: HeaderProps) {
             {!isAdminRoute && !pathname.startsWith('/rider') && (
                 <LocationPicker variant="full" className="flex max-w-[130px] sm:max-w-[150px] md:max-w-none" />
             )}
-            <nav className="hidden md:flex items-center gap-6 text-sm">
+            <nav className="hidden lg:flex items-center gap-6 text-sm">
                 {navLinks.map(link => (
                      <Link 
                         key={link.href} 

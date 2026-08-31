@@ -3,44 +3,58 @@
 
 import Header from '@/components/header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Star, Home, Building, ExternalLink } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Star, ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
 export default function AboutUsPage() {
-  const title = "About Us";
+  const words = ["About", "Us"];
 
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
-      <main className="flex-1 container mx-auto px-4 py-12 flex items-center justify-center">
+      <main className="flex-1 container mx-auto px-4 py-8 md:py-12 flex flex-col items-center justify-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="w-full"
+          className="w-full max-w-4xl"
         >
-          <Card className="w-full max-w-4xl mx-auto bg-card/80 backdrop-blur-sm border-primary/20 box-glow-primary rounded-3xl">
-            <CardHeader className="text-center">
-              <div className="flex items-center justify-center gap-3 mb-2">
-                <Star className="h-8 w-8 text-primary animate-pulse" />
-                <CardTitle className="font-headline text-5xl text-primary flex overflow-hidden">
-                  {title.split("").map((char, i) => (
-                    <motion.span
-                      key={`${char}-${i}`}
-                      initial={{ y: 0 }}
-                      animate={{ y: [0, -10, 0] }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        delay: i * 0.1,
-                        ease: 'easeInOut'
-                      }}
-                      style={{ whiteSpace: 'pre' }}
-                    >
-                      {char}
-                    </motion.span>
+          <div className="mb-4">
+            <Link href="/" passHref>
+              <Button variant="outline" size="sm" className="rounded-full gap-2 border-primary/20 hover:bg-primary/10">
+                <ArrowLeft className="h-4 w-4" />
+                Back to Home
+              </Button>
+            </Link>
+          </div>
+
+          <Card className="w-full bg-card/80 backdrop-blur-sm border-primary/20 box-glow-primary rounded-3xl">
+            <CardHeader className="text-center px-4 sm:px-6">
+              <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2">
+                <Star className="h-6 w-6 sm:h-8 sm:w-8 text-primary animate-pulse flex-shrink-0" />
+                <CardTitle className="font-headline text-2xl sm:text-4xl md:text-5xl text-primary flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+                  {words.map((word, wordIndex) => (
+                    <span key={wordIndex} className="inline-flex">
+                      {word.split("").map((char, charIndex) => (
+                        <motion.span
+                          key={`${char}-${charIndex}`}
+                          initial={{ y: 0 }}
+                          animate={{ y: [0, -6, 0] }}
+                          transition={{
+                            duration: 2,
+                            repeat: Infinity,
+                            delay: (wordIndex * 4 + charIndex) * 0.08,
+                            ease: 'easeInOut'
+                          }}
+                          style={{ whiteSpace: 'pre' }}
+                        >
+                          {char}
+                        </motion.span>
+                      ))}
+                    </span>
                   ))}
                 </CardTitle>
               </div>
