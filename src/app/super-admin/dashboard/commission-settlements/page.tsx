@@ -40,6 +40,8 @@ import { format } from 'date-fns';
 import ConfirmationDialog from '@/components/confirmation-dialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import { sendVendorSettlementEmail } from '@/ai/flows/send-vendor-settlement-email';
+import { sendRiderSettlementEmail } from '@/ai/flows/send-rider-settlement-email';
 
 interface VendorSettlementClaim {
   vendorUsername: string;
@@ -48,7 +50,9 @@ interface VendorSettlementClaim {
   vendorImage?: string;
   paymentMode: string;
   markedAt?: string;
+  totalSubtotal: number;
   totalCommissionAmount: number;
+  totalNetPayout: number;
   orders: Order[];
 }
 
@@ -57,7 +61,9 @@ interface VendorOwedBalance {
   vendorShopName: string;
   vendorContact?: string;
   vendorImage?: string;
-  totalOwedAmount: number;
+  totalSubtotal: number;
+  totalCommissionAmount: number;
+  totalNetPayout: number;
   orders: Order[];
 }
 
@@ -247,10 +253,10 @@ export default function CommissionSettlementsPage() {
       const paymentMode = orders[0]?.adminSettlementPaymentMode || 'UPI / Direct Transfer';
       const markedAt = orders[0]?.adminSettlementMarkedAt || orders[0]?.createdAt;
 
-      const totalCommissionAmount = orders.reduce(
-        (sum, ord) => sum + (ord.commissionAmount || 0) + (ord.platformFee || 0),
-        0
-      );
+      const totalSubtotal = Number(orders.reduce((sum, ord) => sum + (ord.subtotal || ord.totalPrice || 0), 0).toFixed(2));
+      const totalCommissionOnly = Number(orders.reduce((sum, ord) => sum + (ord.commissionAmount || 0), 0).toFixed(2));
+      const totalCommissionAmount = Number(orders.reduce((sum, ord) => sum + (ord.commissionAmount || 0) + (ord.platformFee || 0), 0).toFixed(2));
+      const totalNetPayout = Math.max(0, Number((totalSubtotal - totalCommissionOnly).toFixed(2)));
 
       return {
         vendorUsername,
@@ -259,7 +265,9 @@ export default function CommissionSettlementsPage() {
         vendorImage,
         paymentMode,
         markedAt,
-        totalCommissionAmount: Number(totalCommissionAmount.toFixed(2)),
+        totalSubtotal,
+        totalCommissionAmount,
+        totalNetPayout,
         orders,
       };
     });
@@ -284,20 +292,22 @@ export default function CommissionSettlementsPage() {
       const vendorContact = vendorObj?.contact || orders[0]?.vendorContact || '';
       const vendorImage = vendorObj?.shopImage || vendorObj?.imageUrl || '';
 
-      const totalOwedAmount = orders.reduce(
-        (sum, ord) => sum + (ord.commissionAmount || 0) + (ord.platformFee || 0),
-        0
-      );
+      const totalSubtotal = Number(orders.reduce((sum, ord) => sum + (ord.subtotal || ord.totalPrice || 0), 0).toFixed(2));
+      const totalCommissionOnly = Number(orders.reduce((sum, ord) => sum + (ord.commissionAmount || 0), 0).toFixed(2));
+      const totalCommissionAmount = Number(orders.reduce((sum, ord) => sum + (ord.commissionAmount || 0) + (ord.platformFee || 0), 0).toFixed(2));
+      const totalNetPayout = Math.max(0, Number((totalSubtotal - totalCommissionOnly).toFixed(2)));
 
       return {
         vendorUsername,
         vendorShopName,
         vendorContact,
         vendorImage,
-        totalOwedAmount: Number(totalOwedAmount.toFixed(2)),
+        totalSubtotal,
+        totalCommissionAmount,
+        totalNetPayout,
         orders,
       };
-    }).sort((a, b) => b.totalOwedAmount - a.totalOwedAmount);
+    }).sort((a, b) => b.totalNetPayout - a.totalNetPayout);
   }, [unclaimedOrders, allVendors]);
 
   // Group Rider Claimed Payouts
@@ -378,12 +388,16 @@ export default function CommissionSettlementsPage() {
   }, [riderUnsettledOrders, riders]);
 
   // Top Stat Totals
-  const totalVendorClaimedSum = useMemo(() => {
-    return Number(settlementClaims.reduce((sum, c) => sum + c.totalCommissionAmount, 0).toFixed(2));
+  const totalVendorClaimedNetPayoutSum = useMemo(() => {
+    return Number(settlementClaims.reduce((sum, c) => sum + c.totalNetPayout, 0).toFixed(2));
   }, [settlementClaims]);
 
-  const totalVendorOwedSum = useMemo(() => {
-    return Number(owedBalances.reduce((sum, b) => sum + b.totalOwedAmount, 0).toFixed(2));
+  const totalVendorOwedNetPayoutSum = useMemo(() => {
+    return Number(owedBalances.reduce((sum, b) => sum + b.totalNetPayout, 0).toFixed(2));
+  }, [owedBalances]);
+
+  const totalVendorCommissionSum = useMemo(() => {
+    return Number(owedBalances.reduce((sum, b) => sum + b.totalCommissionAmount, 0).toFixed(2));
   }, [owedBalances]);
 
   const totalRiderClaimedSum = useMemo(() => {
@@ -412,11 +426,73 @@ export default function CommissionSettlementsPage() {
 
       await batch.commit();
 
-      const amount = 'totalCommissionAmount' in settlingVendor ? settlingVendor.totalCommissionAmount : settlingVendor.totalOwedAmount;
-      toast({
-        title: 'Settlement Confirmed!',
-        description: `Successfully settled ₹${amount} payout for ${settlingVendor.vendorShopName}.`,
-      });
+      const amount = settlingVendor.totalNetPayout;
+      
+      // Look up vendor details for email dispatch
+      const vendorObj = allVendors.find(v => v.username === settlingVendor.vendorUsername);
+      const vendorEmail = vendorObj?.email;
+
+      if (vendorEmail) {
+        const totalSubtotal = Number(settlingVendor.orders.reduce((sum, ord) => sum + (ord.subtotal || 0), 0).toFixed(2));
+        const totalCommission = Number(settlingVendor.orders.reduce((sum, ord) => sum + (ord.commissionAmount || 0), 0).toFixed(2));
+        const netPayout = Math.max(0, Number((totalSubtotal - totalCommission).toFixed(2)));
+
+        const settlementId = `SETTLE-${format(new Date(), 'yyyyMMdd')}-${settlingVendor.vendorUsername.slice(0, 6).toUpperCase()}`;
+
+        const sortedVendorOrders = [...settlingVendor.orders].sort((a, b) => {
+          const idA = a.displayId || a.orderId || '';
+          const idB = b.displayId || b.orderId || '';
+          const numA = parseInt(idA.replace(/\D/g, ''), 10) || 0;
+          const numB = parseInt(idB.replace(/\D/g, ''), 10) || 0;
+          if (numA !== numB) return numA - numB;
+          return idA.localeCompare(idB, undefined, { numeric: true, sensitivity: 'base' });
+        });
+
+        const orderSummaries = sortedVendorOrders.map(ord => ({
+          displayId: ord.displayId || ord.orderId || 'HYPER',
+          createdAt: ord.createdAt || nowIso,
+          deliveryOption: ord.deliveryOption || 'Home Delivery',
+          subtotal: ord.subtotal || 0,
+          commissionPercentage: ord.commissionPercentage || 0,
+          commissionAmount: ord.commissionAmount || 0,
+          netAmount: Math.max(0, Number(((ord.subtotal || 0) - (ord.commissionAmount || 0)).toFixed(2)))
+        }));
+
+        sendVendorSettlementEmail({
+          vendor: {
+            username: settlingVendor.vendorUsername,
+            shopName: settlingVendor.vendorShopName,
+            email: vendorEmail,
+            contact: vendorObj?.contact || settlingVendor.vendorContact,
+            upiId: vendorObj?.upiId
+          },
+          settlementDetails: {
+            settlementId,
+            settledAt: nowIso,
+            paymentMode: 'paymentMode' in settlingVendor ? settlingVendor.paymentMode : 'Direct Payout',
+            totalSubtotal,
+            totalCommission,
+            netPayout,
+            orders: orderSummaries
+          }
+        }).then((res) => {
+          if (res.success) {
+            console.log(`Settlement statement email sent to ${vendorEmail}`);
+          }
+        }).catch(err => {
+          console.error('Error sending settlement email:', err);
+        });
+
+        toast({
+          title: 'Settlement Confirmed!',
+          description: `Settled ₹${amount} for ${settlingVendor.vendorShopName} & statement emailed to ${vendorEmail}.`,
+        });
+      } else {
+        toast({
+          title: 'Settlement Confirmed!',
+          description: `Successfully settled ₹${amount} payout for ${settlingVendor.vendorShopName}.`,
+        });
+      }
 
       setSettlingVendor(null);
     } catch (e: any) {
@@ -450,10 +526,67 @@ export default function CommissionSettlementsPage() {
       await batch.commit();
 
       const amount = 'totalPayoutAmount' in settlingRider ? settlingRider.totalPayoutAmount : settlingRider.totalOwedAmount;
-      toast({
-        title: 'Rider Settlement Confirmed!',
-        description: `Successfully settled ₹${amount} delivery payout for ${settlingRider.riderName}.`,
-      });
+      
+      // Look up rider details for email dispatch
+      const riderObj = riders.find(r => r.id === settlingRider.riderId);
+      const riderEmail = riderObj?.email;
+
+      if (riderEmail) {
+        const sortedRiderOrders = [...settlingRider.orders].sort((a, b) => {
+          const idA = a.displayId || a.orderId || '';
+          const idB = b.displayId || b.orderId || '';
+          const numA = parseInt(idA.replace(/\D/g, ''), 10) || 0;
+          const numB = parseInt(idB.replace(/\D/g, ''), 10) || 0;
+          if (numA !== numB) return numA - numB;
+          return idA.localeCompare(idB, undefined, { numeric: true, sensitivity: 'base' });
+        });
+
+        const totalPayout = Number(settlingRider.orders.reduce((sum, ord) => sum + (ord.riderPayout || 0), 0).toFixed(2));
+        const settlementId = `RIDER-SETTLE-${format(new Date(), 'yyyyMMdd')}-${settlingRider.riderId.slice(0, 6).toUpperCase()}`;
+
+        const orderSummaries = sortedRiderOrders.map(ord => ({
+          displayId: ord.displayId || ord.orderId || 'HYPER',
+          createdAt: ord.createdAt || nowIso,
+          vendorShopName: ord.vendorShopName || 'Local Shop',
+          deliveryDistanceKm: ord.deliveryDistanceKm || 0,
+          riderPayout: Number((ord.riderPayout || 0).toFixed(2))
+        }));
+
+        sendRiderSettlementEmail({
+          rider: {
+            id: settlingRider.riderId,
+            name: settlingRider.riderName,
+            email: riderEmail,
+            contact: riderObj?.contact || settlingRider.riderContact,
+            upiId: riderObj?.upiId || settlingRider.riderUpiId,
+            vehicleNumber: riderObj?.vehicleNumber || settlingRider.riderVehicleNumber
+          },
+          settlementDetails: {
+            settlementId,
+            settledAt: nowIso,
+            paymentMode: 'paymentMode' in settlingRider ? settlingRider.paymentMode : 'Direct Payout',
+            totalDeliveries: orderSummaries.length,
+            totalPayout,
+            orders: orderSummaries
+          }
+        }).then((res) => {
+          if (res.success) {
+            console.log(`Rider settlement statement email sent to ${riderEmail}`);
+          }
+        }).catch(err => {
+          console.error('Error sending rider settlement email:', err);
+        });
+
+        toast({
+          title: 'Rider Settlement Confirmed!',
+          description: `Settled ₹${amount} for ${settlingRider.riderName} & statement emailed to ${riderEmail}.`,
+        });
+      } else {
+        toast({
+          title: 'Rider Settlement Confirmed!',
+          description: `Successfully settled ₹${amount} delivery payout for ${settlingRider.riderName}.`,
+        });
+      }
 
       setSettlingRider(null);
     } catch (e: any) {
@@ -524,36 +657,36 @@ export default function CommissionSettlementsPage() {
       {/* Dynamic Top Stat Cards based on selected main tab */}
       {mainTab === 'vendor' ? (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/5 border-green-500/20 rounded-3xl p-6 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                Pending Net Payouts to Vendors
+              </span>
+              <div className="p-2 rounded-xl bg-green-500/20 text-green-600">
+                <Receipt className="h-5 w-5" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <span className="text-3xl font-black text-green-600 dark:text-green-400">₹{totalVendorOwedNetPayoutSum}</span>
+              <p className="text-xs text-muted-foreground mt-1 font-medium">
+                Net payout to pay across {owedBalances.length} active vendor{owedBalances.length === 1 ? '' : 's'}
+              </p>
+            </div>
+          </Card>
+
           <Card className="bg-gradient-to-br from-amber-500/10 to-orange-500/5 border-amber-500/20 rounded-3xl p-6 shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Pending / Unclaimed Balances
+                Admin Commission & Platform Fees
               </span>
               <div className="p-2 rounded-xl bg-amber-500/20 text-amber-600">
                 <TrendingUp className="h-5 w-5" />
               </div>
             </div>
             <div className="mt-3">
-              <span className="text-3xl font-black text-amber-600 dark:text-amber-400">₹{totalVendorOwedSum}</span>
+              <span className="text-3xl font-black text-amber-600 dark:text-amber-400">₹{totalVendorCommissionSum}</span>
               <p className="text-xs text-muted-foreground mt-1 font-medium">
-                Owed by {owedBalances.length} active vendor{owedBalances.length === 1 ? '' : 's'}
-              </p>
-            </div>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/5 border-green-500/20 rounded-3xl p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Claimed (Awaiting Verification)
-              </span>
-              <div className="p-2 rounded-xl bg-green-500/20 text-green-600">
-                <Clock className="h-5 w-5" />
-              </div>
-            </div>
-            <div className="mt-3">
-              <span className="text-3xl font-black text-foreground">₹{totalVendorClaimedSum}</span>
-              <p className="text-xs text-muted-foreground mt-1 font-medium">
-                Across {settlementClaims.length} vendor claim{settlementClaims.length === 1 ? '' : 's'}
+                Platform revenue retained across {unclaimedOrders.length} order{unclaimedOrders.length === 1 ? '' : 's'}
               </p>
             </div>
           </Card>
@@ -687,20 +820,23 @@ export default function CommissionSettlementsPage() {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-4">
                             <div className="text-right">
                               <span className="text-xs text-muted-foreground block font-semibold">
-                                Unclaimed Balance Owed
+                                Net Payout to Pay Vendor
                               </span>
-                              <span className="text-2xl font-black text-amber-600 dark:text-amber-400">
-                                ₹{owed.totalOwedAmount}
+                              <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                                ₹{owed.totalNetPayout.toFixed(2)}
                               </span>
+                              <div className="text-[11px] text-muted-foreground font-medium mt-0.5">
+                                Sales: ₹{owed.totalSubtotal.toFixed(2)} · Comm: -₹{owed.totalCommissionAmount.toFixed(2)}
+                              </div>
                             </div>
 
                             <Button
                               onClick={() => setSettlingVendor(owed)}
                               disabled={isProcessing}
-                              className="rounded-xl text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-md font-bold px-5 h-10"
+                              className="rounded-xl text-white bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 shadow-md font-bold px-5 h-10"
                             >
                               <CheckCheck className="h-4 w-4 mr-2" />
                               Settle Payout
@@ -711,7 +847,7 @@ export default function CommissionSettlementsPage() {
                                 <Button
                                   variant="outline"
                                   size="icon"
-                                  className="rounded-xl h-10 w-10 border-amber-500/30 text-amber-600 hover:bg-amber-500/10 shrink-0"
+                                  className="rounded-xl h-10 w-10 border-primary/20 text-primary hover:bg-primary/10 shrink-0"
                                 >
                                   <Phone className="h-4 w-4" />
                                 </Button>
@@ -722,16 +858,24 @@ export default function CommissionSettlementsPage() {
                       </CardHeader>
 
                       <CardContent className="pt-4 space-y-4">
-                        <div className="flex items-center justify-between text-xs bg-amber-500/10 p-3 rounded-2xl border border-amber-500/20">
-                          <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
-                            <Package className="h-4 w-4" />
-                            <span className="font-semibold">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs bg-muted/40 p-3 rounded-2xl border">
+                          <div className="flex items-center gap-2 font-semibold text-foreground">
+                            <Package className="h-4 w-4 text-primary" />
+                            <span>
                               {owed.orders.length} Unsettled Home Delivery Order{owed.orders.length === 1 ? '' : 's'}
                             </span>
                           </div>
-                          <span className="text-muted-foreground text-[11px]">
-                            Vendor has not submitted payout claim for these orders yet
-                          </span>
+                          <div className="flex items-center gap-3 text-[11px]">
+                            <span className="text-muted-foreground">
+                              Gross Sales: <strong className="text-foreground">₹{owed.totalSubtotal.toFixed(2)}</strong>
+                            </span>
+                            <span className="text-muted-foreground">
+                              Commission: <strong className="text-destructive">-₹{owed.totalCommissionAmount.toFixed(2)}</strong>
+                            </span>
+                            <span className="text-muted-foreground">
+                              Net Payout: <strong className="text-emerald-600 dark:text-emerald-400 font-bold">₹{owed.totalNetPayout.toFixed(2)}</strong>
+                            </span>
+                          </div>
                         </div>
 
                         <div>
@@ -767,39 +911,55 @@ export default function CommissionSettlementsPage() {
                                         <tr>
                                           <th className="p-3 pl-4">Order ID</th>
                                           <th className="p-3">Date</th>
-                                          <th className="p-3">Subtotal</th>
+                                          <th className="p-3">Item Subtotal</th>
                                           <th className="p-3">Commission</th>
                                           <th className="p-3">Platform Fee</th>
-                                          <th className="p-3 text-right pr-4">Admin Owed</th>
+                                          <th className="p-3 text-right pr-4">Net Payout (To Pay)</th>
                                         </tr>
                                       </thead>
                                       <tbody className="divide-y divide-border/40">
-                                        {owed.orders.map((ord) => (
-                                          <tr key={ord.orderId} className="hover:bg-muted/20 transition-colors">
-                                            <td className="p-3 pl-4 font-mono font-bold text-primary">
-                                              {ord.displayId || ord.orderId}
-                                            </td>
-                                            <td className="p-3 text-muted-foreground">
-                                              {ord.createdAt ? format(new Date(ord.createdAt), 'MMM dd, yyyy HH:mm') : '-'}
-                                            </td>
-                                            <td className="p-3 font-semibold">₹{(ord.subtotal || ord.totalPrice).toFixed(2)}</td>
-                                            <td className="p-3 font-mono">
-                                              <div className="flex items-center gap-1.5">
-                                                <span>₹{(ord.commissionAmount ?? 0).toFixed(2)}</span>
-                                                <Badge variant="outline" className="text-[9px] px-1 py-0">
-                                                  {ord.commissionPercentage ?? 0}%
-                                                </Badge>
-                                              </div>
-                                            </td>
-                                            <td className="p-3 text-muted-foreground">
-                                              ₹{(ord.platformFee ?? 0).toFixed(2)}
-                                            </td>
-                                            <td className="p-3 text-right pr-4 font-extrabold text-amber-600 dark:text-amber-400">
-                                              ₹{((ord.commissionAmount ?? 0) + (ord.platformFee ?? 0)).toFixed(2)}
-                                            </td>
-                                          </tr>
-                                        ))}
+                                        {owed.orders.map((ord) => {
+                                          const subtotal = ord.subtotal || ord.totalPrice || 0;
+                                          const comm = ord.commissionAmount ?? 0;
+                                          const net = Math.max(0, Number((subtotal - comm).toFixed(2)));
+                                          return (
+                                            <tr key={ord.orderId} className="hover:bg-muted/20 transition-colors">
+                                              <td className="p-3 pl-4 font-mono font-bold text-primary">
+                                                {ord.displayId || ord.orderId}
+                                              </td>
+                                              <td className="p-3 text-muted-foreground">
+                                                {ord.createdAt ? format(new Date(ord.createdAt), 'MMM dd, yyyy HH:mm') : '-'}
+                                              </td>
+                                              <td className="p-3 font-semibold">₹{subtotal.toFixed(2)}</td>
+                                              <td className="p-3 font-mono text-destructive">
+                                                <div className="flex items-center gap-1.5">
+                                                  <span>-₹{comm.toFixed(2)}</span>
+                                                  <Badge variant="outline" className="text-[9px] px-1 py-0">
+                                                    {ord.commissionPercentage ?? 0}%
+                                                  </Badge>
+                                                </div>
+                                              </td>
+                                              <td className="p-3 text-muted-foreground">
+                                                ₹{(ord.platformFee ?? 0).toFixed(2)}
+                                              </td>
+                                              <td className="p-3 text-right pr-4 font-extrabold text-emerald-600 dark:text-emerald-400">
+                                                ₹{net.toFixed(2)}
+                                              </td>
+                                            </tr>
+                                          );
+                                        })}
                                       </tbody>
+                                      <tfoot className="bg-muted/30 font-bold border-t">
+                                        <tr>
+                                          <td colSpan={2} className="p-3 pl-4">Total ({owed.orders.length} Orders)</td>
+                                          <td className="p-3 font-semibold">₹{owed.totalSubtotal.toFixed(2)}</td>
+                                          <td className="p-3 text-destructive">-₹{owed.totalCommissionAmount.toFixed(2)}</td>
+                                          <td className="p-3 text-muted-foreground">-</td>
+                                          <td className="p-3 text-right pr-4 text-emerald-600 dark:text-emerald-400 text-sm font-black">
+                                            ₹{owed.totalNetPayout.toFixed(2)}
+                                          </td>
+                                        </tr>
+                                      </tfoot>
                                     </table>
                                   </div>
                                 </div>
@@ -880,10 +1040,13 @@ export default function CommissionSettlementsPage() {
 
                           <div className="flex items-center gap-6">
                             <div className="text-right">
-                              <span className="text-xs text-muted-foreground block font-semibold">Total Claimed</span>
+                              <span className="text-xs text-muted-foreground block font-semibold">Net Payout to Pay</span>
                               <span className="text-2xl font-black text-green-600 dark:text-green-400">
-                                ₹{claim.totalCommissionAmount}
+                                ₹{claim.totalNetPayout.toFixed(2)}
                               </span>
+                              <div className="text-[11px] text-muted-foreground font-medium mt-0.5">
+                                Sales: ₹{claim.totalSubtotal.toFixed(2)} · Comm: -₹{claim.totalCommissionAmount.toFixed(2)}
+                              </div>
                             </div>
 
                             <Button
@@ -960,39 +1123,55 @@ export default function CommissionSettlementsPage() {
                                         <tr>
                                           <th className="p-3 pl-4">Order ID</th>
                                           <th className="p-3">Date</th>
-                                          <th className="p-3">Subtotal</th>
+                                          <th className="p-3">Item Subtotal</th>
                                           <th className="p-3">Commission</th>
                                           <th className="p-3">Platform Fee</th>
-                                          <th className="p-3 text-right pr-4">Admin Total</th>
+                                          <th className="p-3 text-right pr-4">Net Payout (To Pay)</th>
                                         </tr>
                                       </thead>
                                       <tbody className="divide-y divide-border/40">
-                                        {claim.orders.map((ord) => (
-                                          <tr key={ord.orderId} className="hover:bg-muted/20 transition-colors">
-                                            <td className="p-3 pl-4 font-mono font-bold text-primary">
-                                              {ord.displayId || ord.orderId}
-                                            </td>
-                                            <td className="p-3 text-muted-foreground">
-                                              {ord.createdAt ? format(new Date(ord.createdAt), 'MMM dd, yyyy HH:mm') : '-'}
-                                            </td>
-                                            <td className="p-3 font-semibold">₹{(ord.subtotal || ord.totalPrice).toFixed(2)}</td>
-                                            <td className="p-3 font-mono">
-                                              <div className="flex items-center gap-1.5">
-                                                <span>₹{(ord.commissionAmount ?? 0).toFixed(2)}</span>
-                                                <Badge variant="outline" className="text-[9px] px-1 py-0">
-                                                  {ord.commissionPercentage ?? 0}%
-                                                </Badge>
-                                              </div>
-                                            </td>
-                                            <td className="p-3 text-muted-foreground">
-                                              ₹{(ord.platformFee ?? 0).toFixed(2)}
-                                            </td>
-                                            <td className="p-3 text-right pr-4 font-extrabold text-green-600 dark:text-green-400">
-                                              ₹{((ord.commissionAmount ?? 0) + (ord.platformFee ?? 0)).toFixed(2)}
-                                            </td>
-                                          </tr>
-                                        ))}
+                                        {claim.orders.map((ord) => {
+                                          const subtotal = ord.subtotal || ord.totalPrice || 0;
+                                          const comm = ord.commissionAmount ?? 0;
+                                          const net = Math.max(0, Number((subtotal - comm).toFixed(2)));
+                                          return (
+                                            <tr key={ord.orderId} className="hover:bg-muted/20 transition-colors">
+                                              <td className="p-3 pl-4 font-mono font-bold text-primary">
+                                                {ord.displayId || ord.orderId}
+                                              </td>
+                                              <td className="p-3 text-muted-foreground">
+                                                {ord.createdAt ? format(new Date(ord.createdAt), 'MMM dd, yyyy HH:mm') : '-'}
+                                              </td>
+                                              <td className="p-3 font-semibold">₹{subtotal.toFixed(2)}</td>
+                                              <td className="p-3 font-mono text-destructive">
+                                                <div className="flex items-center gap-1.5">
+                                                  <span>-₹{comm.toFixed(2)}</span>
+                                                  <Badge variant="outline" className="text-[9px] px-1 py-0">
+                                                    {ord.commissionPercentage ?? 0}%
+                                                  </Badge>
+                                                </div>
+                                              </td>
+                                              <td className="p-3 text-muted-foreground">
+                                                ₹{(ord.platformFee ?? 0).toFixed(2)}
+                                              </td>
+                                              <td className="p-3 text-right pr-4 font-extrabold text-green-600 dark:text-green-400">
+                                                ₹{net.toFixed(2)}
+                                              </td>
+                                            </tr>
+                                          );
+                                        })}
                                       </tbody>
+                                      <tfoot className="bg-muted/30 font-bold border-t">
+                                        <tr>
+                                          <td colSpan={2} className="p-3 pl-4">Total ({claim.orders.length} Orders)</td>
+                                          <td className="p-3 font-semibold">₹{claim.totalSubtotal.toFixed(2)}</td>
+                                          <td className="p-3 text-destructive">-₹{claim.totalCommissionAmount.toFixed(2)}</td>
+                                          <td className="p-3 text-muted-foreground">-</td>
+                                          <td className="p-3 text-right pr-4 text-green-600 dark:text-green-400 text-sm font-black">
+                                            ₹{claim.totalNetPayout.toFixed(2)}
+                                          </td>
+                                        </tr>
+                                      </tfoot>
                                     </table>
                                   </div>
                                 </div>
@@ -1402,7 +1581,7 @@ export default function CommissionSettlementsPage() {
         onOpenChange={(open) => !open && setSettlingVendor(null)}
         onConfirm={handleConfirmVendorSettlement}
         title="Confirm Vendor Payout Settlement?"
-        description={`Are you sure you want to confirm settlement for ${settlingVendor?.vendorShopName}? This will mark ₹${settlingVendor && ('totalCommissionAmount' in settlingVendor ? settlingVendor.totalCommissionAmount : settlingVendor.totalOwedAmount)} across ${settlingVendor?.orders.length} order(s) as settled.`}
+        description={`Are you sure you want to confirm settlement for ${settlingVendor?.vendorShopName}? This will settle a Net Payout of ₹${settlingVendor?.totalNetPayout.toFixed(2)} (Gross Sales: ₹${settlingVendor?.totalSubtotal.toFixed(2)} minus Commission: ₹${settlingVendor?.totalCommissionAmount.toFixed(2)}) across ${settlingVendor?.orders.length} order(s) and email the official settlement statement.`}
       />
 
       {/* Rider Settlement Confirmation Dialog */}

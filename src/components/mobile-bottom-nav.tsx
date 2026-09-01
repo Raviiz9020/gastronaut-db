@@ -197,6 +197,22 @@ export default function MobileBottomNav() {
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </button>
+
+              <button
+                onClick={() => handleNavigate('/partner')}
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-muted/60 text-left transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
+                    <Store className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Partner with Us</p>
+                    <p className="text-xs text-muted-foreground">List your restaurant, kitchen or shop</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </button>
             </div>
 
             <Separator className="my-3" />

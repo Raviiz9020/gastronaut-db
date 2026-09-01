@@ -267,7 +267,11 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
 
         const preparedOrders: { ref: any, data: Omit<Order, 'orderId'> }[] = [];
 
-        for (const vendorUsername of Object.keys(ordersByVendor)) {
+        const vendorUsernames = Object.keys(ordersByVendor);
+        const totalVendorCount = vendorUsernames.length;
+
+        for (let vendorIdx = 0; vendorIdx < totalVendorCount; vendorIdx++) {
+          const vendorUsername = vendorUsernames[vendorIdx];
           const vendorItems = ordersByVendor[vendorUsername];
           const originalSubtotal = vendorItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
           const v = allVendors.find((vv) => vv.username === vendorUsername);
@@ -339,7 +343,19 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
           const isCounterWalkIn = isDineInFlow || Boolean(tableId) || vendorDeliveryOption === 'Dine-In' || String(customerForOrder.name).startsWith('Take Away');
 
           const isOnlinePayment = paymentMethod === 'Pay Now' || paymentMethod === 'UPI' || (paymentMethod as any) === 'PAY_NOW';
-          const orderPlatformFee = (!isDineInFlow && !tableId) ? 5.0 : 0.0;
+
+          // Split flat ₹5.0 platform fee equally across all vendors in this multi-vendor order batch
+          let orderPlatformFee = 0.0;
+          if (isOnlineAppOrder) {
+            const baseSplit = Number((5.0 / totalVendorCount).toFixed(2));
+            if (vendorIdx === totalVendorCount - 1) {
+              const priorTotal = Number((baseSplit * (totalVendorCount - 1)).toFixed(2));
+              orderPlatformFee = Number((5.0 - priorTotal).toFixed(2));
+            } else {
+              orderPlatformFee = baseSplit;
+            }
+          }
+
           const orderTotalPrice = Number((finalPrice + orderPlatformFee).toFixed(2));
           const orderGatewayFee = isOnlinePayment && orderTotalPrice > 0 ? Number((orderTotalPrice * 0.0236).toFixed(2)) : 0;
 
@@ -398,7 +414,7 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
               razorpayOrderId: paymentDetails.razorpay_order_id,
               razorpayPaymentId: paymentDetails.razorpay_payment_id,
               paymentGateway: 'Razorpay',
-              paymentGatewayFee: paymentDetails.gatewayFee,
+              paymentGatewayFee: orderGatewayFee,
             } : {}),
             ...(isHomeDelivery ? {
               riderPayout: deliveryCharge,

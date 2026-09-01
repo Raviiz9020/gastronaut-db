@@ -18,4 +18,6 @@ import '@/ai/flows/send-new-vendor-email.ts';
 import '@/ai/flows/send-new-customer-email.ts';
 import '@/ai/flows/handle-unsubscribe.ts';
 import '@/ai/flows/send-telegram-notification.ts';
+import '@/ai/flows/send-vendor-settlement-email.ts';
+import '@/ai/flows/send-rider-settlement-email.ts';
 

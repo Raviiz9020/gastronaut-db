@@ -975,6 +975,7 @@ export default function LandingPage() {
             <div className="flex flex-col md:flex-row justify-between items-center gap-3">
               <div className="flex flex-wrap justify-center md:justify-start gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 <Link href="/about" className="hover:text-primary">About</Link>
+                <Link href="/partner" className="hover:text-primary font-semibold text-primary">Partner with Us</Link>
                 <Link href="/contact" className="hover:text-primary">Contact</Link>
                 <Link href="/privacy-policy" className="hover:text-primary">Privacy Policy</Link>
                 <Link href="/terms-of-service" className="hover:text-primary">Terms of Service</Link>
