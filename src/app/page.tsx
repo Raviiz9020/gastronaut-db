@@ -43,6 +43,7 @@ import OrderAgainShelf from '@/components/order-again-shelf';
 import FloatingCartBar from '@/components/floating-cart-bar';
 import TrendingDishesGrid from '@/components/trending-dishes-grid';
 import TrustBadgesBar from '@/components/trust-badges-bar';
+import { useCart } from '@/context/cart-context';
 
 
 
@@ -243,6 +244,7 @@ export default function LandingPage() {
   const currentHeroDish = heroDishes[activeHeroDishIndex] || heroDishes[0];
   const [isOfferDialogOpen, setIsOfferDialogOpen] = useState(false);
   const [selectedOffers, setSelectedOffers] = useState<Offer[]>([]);
+  const { totalItems } = useCart();
 
   useEffect(() => {
     fetchAllVendors();
@@ -368,7 +370,10 @@ export default function LandingPage() {
 
   return (
     <>
-      <div className="flex flex-col min-h-screen bg-background text-foreground">
+      <div className={cn(
+        "flex flex-col min-h-screen bg-background text-foreground transition-[padding] duration-300",
+        totalItems > 0 ? "pb-28 lg:pb-0" : ""
+      )}>
         <Header />
         <AnimatePresence>
           {zoomedItem && (
