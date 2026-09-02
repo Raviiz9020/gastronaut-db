@@ -15,9 +15,8 @@ import { useMenu } from '@/context/menu-context';
 import { useSpecialMenu } from '@/context/special-menu-context';
 import { useOrder } from '@/context/order-context';
 import { useCart } from '@/context/cart-context';
-import { Star, Building, ShoppingCart, Loader2, Minus, Plus, Utensils, X, Sparkles, Gift, Search, Hand, Tag, ArrowLeft, Fingerprint, Leaf, Bike, Beef, ChevronDown } from 'lucide-react';
+import { Star, Building, ShoppingCart, Loader2, Minus, Plus, Utensils, X, Sparkles, Gift, Search, Hand, Tag, ArrowLeft, Fingerprint, Leaf, Bike, Beef, ChevronDown, Flame, Percent, UtensilsCrossed } from 'lucide-react';
 import { useVendor } from '@/context/vendor-context';
-import { Combobox } from '@/components/ui/combobox';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useOffer } from '@/context/offer-context';
@@ -542,17 +541,10 @@ const MenuItemCard = ({
     >
       <Card className={cn(
         "w-full h-full flex flex-col overflow-hidden border-border/60 hover:border-primary/40 shadow-sm hover:shadow-md transition-all duration-300 rounded-3xl bg-card relative group",
-        !isItemEffectivelyAvailable && "bg-muted/40 border-muted-foreground/10 hover:border-muted-foreground/10 shadow-none"
+        !isItemEffectivelyAvailable && "border-border/40 bg-card/60 shadow-none hover:border-border/40"
       )}>
         <CardContent className="p-4 sm:p-5 relative flex-1 flex flex-col">
-          {!isItemEffectivelyAvailable && (
-            <div className="absolute inset-0 bg-background/85 backdrop-blur-[2px] flex items-center justify-center z-20 rounded-3xl">
-              <span className="text-foreground font-bold text-sm text-center px-4 py-1.5 rounded-full bg-muted border border-border shadow-sm">
-                {!isShopOpen ? (shopStatus?.msg || 'Closed') : (!isEffectivelyInStock ? 'Out of Stock' : 'Not available')}
-              </span>
-            </div>
-          )}
-          <div className={cn("flex flex-row items-stretch justify-between gap-4 flex-1", !isItemEffectivelyAvailable && "filter grayscale opacity-50")}>
+          <div className="flex flex-row items-stretch justify-between gap-4 flex-1">
             {/* Left side: Info */}
             <div className="flex-1 flex flex-col justify-between">
               <div>
@@ -566,20 +558,30 @@ const MenuItemCard = ({
                       item.isVeg ? "bg-green-600" : "bg-red-600"
                     )} />
                   </span>
-                  {discountPercentage > 0 && (
+                  {discountPercentage > 0 && isItemEffectivelyAvailable && (
                     <span className="bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-full px-2 py-0.5 text-[9px] font-extrabold shadow-sm flex items-center gap-0.5">
                       <Tag className="h-2.5 w-2.5 fill-current" />
                       {discountPercentage}% OFF
                     </span>
                   )}
-                  {item.isPopular && (
+                  {item.isPopular && isItemEffectivelyAvailable && (
                     <span className="text-[10px] font-extrabold text-amber-600 bg-amber-500/15 px-2 py-0.5 rounded-full flex items-center gap-0.5">
                       <Sparkles className="h-2.5 w-2.5 fill-amber-500" /> Bestseller
                     </span>
                   )}
+                  {!isItemEffectivelyAvailable && (
+                    <span className="text-[10px] font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">
+                      {!isShopOpen ? (shopStatus?.msg || 'Shop Closed') : 'Out of Stock'}
+                    </span>
+                  )}
                 </div>
 
-                <h3 className="font-headline text-base sm:text-lg font-bold leading-snug text-foreground group-hover:text-primary transition-colors">{item.name}</h3>
+                <h3 className={cn(
+                  "font-headline text-base sm:text-lg font-bold leading-snug transition-colors",
+                  isItemEffectivelyAvailable ? "text-foreground group-hover:text-primary" : "text-foreground/80"
+                )}>
+                  {item.name}
+                </h3>
 
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-md font-medium" title={`Vendor: ${vendor?.shopName}`}>
@@ -596,7 +598,7 @@ const MenuItemCard = ({
 
                 <p className="text-muted-foreground text-xs sm:text-sm mt-2 line-clamp-2 leading-relaxed">{item.description}</p>
 
-                {typeof item.stock === 'number' && item.stock > 0 && !isCustomizable && (vendor?.isInventory || vendor?.category === 'Bakery' || item.stock <= 5) && (
+                {isItemEffectivelyAvailable && typeof item.stock === 'number' && item.stock > 0 && !isCustomizable && (vendor?.isInventory || vendor?.category === 'Bakery' || item.stock <= 5) && (
                   <p className={cn(
                     "text-[11px] font-semibold mt-1",
                     item.stock <= 5 ? "text-destructive" : "text-amber-600"
@@ -608,11 +610,14 @@ const MenuItemCard = ({
 
               <div className="mt-3 pt-2">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-base sm:text-lg font-extrabold text-foreground">
+                  <span className={cn(
+                    "text-base sm:text-lg font-extrabold",
+                    isItemEffectivelyAvailable ? "text-foreground" : "text-muted-foreground"
+                  )}>
                     {isCustomizable && <span className="text-[10px] text-muted-foreground font-normal block -mb-1">From</span>}
                     ₹{startingPrice.toFixed(0)}
                   </span>
-                  {hasDiscount && !isCustomizable && (
+                  {hasDiscount && !isCustomizable && isItemEffectivelyAvailable && (
                     <span className="text-xs text-muted-foreground line-through">₹{item.price.toFixed(0)}</span>
                   )}
                 </div>
@@ -632,7 +637,10 @@ const MenuItemCard = ({
                       src={imageToDisplay}
                       alt={item.name}
                       data-ai-hint={item.aiHint}
-                      className="w-full h-full object-cover transition-transform duration-500 ease-in-out group-hover:scale-110"
+                      className={cn(
+                        "w-full h-full object-cover transition-transform duration-500 ease-in-out group-hover:scale-110",
+                        !isItemEffectivelyAvailable && "grayscale-[35%] opacity-85"
+                      )}
                     />
                   ) : (
                     <Image
@@ -641,21 +649,42 @@ const MenuItemCard = ({
                       fill
                       sizes="(max-width: 768px) 128px, 160px"
                       data-ai-hint={item.aiHint}
-                      className="object-cover transition-transform duration-500 ease-in-out group-hover:scale-110"
+                      className={cn(
+                        "object-cover transition-transform duration-500 ease-in-out group-hover:scale-110",
+                        !isItemEffectivelyAvailable && "grayscale-[35%] opacity-85"
+                      )}
                       placeholder={item.blurDataUrl ? 'blur' : 'empty'}
                       blurDataURL={item.blurDataUrl}
                     />
                   )}
+                  {!isItemEffectivelyAvailable && (
+                    <div className="absolute inset-0 bg-black/35 backdrop-blur-[1px] flex items-center justify-center p-1">
+                      <span className="text-[10px] font-bold text-white bg-black/70 px-2 py-0.5 rounded-md uppercase tracking-wider text-center shadow-xs">
+                        {!isShopOpen ? 'Closed' : 'Sold Out'}
+                      </span>
+                    </div>
+                  )}
                 </motion.div>
               ) : (
-                <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl bg-muted/60 border border-border/40 flex items-center justify-center text-muted-foreground">
+                <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl bg-muted/60 border border-border/40 flex items-center justify-center text-muted-foreground relative">
                   <Utensils className="h-8 w-8 opacity-40" />
+                  {!isItemEffectivelyAvailable && (
+                    <div className="absolute inset-0 bg-background/70 flex items-center justify-center p-1 rounded-2xl">
+                      <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-md uppercase tracking-wider text-center">
+                        {!isShopOpen ? 'Closed' : 'Sold Out'}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Overlapping ADD Pill Button (Swiggy/Zomato Signature Style) */}
+              {/* Overlapping ADD Pill Button */}
               <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 z-10">
-                {!isCustomizable ? (
+                {!isItemEffectivelyAvailable ? (
+                  <div className="h-7 px-2.5 rounded-xl border border-border bg-muted text-muted-foreground font-bold text-[10px] uppercase tracking-wider shadow-xs flex items-center justify-center whitespace-nowrap cursor-not-allowed">
+                    Out of Stock
+                  </div>
+                ) : !isCustomizable ? (
                   quantityInCart > 0 ? (
                     <div className="flex items-center gap-1 bg-background border-2 border-primary rounded-xl px-1.5 py-0.5 shadow-md">
                       <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg text-primary hover:bg-primary/10" onClick={() => handleSimpleQuantityChange(-1)} disabled={!isItemEffectivelyAvailable}>
@@ -907,7 +936,6 @@ export default function MenuPageContent() {
   const { vendors, fetchAllVendors } = useVendor();
   const [selectedVendor, setSelectedVendor] = useState('all');
   const [activeTab, setActiveTab] = useState('all');
-  const [vendorSearchQuery, setVendorSearchQuery] = useState('');
 
   const [filterMode, setFilterMode] = useState<'all' | 'veg' | 'non-veg'>('all');
 
@@ -1485,20 +1513,6 @@ export default function MenuPageContent() {
     );
   };
 
-  const filteredVendorOptions = useMemo(() => {
-    const lowercasedQuery = vendorSearchQuery.toLowerCase();
-    const options = vendorsToDisplay
-      .filter(vendor =>
-        vendor.shopName && vendor.shopName.toLowerCase().includes(lowercasedQuery)
-      )
-      .map(vendor => ({
-        value: vendor.username,
-        label: vendor.shopName!
-      }));
-
-    return [{ value: 'all', label: 'All Vendors' }, ...options];
-  }, [vendorsToDisplay, vendorSearchQuery]);
-
   const showCategoryGrid = !isFilterActive;
   const isSearching = itemSearchQuery.length > 0;
 
@@ -1517,6 +1531,15 @@ export default function MenuPageContent() {
 
     return globalCategories.filter(category => categoriesWithItems.has(category.name));
   }, [globalCategories, menuItems, filterMode, vendorsToDisplay]);
+
+  const matchingVendors = useMemo(() => {
+    if (!itemSearchQuery || itemSearchQuery.trim().length === 0) return [];
+    const query = itemSearchQuery.toLowerCase().trim();
+    return vendorsToDisplay.filter(v =>
+      (v.shopName && v.shopName.toLowerCase().includes(query)) ||
+      (v.category && v.category.toLowerCase().includes(query))
+    );
+  }, [vendorsToDisplay, itemSearchQuery]);
 
   const handleAddToCartFromPopular = (e: React.MouseEvent, item: MenuItemType) => {
     e.preventDefault();
@@ -1563,26 +1586,12 @@ export default function MenuPageContent() {
           <div className="space-y-6 mb-6">
             {/* ── STICKY GLASSMORPHIC SEARCH & FILTER BAR ───────────────────────────── */}
             <div className="sticky top-16 z-30 bg-card/85 backdrop-blur-xl border border-border/80 rounded-3xl p-3 sm:p-4 shadow-lg space-y-3">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-3 w-full">
-                {/* Vendor Dropdown Selector */}
-                <Combobox
-                  className="w-full md:w-48 lg:w-56 flex-shrink-0"
-                  options={filteredVendorOptions}
-                  value={selectedVendor}
-                  onChange={handleVendorChange}
-                  onInputChange={setVendorSearchQuery}
-                  placeholder="Select a vendor"
-                  searchPlaceholder="Search vendors..."
-                  noResultsText="No vendors found."
-                  icon={<Building className="h-4 w-4 text-primary" />}
-                  isLoading={isFetchingItems}
-                />
-
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
                 {/* Menu Item Search Bar */}
-                <div className="relative w-full md:flex-1">
+                <div className="relative w-full flex-1">
                   <Utensils className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search dishes or items..."
+                    placeholder="Search dishes, cuisines, or items..."
                     value={itemSearchQuery}
                     onChange={(e) => setItemSearchQuery(e.target.value)}
                     className="pl-9 pr-9 h-11 rounded-2xl border-border/80 focus-visible:ring-primary/20 bg-background/80"
@@ -1641,14 +1650,151 @@ export default function MenuPageContent() {
               </div>
             </div>
 
-            {popularPicks.length > 0 && (
+            {/* ── VISUAL KITCHENS & VENDORS CAROUSEL ─────────────────────────────────── */}
+            {!isSearching && vendorsToDisplay.length > 0 && (
+              <div className="space-y-2.5 pt-1">
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                      <Building className="h-3.5 w-3.5" />
+                    </div>
+                    <h3 className="text-xs sm:text-sm font-bold tracking-tight text-foreground">
+                      Explore by Kitchen / Store
+                    </h3>
+                    <span className="text-[10px] text-muted-foreground font-medium">
+                      ({vendorsToDisplay.length} nearby)
+                    </span>
+                  </div>
+                  {selectedVendor !== 'all' && (
+                    <button
+                      type="button"
+                      onClick={() => handleVendorChange('all')}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-muted/80 hover:bg-destructive/10 text-muted-foreground hover:text-destructive border border-border/80 hover:border-destructive/30 transition-all shadow-xs group cursor-pointer"
+                    >
+                      <span>Clear store filter</span>
+                      <span className="w-4 h-4 rounded-full bg-foreground/10 group-hover:bg-destructive/20 flex items-center justify-center transition-colors">
+                        <X className="h-2.5 w-2.5" />
+                      </span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2.5 overflow-x-auto pb-2 pt-1 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
+                  {/* "All Stores" Card */}
+                  <button
+                    type="button"
+                    onClick={() => handleVendorChange('all')}
+                    className={cn(
+                      "flex-shrink-0 flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl border transition-all duration-200 text-left cursor-pointer",
+                      selectedVendor === 'all'
+                        ? "bg-primary text-primary-foreground border-primary shadow-md ring-2 ring-primary/20"
+                        : "bg-card hover:bg-muted/60 border-border/70 text-foreground"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0",
+                      selectedVendor === 'all'
+                        ? "bg-white/20 text-white"
+                        : "bg-primary/10 text-primary"
+                    )}>
+                      <Building className="h-4.5 w-4.5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold leading-tight whitespace-nowrap">All Stores</p>
+                      <p className={cn(
+                        "text-[10px] leading-tight mt-0.5 whitespace-nowrap",
+                        selectedVendor === 'all' ? "text-primary-foreground/80" : "text-muted-foreground"
+                      )}>
+                        {vendorsToDisplay.length} kitchens
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Individual Vendor Cards */}
+                  {vendorsToDisplay.map((v) => {
+                    const isSelected = selectedVendor === v.username;
+                    const shopStatus = VendorStatusManager.getShopStatus(v);
+                    const isShopOpen = shopStatus.status === VendorStatus.OPEN;
+                    const distance = userLocation && v.latitude && v.longitude
+                      ? calculateDistanceInKm(userLocation.latitude, userLocation.longitude, v.latitude, v.longitude)
+                      : null;
+                    const ratingCount = v.ratingCount || 0;
+                    const avgRating = ratingCount > 0 ? (v.totalRatingSum || 0) / ratingCount : null;
+
+                    return (
+                      <button
+                        key={v.username}
+                        type="button"
+                        onClick={() => handleVendorChange(isSelected ? 'all' : v.username)}
+                        className={cn(
+                          "group flex-shrink-0 flex items-center gap-2.5 p-2 pr-3.5 rounded-2xl border transition-all duration-200 text-left min-w-[170px] max-w-[230px] cursor-pointer",
+                          isSelected
+                            ? "bg-primary/10 border-primary ring-2 ring-primary/20 shadow-md"
+                            : "bg-card hover:bg-muted/50 border-border/70 hover:border-primary/40",
+                          !isShopOpen && "opacity-65 grayscale-[25%]"
+                        )}
+                      >
+                        {/* Store Avatar Thumbnail */}
+                        <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-muted flex-shrink-0 border border-border/50">
+                          <Image
+                            src={v.shopImage || v.imageUrl || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=120&auto=format&fit=crop&q=80'}
+                            alt={v.shopName || v.name}
+                            fill
+                            sizes="40px"
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            placeholder={v.shopImageBlur ? 'blur' : 'empty'}
+                            blurDataURL={v.shopImageBlur}
+                          />
+                          {/* Live Status indicator dot */}
+                          <span className={cn(
+                            "absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full ring-1 ring-white dark:ring-zinc-900",
+                            isShopOpen ? "bg-emerald-500" : "bg-zinc-400"
+                          )} />
+                        </div>
+
+                        {/* Store Info */}
+                        <div className="min-w-0 flex-1">
+                          <h4 className={cn(
+                            "text-xs font-bold truncate leading-tight",
+                            isSelected ? "text-primary font-extrabold" : "text-foreground group-hover:text-primary"
+                          )}>
+                            {v.shopName}
+                          </h4>
+                          <p className="text-[10px] text-muted-foreground truncate leading-tight mt-0.5">
+                            {v.category || 'Kitchen'}
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-1 text-[9px] font-semibold text-muted-foreground">
+                            {avgRating ? (
+                              <span className="flex items-center gap-0.5 text-amber-600 dark:text-amber-400 font-bold">
+                                <Star className="h-2.5 w-2.5 fill-amber-500 text-amber-500" />
+                                {avgRating.toFixed(1)}
+                              </span>
+                            ) : null}
+                            {distance !== null && (
+                              <span>• {distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance.toFixed(1)}km`}</span>
+                            )}
+                            {!isShopOpen && (
+                              <span className="text-red-500 font-bold">• Closed</span>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {!isSearching && popularPicks.length > 0 && (
               <section className="py-2.5">
                 <div className="flex justify-between items-center mb-2 px-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-md bg-amber-500/15 flex items-center justify-center text-amber-500 shadow-xs">
-                      <Sparkles className="h-3 w-3" />
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-orange-500/15 flex items-center justify-center text-orange-500 shadow-xs">
+                      <Flame className="h-3.5 w-3.5 fill-orange-500" />
                     </span>
-                    <h2 className="text-sm sm:text-base font-bold font-headline text-foreground tracking-tight">Popular Picks</h2>
+                    <h2 className="text-sm sm:text-base font-bold font-headline text-foreground tracking-tight leading-tight">
+                      Popular Picks
+                    </h2>
                   </div>
                   <Link href="/popular-picks" passHref>
                     <Button variant="ghost" size="sm" className="text-primary hover:text-primary font-semibold text-[11px] h-6 px-2">
@@ -1690,12 +1836,14 @@ export default function MenuPageContent() {
           <div className="space-y-6">
             {showCategoryGrid ? (
               <div>
-                <section className="mb-2">
-                  <div className="flex justify-center mb-4">
-                    <div className="bg-primary/10 rounded-full px-4 py-2 inline-flex items-center gap-3">
-                      <Sparkles className="h-5 w-5 text-primary animate-pulse-glow" />
-                      <h2 className="text-xl font-bold font-headline text-primary">
-                        Explore by Category
+                <section className="mb-6">
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-full bg-primary/15 flex items-center justify-center text-primary shadow-xs">
+                        <UtensilsCrossed className="h-3.5 w-3.5" />
+                      </span>
+                      <h2 className="text-sm sm:text-base font-bold font-headline text-foreground tracking-tight leading-tight">
+                        Explore Cuisines &amp; Categories
                       </h2>
                     </div>
                   </div>
@@ -1751,11 +1899,13 @@ export default function MenuPageContent() {
                   )}
                 </section>
 
-                <section className="mt-4">
-                  <div className="flex justify-center mb-4">
-                    <div className="bg-amber-500/10 rounded-full px-4 py-2 inline-flex items-center gap-3">
-                      <Star className="h-5 w-5 text-amber-500" />
-                      <h2 className="text-xl font-bold font-headline text-amber-500">
+                <section className="mt-6 mb-6">
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-full bg-amber-500/15 flex items-center justify-center text-amber-500 shadow-xs">
+                        <Star className="h-3.5 w-3.5 fill-amber-400" />
+                      </span>
+                      <h2 className="text-sm sm:text-base font-bold font-headline text-foreground tracking-tight leading-tight">
                         Top Rated Dishes
                       </h2>
                     </div>
@@ -1783,7 +1933,7 @@ export default function MenuPageContent() {
                             item.customizations?.forEach(c => {
                               c.options.forEach(o => {
                                 if (o.originalPrice && o.originalPrice > o.price) {
-                                  const pct = Math.round(((o.originalPrice - o.price) / o.originalPrice) * 100);
+                                   const pct = Math.round(((o.originalPrice - o.price) / o.originalPrice) * 100);
                                   if (pct > maxPct) maxPct = pct;
                                 }
                               });
@@ -1844,14 +1994,19 @@ export default function MenuPageContent() {
                 </section>
 
                 {discountedItems.length > 0 && (
-                  <section className="mt-12">
-                    <div className="flex justify-center mb-6">
-                      <div className="bg-destructive/10 rounded-full px-4 py-2 inline-flex items-center gap-3">
-                        <Tag className="h-5 w-5 text-destructive" />
-                        <h2 className="text-xl font-bold font-headline text-destructive">
-                          Deals &amp; Discounts
+                  <section className="mt-8">
+                    <div className="flex items-center justify-between mb-3 px-1">
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full bg-rose-500/15 flex items-center justify-center text-rose-500 shadow-xs">
+                          <Percent className="h-3.5 w-3.5" />
+                        </span>
+                        <h2 className="text-sm sm:text-base font-bold font-headline text-foreground tracking-tight leading-tight">
+                          ⚡ Super Saver Deals &amp; Offers
                         </h2>
                       </div>
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-destructive/10 text-destructive shrink-0">
+                        Limited Time
+                      </span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {discountedItems.map(item => {
@@ -1877,44 +2032,141 @@ export default function MenuPageContent() {
               </div>
             ) : isFetchingItems ? (
               <div className="text-center py-8"><Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /></div>
-            ) : menuItemsToDisplay.length > 0 ? (
+            ) : (menuItemsToDisplay.length > 0 || matchingVendors.length > 0) ? (
               <>
-                {categoriesToShow.length > 0 ? (
-                  <div className="sticky top-[65px] bg-background/90 backdrop-blur-sm z-40 py-2 -mx-2 px-2">
-                    {activeTab !== 'all' ? (
-                      <div>
-                        <TabsList className="bg-transparent p-0">
-                          <TabsTrigger value="all" className="rounded-full data-[state=active]:shadow-sm data-[state=active]:bg-background shrink-0">All</TabsTrigger>
-                          <TabsTrigger value={activeTab} className="rounded-full data-[state=active]:shadow-sm data-[state=active]:bg-background shrink-0">{activeTab}</TabsTrigger>
-                        </TabsList>
+                {/* ── MATCHING KITCHENS IN SEARCH ───────────────────────────────── */}
+                {isSearching && matchingVendors.length > 0 && (
+                  <div className="mb-6 p-3.5 sm:p-4 rounded-3xl bg-card border border-border/80 shadow-sm space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                        <Building className="h-3.5 w-3.5" />
                       </div>
-                    ) : (
-                      <div className="w-full overflow-x-auto hide-scrollbar group">
-                        <div className="flex w-max animate-scroll hover:animation-pause">
-                          <TabsList className="bg-transparent p-0">
-                            <TabsTrigger value="all" className="rounded-full data-[state=active]:shadow-sm data-[state=active]:bg-background shrink-0">All</TabsTrigger>
-                            {categoriesToShow.map((catName: string) => (
-                              <TabsTrigger key={`${catName}-1`} value={catName} className="rounded-full data-[state=active]:shadow-sm data-[state=active]:bg-background shrink-0">
-                                {catName}
-                              </TabsTrigger>
-                            ))}
-                            {/* Duplicates for seamless loop */}
-                            <TabsTrigger value="all" className="rounded-full data-[state=active]:shadow-sm data-[state=active]:bg-background shrink-0" aria-hidden="true">All</TabsTrigger>
-                            {categoriesToShow.map((catName: string) => (
-                              <TabsTrigger key={`${catName}-2`} value={catName} className="rounded-full data-[state=active]:shadow-sm data-[state=active]:bg-background shrink-0" aria-hidden="true">
-                                {catName}
-                              </TabsTrigger>
-                            ))}
-                          </TabsList>
-                        </div>
+                      <h3 className="text-xs sm:text-sm font-bold tracking-tight text-foreground">
+                        Matching Kitchens & Stores ({matchingVendors.length})
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      {matchingVendors.map((v) => {
+                        const shopStatus = VendorStatusManager.getShopStatus(v);
+                        const isShopOpen = shopStatus.status === VendorStatus.OPEN;
+                        const distance = userLocation && v.latitude && v.longitude
+                          ? calculateDistanceInKm(userLocation.latitude, userLocation.longitude, v.latitude, v.longitude)
+                          : null;
+                        const ratingCount = v.ratingCount || 0;
+                        const avgRating = ratingCount > 0 ? (v.totalRatingSum || 0) / ratingCount : null;
+
+                        return (
+                          <button
+                            key={v.username}
+                            type="button"
+                            onClick={() => handleVendorChange(v.username)}
+                            className="flex items-center gap-3 p-2.5 sm:p-3 rounded-2xl bg-muted/40 hover:bg-primary/5 hover:border-primary/50 border border-border/60 transition-all text-left group cursor-pointer"
+                          >
+                            <div className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden bg-muted flex-shrink-0 border border-border/50">
+                              <Image
+                                src={v.shopImage || v.imageUrl || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=120&auto=format&fit=crop&q=80'}
+                                alt={v.shopName || v.name}
+                                fill
+                                sizes="48px"
+                                className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                placeholder={v.shopImageBlur ? 'blur' : 'empty'}
+                                blurDataURL={v.shopImageBlur}
+                              />
+                              <span className={cn(
+                                "absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full ring-1 ring-white dark:ring-zinc-900",
+                                isShopOpen ? "bg-emerald-500" : "bg-zinc-400"
+                              )} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-1">
+                                <h4 className="text-xs sm:text-sm font-bold truncate text-foreground group-hover:text-primary transition-colors">
+                                  {v.shopName}
+                                </h4>
+                                <span className="text-[10px] font-semibold text-primary group-hover:underline shrink-0">
+                                  View Menu →
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                                {v.category || 'Kitchen'}
+                              </p>
+                              <div className="flex items-center gap-1.5 mt-1 text-[10px] font-semibold text-muted-foreground">
+                                {avgRating ? (
+                                  <span className="flex items-center gap-0.5 text-amber-600 dark:text-amber-400 font-bold">
+                                    <Star className="h-2.5 w-2.5 fill-amber-500 text-amber-500" />
+                                    {avgRating.toFixed(1)}
+                                  </span>
+                                ) : null}
+                                {distance !== null && (
+                                  <span>• {distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance.toFixed(1)}km`}</span>
+                                )}
+                                {!isShopOpen && (
+                                  <span className="text-red-500 font-bold">• Closed</span>
+                                )}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── MATCHING DISHES ───────────────────────────────────────────── */}
+                {menuItemsToDisplay.length > 0 ? (
+                  <>
+                    {categoriesToShow.length > 0 && !isSearching ? (
+                      <div className="sticky top-[65px] bg-background/90 backdrop-blur-sm z-40 py-2 -mx-2 px-2">
+                        {activeTab !== 'all' ? (
+                          <div>
+                            <TabsList className="bg-transparent p-0">
+                              <TabsTrigger value="all" className="rounded-full data-[state=active]:shadow-sm data-[state=active]:bg-background shrink-0">All</TabsTrigger>
+                              <TabsTrigger value={activeTab} className="rounded-full data-[state=active]:shadow-sm data-[state=active]:bg-background shrink-0">{activeTab}</TabsTrigger>
+                            </TabsList>
+                          </div>
+                        ) : (
+                          <div className="w-full overflow-x-auto hide-scrollbar group">
+                            <div className="flex w-max animate-scroll hover:animation-pause">
+                              <TabsList className="bg-transparent p-0">
+                                <TabsTrigger value="all" className="rounded-full data-[state=active]:shadow-sm data-[state=active]:bg-background shrink-0">All</TabsTrigger>
+                                {categoriesToShow.map((catName: string) => (
+                                  <TabsTrigger key={`${catName}-1`} value={catName} className="rounded-full data-[state=active]:shadow-sm data-[state=active]:bg-background shrink-0">
+                                    {catName}
+                                  </TabsTrigger>
+                                ))}
+                                {/* Duplicates for seamless loop */}
+                                <TabsTrigger value="all" className="rounded-full data-[state=active]:shadow-sm data-[state=active]:bg-background shrink-0" aria-hidden="true">All</TabsTrigger>
+                                {categoriesToShow.map((catName: string) => (
+                                  <TabsTrigger key={`${catName}-2`} value={catName} className="rounded-full data-[state=active]:shadow-sm data-[state=active]:bg-background shrink-0" aria-hidden="true">
+                                    {catName}
+                                  </TabsTrigger>
+                                ))}
+                              </TabsList>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+                    {isSearching && matchingVendors.length > 0 && (
+                      <div className="flex items-center gap-1.5 px-1 pt-2 pb-1">
+                        <Utensils className="h-3.5 w-3.5 text-primary" />
+                        <h3 className="text-xs sm:text-sm font-bold tracking-tight text-foreground">
+                          Matching Dishes ({menuItemsToDisplay.length})
+                        </h3>
                       </div>
                     )}
+                    <div className="mt-2">
+                      {renderMenuItems()}
+                    </div>
+                    {totalItems > 0 && <div className="h-28 sm:h-24 w-full shrink-0" aria-hidden="true" />}
+                  </>
+                ) : isSearching && matchingVendors.length > 0 ? (
+                  <div className="text-center py-8 flex flex-col items-center gap-2 bg-card/30 rounded-2xl border border-dashed border-border/80">
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      No individual dishes matching <span className="font-semibold text-foreground">"{itemSearchQuery}"</span>, but found matching kitchen(s) above!
+                    </p>
+                    <p className="text-[11px] text-primary font-medium">Click on a kitchen above to view their full menu.</p>
                   </div>
                 ) : null}
-                <div className="mt-4">
-                  {renderMenuItems()}
-                </div>
-                {totalItems > 0 && <div className="h-28 sm:h-24 w-full shrink-0" aria-hidden="true" />}
               </>
             ) : (
               <div className="text-center py-16 flex flex-col items-center gap-4 bg-card/50 rounded-lg">
