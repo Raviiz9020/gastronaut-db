@@ -76,12 +76,52 @@ export default function TrendingDishesGrid() {
       }
     });
 
+    // Helper to calculate starting price
+    const calculateStartingPrice = (item: MenuItemType) => {
+      const isCustomizable = item.customizations && item.customizations.length > 0;
+      const hasMandatoryCustomization = item.customizations?.some((c) => Number(c.minSelect) > 0) ?? false;
+      const hasDiscount = !!(item.isDiscountActive && item.discountPrice && item.discountPrice > 0);
+
+      const basePrice = hasMandatoryCustomization ? 0 : (hasDiscount ? item.discountPrice! : item.price);
+
+      let mandatoryCustomizationsPrice = 0;
+      item.customizations?.forEach((c) => {
+        if (Number(c.minSelect) > 0) {
+          const groupMinOptionPrice = Math.min(
+            ...c.options.map((o) => (item.isDiscountActive ? o.price : (o.originalPrice || o.price)))
+          );
+          if (groupMinOptionPrice !== Infinity) {
+            mandatoryCustomizationsPrice += groupMinOptionPrice;
+          }
+        }
+      });
+
+      let startingPrice = basePrice + mandatoryCustomizationsPrice;
+
+      if (startingPrice === 0 && isCustomizable) {
+        let minOptPrice = Infinity;
+        item.customizations?.forEach((group) => {
+          group.options.forEach((o) => {
+            const optPrice = item.isDiscountActive ? o.price : (o.originalPrice || o.price);
+            if (optPrice < minOptPrice) {
+              minOptPrice = optPrice;
+            }
+          });
+        });
+        if (minOptPrice !== Infinity) {
+          startingPrice = minOptPrice;
+        }
+      }
+
+      return startingPrice;
+    };
+
     // 3. Filter available & in-stock items (exclude low-ticket utility items < ₹40 like water bottles/tea)
     const availableItems = menuItems.filter((item) => {
       const vendor = vendorMap.get(item.vendorUsername);
       if (!vendor) return false;
       if (!item.isAvailable) return false;
-      const effectivePrice = item.isDiscountActive && item.discountPrice ? item.discountPrice : item.price;
+      const effectivePrice = calculateStartingPrice(item);
       if (effectivePrice < 40) return false;
       return isItemInStock(item, vendor.isInventory);
     });
@@ -276,15 +316,45 @@ export default function TrendingDishesGrid() {
               .filter((ci) => ci.id === item.id)
               .reduce((sum, ci) => sum + ci.quantity, 0);
 
-            const hasCustomizations = item.customizations && item.customizations.length > 0;
-            const price =
-              item.isDiscountActive && item.discountPrice
-                ? item.discountPrice
-                : item.price;
+            const isCustomizable = item.customizations && item.customizations.length > 0;
+            const hasMandatoryCustomization = item.customizations?.some((c) => Number(c.minSelect) > 0) ?? false;
+            const hasDiscount = !!(item.isDiscountActive && item.discountPrice && item.discountPrice > 0);
+
+            const basePrice = hasMandatoryCustomization ? 0 : (hasDiscount ? item.discountPrice! : item.price);
+
+            let mandatoryCustomizationsPrice = 0;
+            item.customizations?.forEach((c) => {
+              if (Number(c.minSelect) > 0) {
+                const groupMinOptionPrice = Math.min(
+                  ...c.options.map((o) => (item.isDiscountActive ? o.price : (o.originalPrice || o.price)))
+                );
+                if (groupMinOptionPrice !== Infinity) {
+                  mandatoryCustomizationsPrice += groupMinOptionPrice;
+                }
+              }
+            });
+
+            let displayPrice = basePrice + mandatoryCustomizationsPrice;
+
+            if (displayPrice === 0 && isCustomizable) {
+              let minOptPrice = Infinity;
+              item.customizations?.forEach((group) => {
+                group.options.forEach((o) => {
+                  const optPrice = item.isDiscountActive ? o.price : (o.originalPrice || o.price);
+                  if (optPrice < minOptPrice) {
+                    minOptPrice = optPrice;
+                  }
+                });
+              });
+              if (minOptPrice !== Infinity) {
+                displayPrice = minOptPrice;
+              }
+            }
+
             const originalPrice = item.price;
-            const hasDiscount = item.isDiscountActive && item.discountPrice && item.discountPrice < item.price;
-            const discountPercent = hasDiscount
-              ? Math.round(((originalPrice - price) / originalPrice) * 100)
+            const showDiscountBadge = hasDiscount && originalPrice > (item.discountPrice || 0);
+            const discountPercent = showDiscountBadge
+              ? Math.round(((originalPrice - item.discountPrice!) / originalPrice) * 100)
               : 0;
 
             const vendorIdentifier = vendor.slug || vendor.username;
@@ -320,7 +390,7 @@ export default function TrendingDishesGrid() {
                     </div>
 
                     {/* Discount Badge */}
-                    {hasDiscount && isEffectivelyAvailable && (
+                    {showDiscountBadge && isEffectivelyAvailable && (
                       <div className="absolute top-2 right-2 z-10 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-md">
                         {discountPercent}% OFF
                       </div>
@@ -353,10 +423,13 @@ export default function TrendingDishesGrid() {
                     {/* Price and Stepper Action */}
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/40">
                       <div className="flex items-baseline gap-1">
+                        {isCustomizable && (
+                          <span className="text-[10px] text-muted-foreground font-normal">From</span>
+                        )}
                         <span className="font-bold text-sm text-foreground">
-                          ₹{price.toFixed(0)}
+                          ₹{displayPrice.toFixed(0)}
                         </span>
-                        {hasDiscount && (
+                        {showDiscountBadge && (
                           <span className="text-[10px] text-muted-foreground line-through">
                             ₹{originalPrice.toFixed(0)}
                           </span>
@@ -364,7 +437,7 @@ export default function TrendingDishesGrid() {
                       </div>
 
                       {/* Interactive Stepper Button */}
-                      {totalQty > 0 && !hasCustomizations && isEffectivelyAvailable ? (
+                      {totalQty > 0 && !isCustomizable && isEffectivelyAvailable ? (
                         <div className="flex items-center bg-primary text-primary-foreground rounded-full h-7 px-1 shadow-sm">
                           <button
                             onClick={(e) => handleQuantityChange(e, item, vendor, -1)}
@@ -377,8 +450,14 @@ export default function TrendingDishesGrid() {
                             {totalQty}
                           </span>
                           <button
+                            disabled={typeof item.stock === 'number' && totalQty >= item.stock}
                             onClick={(e) => handleQuantityChange(e, item, vendor, 1)}
-                            className="w-5 h-full flex items-center justify-center hover:bg-black/10 rounded-full transition-colors"
+                            className={cn(
+                              "w-5 h-full flex items-center justify-center rounded-full transition-colors",
+                              typeof item.stock === 'number' && totalQty >= item.stock
+                                ? "opacity-40 cursor-not-allowed"
+                                : "hover:bg-black/10"
+                            )}
                             aria-label="Increase quantity"
                           >
                             <Plus className="h-2.5 w-2.5" />

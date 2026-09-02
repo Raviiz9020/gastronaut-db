@@ -31,6 +31,7 @@ import { motion } from 'framer-motion';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Checkbox } from './ui/checkbox';
+import { getMaxAvailableStock } from '@/lib/stock-utils';
 
 
 interface CartSheetProps {
@@ -216,32 +217,50 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
                             </div>
                         )}
                         
-                        {vc.items.map(item => (
-                            <div key={item.cartItemId} className="flex items-center gap-2">
-                            <div className="flex-1 flex items-center gap-3">
-                                <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
-                                    <Image src={item.image} alt={item.name} fill className="object-cover" />
+                        {vc.items.map(item => {
+                            const maxStock = getMaxAvailableStock(item, item.customizationDetails);
+                            const isAtMaxStock = maxStock !== null && item.quantity >= maxStock;
+
+                            return (
+                              <div key={item.cartItemId} className="flex items-center gap-2">
+                                <div className="flex-1 flex items-center gap-3">
+                                  <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+                                      <Image src={item.image} alt={item.name} fill className="object-cover" />
+                                  </div>
+                                  <div>
+                                      <h4 className="text-xs font-semibold leading-tight">{item.name}</h4>
+                                      <p className="text-[10px] text-muted-foreground leading-tight">
+                                          {Object.entries(item.customizationDetails).map(([custId, value]) => {
+                                          const cust = item.customizations?.find(c => c.id === custId);
+                                          if (!cust) return null;
+                                          const selectedOptions = (Array.isArray(value) ? value : [value]).map(optId => cust.options.find(o => o.id === optId)?.name).filter(Boolean);
+                                          return selectedOptions.join(', ');
+                                          }).filter(Boolean).join(' • ')}
+                                      </p>
+                                      {isAtMaxStock && (
+                                        <p className="text-[9px] font-bold text-amber-600 dark:text-amber-400 mt-0.5">
+                                          Max in cart ({maxStock} left)
+                                        </p>
+                                      )}
+                                  </div>
                                 </div>
-                                <div>
-                                    <h4 className="text-xs font-semibold leading-tight">{item.name}</h4>
-                                    <p className="text-[10px] text-muted-foreground leading-tight">
-                                        {Object.entries(item.customizationDetails).map(([custId, value]) => {
-                                        const cust = item.customizations?.find(c => c.id === custId);
-                                        if (!cust) return null;
-                                        const selectedOptions = (Array.isArray(value) ? value : [value]).map(optId => cust.options.find(o => o.id === optId)?.name).filter(Boolean);
-                                        return selectedOptions.join(', ');
-                                        }).filter(Boolean).join(' • ')}
-                                    </p>
+                                <div className="flex items-center gap-1">
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => handleQuantityChange(item.cartItemId, -1)}><Minus className="h-3 w-3"/></Button>
+                                    <span className="font-bold w-4 text-center text-xs">{item.quantity}</span>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      disabled={isAtMaxStock}
+                                      className={cn("h-6 w-6 rounded-full", isAtMaxStock && "opacity-40 cursor-not-allowed text-muted-foreground")} 
+                                      onClick={() => handleQuantityChange(item.cartItemId, 1)}
+                                    >
+                                      <Plus className="h-3 w-3"/>
+                                    </Button>
                                 </div>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => handleQuantityChange(item.cartItemId, -1)}><Minus className="h-3 w-3"/></Button>
-                                <span className="font-bold w-4 text-center text-xs">{item.quantity}</span>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => handleQuantityChange(item.cartItemId, 1)}><Plus className="h-3 w-3"/></Button>
-                            </div>
-                            <p className="font-semibold text-xs w-14 text-right">₹{(item.price * item.quantity).toFixed(2)}</p>
-                            </div>
-                        ))}
+                                <p className="font-semibold text-xs w-14 text-right">₹{(item.price * item.quantity).toFixed(2)}</p>
+                              </div>
+                            );
+                        })}
                          <div className="flex justify-between items-center gap-2 mt-2">
                            <Collapsible>
                                 <CollapsibleTrigger asChild>

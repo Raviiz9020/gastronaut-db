@@ -14,6 +14,8 @@ import { db } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { calculateDistanceInKm } from '@/lib/location-utils';
 
+import { getMaxAvailableStock } from '@/lib/stock-utils';
+
 // Helper to generate a unique ID for a cart item based on its content and customizations
 const generateCartItemId = (itemId: string, options: Record<string, string | string[]>) => {
     const optionKeys = Object.keys(options || {}).sort();
@@ -146,11 +148,25 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             removeFromCart(cartItemId);
             return prevItems.filter(item => item.cartItemId !== cartItemId);
         }
+
+        const item = prevItems.find(i => i.cartItemId === cartItemId);
+        if (item) {
+          const maxStock = getMaxAvailableStock(item, item.customizationDetails);
+          if (maxStock !== null && quantity > maxStock) {
+            toast({
+              title: "Stock Limit Reached",
+              description: `Only ${maxStock} available in stock for ${item.name}.`,
+              variant: "destructive"
+            });
+            return prevItems;
+          }
+        }
+
         return prevItems.map(item =>
             item.cartItemId === cartItemId ? { ...item, quantity } : item
         );
     });
-  }, []);
+  }, [toast]);
 
   const setVendorDeliveryOption = (vendorUsername: string, option: DeliveryOption) => {
     setVendorDeliveryOptions(prev => ({...prev, [vendorUsername]: option}));
@@ -191,6 +207,23 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         return false;
     }
 
+    const cartItemId = generateCartItemId(item.id, selectedOptions);
+    const existingItem = cartItems.find(i => i.cartItemId === cartItemId);
+    const existingQty = existingItem ? existingItem.quantity : 0;
+
+    const maxStock = getMaxAvailableStock(item, selectedOptions);
+    if (maxStock !== null && existingQty + quantity > maxStock) {
+      const remainingAllowed = Math.max(0, maxStock - existingQty);
+      toast({
+        title: "Stock Limit Reached",
+        description: remainingAllowed > 0
+          ? `Only ${remainingAllowed} more can be added (${existingQty} already in cart).`
+          : `All available stock (${maxStock}) is already in your cart.`,
+        variant: "destructive"
+      });
+      return false;
+    }
+
     // Preserve existing delivery option or set a default if one doesn't exist
     if (!vendorDeliveryOptions[item.vendorUsername]) {
         if (forceSelfPickup === true) {
@@ -204,9 +237,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             setVendorDeliveryOption(item.vendorUsername, defaultOption);
         }
     }
-    
-    const cartItemId = generateCartItemId(item.id, selectedOptions);
-    const existingItem = cartItems.find(i => i.cartItemId === cartItemId);
     
     const hasMandatoryCustomization = item.customizations?.some(c => c.minSelect === 1) ?? false;
     const basePrice = hasMandatoryCustomization ? 0 : ((item.isDiscountActive && item.discountPrice && item.discountPrice > 0) ? item.discountPrice : item.price);

@@ -318,12 +318,41 @@ export default function OrderAgainShelf() {
 
             const itemCartEntries = cartItems.filter((ci) => ci.id === item.id);
             const totalQty = itemCartEntries.reduce((sum, ci) => sum + ci.quantity, 0);
-            const hasCustomizations = item.customizations && item.customizations.length > 0;
+            
+            const isCustomizable = item.customizations && item.customizations.length > 0;
+            const hasMandatoryCustomization = item.customizations?.some((c) => Number(c.minSelect) > 0) ?? false;
+            const hasDiscount = !!(item.isDiscountActive && item.discountPrice && item.discountPrice > 0);
 
-            const price =
-              item.isDiscountActive && item.discountPrice
-                ? item.discountPrice
-                : item.price;
+            const basePrice = hasMandatoryCustomization ? 0 : (hasDiscount ? item.discountPrice! : item.price);
+
+            let mandatoryCustomizationsPrice = 0;
+            item.customizations?.forEach((c) => {
+              if (Number(c.minSelect) > 0) {
+                const groupMinOptionPrice = Math.min(
+                  ...c.options.map((o) => (item.isDiscountActive ? o.price : (o.originalPrice || o.price)))
+                );
+                if (groupMinOptionPrice !== Infinity) {
+                  mandatoryCustomizationsPrice += groupMinOptionPrice;
+                }
+              }
+            });
+
+            let displayPrice = basePrice + mandatoryCustomizationsPrice;
+
+            if (displayPrice === 0 && isCustomizable) {
+              let minOptPrice = Infinity;
+              item.customizations?.forEach((group) => {
+                group.options.forEach((o) => {
+                  const optPrice = item.isDiscountActive ? o.price : (o.originalPrice || o.price);
+                  if (optPrice < minOptPrice) {
+                    minOptPrice = optPrice;
+                  }
+                });
+              });
+              if (minOptPrice !== Infinity) {
+                displayPrice = minOptPrice;
+              }
+            }
 
             return (
               <CarouselItem
@@ -364,7 +393,7 @@ export default function OrderAgainShelf() {
 
                     {/* Overlapping Add Button / Stepper (Swiggy / Zomato Style Pill) */}
                     <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 z-20">
-                      {totalQty > 0 && !hasCustomizations && isEffectivelyAvailable && vendor ? (
+                      {totalQty > 0 && !isCustomizable && isEffectivelyAvailable && vendor ? (
                         <div className="flex items-center bg-primary text-primary-foreground rounded-full h-6 px-1 shadow-xs border border-primary">
                           <button
                             onClick={(e) => handleQuantityChange(e, item, vendor, -1)}
@@ -377,8 +406,14 @@ export default function OrderAgainShelf() {
                             {totalQty}
                           </span>
                           <button
+                            disabled={typeof item.stock === 'number' && totalQty >= item.stock}
                             onClick={(e) => handleQuantityChange(e, item, vendor, 1)}
-                            className="w-5 h-full flex items-center justify-center hover:bg-black/10 rounded-full transition-colors"
+                            className={cn(
+                              "w-5 h-full flex items-center justify-center rounded-full transition-colors",
+                              typeof item.stock === 'number' && totalQty >= item.stock
+                                ? "opacity-40 cursor-not-allowed"
+                                : "hover:bg-black/10"
+                            )}
                             aria-label="Increase quantity"
                           >
                             <Plus className="h-2.5 w-2.5" />
@@ -405,7 +440,7 @@ export default function OrderAgainShelf() {
                             }
                           }}
                         >
-                          {hasCustomizations && totalQty > 0 ? (
+                          {isCustomizable && totalQty > 0 ? (
                             <span className="text-[10px]">{totalQty} in cart</span>
                           ) : (
                             <>
@@ -426,10 +461,13 @@ export default function OrderAgainShelf() {
                       {item.name}
                     </h3>
                     <div className="flex items-baseline gap-1.5 mt-1">
+                      {isCustomizable && (
+                        <span className="text-[10px] text-muted-foreground font-normal">From</span>
+                      )}
                       <span className="font-extrabold text-xs sm:text-sm text-foreground">
-                        ₹{price.toFixed(0)}
+                        ₹{displayPrice.toFixed(0)}
                       </span>
-                      {item.isDiscountActive && item.discountPrice && (
+                      {hasDiscount && item.price > (item.discountPrice || 0) && (
                         <span className="text-[10px] text-muted-foreground line-through">
                           ₹{item.price.toFixed(0)}
                         </span>

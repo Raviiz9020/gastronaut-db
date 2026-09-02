@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ShoppingBag, Plus, Minus, X, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/context/cart-context';
+import { getMaxAvailableStock } from '@/lib/stock-utils';
 
 interface OrderCustomizationSheetProps {
   item: MenuItem | null;
@@ -35,7 +36,7 @@ export default function OrderCustomizationSheet({ item, vendor, open, onOpenChan
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string | string[]>>({});
   const [quantity, setQuantity] = useState(1);
   const { toast } = useToast();
-  const { addToCart } = useCart();
+  const { addToCart, cartItems } = useCart();
 
   useEffect(() => {
     if (item) {
@@ -53,6 +54,42 @@ export default function OrderCustomizationSheet({ item, vendor, open, onOpenChan
       setSelectedOptions(defaultOptions);
     }
   }, [item]);
+
+  const maxStock = useMemo(() => {
+    if (!item) return null;
+    return getMaxAvailableStock(item, selectedOptions);
+  }, [item, selectedOptions]);
+
+  const currentCartItemId = useMemo(() => {
+    if (!item) return '';
+    const optionKeys = Object.keys(selectedOptions || {}).sort();
+    const optionString = optionKeys.map(key => {
+      const value = selectedOptions[key];
+      return `${key}:${Array.isArray(value) ? value.sort().join(',') : value}`;
+    }).join('|');
+    return optionString ? `${item.id}-${optionString}` : item.id;
+  }, [item, selectedOptions]);
+
+  const existingCartQty = useMemo(() => {
+    const found = cartItems.find(ci => ci.cartItemId === currentCartItemId);
+    return found ? found.quantity : 0;
+  }, [cartItems, currentCartItemId]);
+
+  const maxAllowedToAdd = useMemo(() => {
+    if (maxStock === null) return null;
+    return Math.max(0, maxStock - existingCartQty);
+  }, [maxStock, existingCartQty]);
+
+  // Adjust quantity if selection changes to an option with lower available stock
+  useEffect(() => {
+    if (maxAllowedToAdd !== null) {
+      if (maxAllowedToAdd === 0) {
+        setQuantity(1);
+      } else if (quantity > maxAllowedToAdd) {
+        setQuantity(maxAllowedToAdd);
+      }
+    }
+  }, [maxAllowedToAdd, quantity]);
 
   const handleSingleSelectChange = (customizationId: string, value: string) => {
     setSelectedOptions(prev => ({ ...prev, [customizationId]: value }));
@@ -140,6 +177,17 @@ export default function OrderCustomizationSheet({ item, vendor, open, onOpenChan
       toast({
         title: "Required Selection",
         description: `Please select an option for: ${missingMandatoryGroups[0].name}`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (maxAllowedToAdd !== null && (maxAllowedToAdd <= 0 || quantity > maxAllowedToAdd)) {
+      toast({
+        title: "Stock Limit Reached",
+        description: maxAllowedToAdd > 0
+          ? `Only ${maxAllowedToAdd} more can be added (${existingCartQty} already in cart).`
+          : `All available stock (${maxStock}) is already in your cart.`,
         variant: "destructive"
       });
       return;
@@ -264,7 +312,7 @@ export default function OrderCustomizationSheet({ item, vendor, open, onOpenChan
                                 <Label className={cn(
                                   "font-medium text-sm text-slate-700 truncate",
                                   !isAvailable && "text-slate-400"
-                                )}>
+                                  )}>
                                   {opt.name}
                                 </Label>
                                  {!isAvailable ? (
@@ -402,7 +450,8 @@ export default function OrderCustomizationSheet({ item, vendor, open, onOpenChan
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 rounded-lg hover:bg-white transition-colors"
+                disabled={quantity <= 1}
+                className="h-8 w-8 rounded-lg hover:bg-white transition-colors disabled:opacity-40"
                 onClick={() => setQuantity(q => Math.max(1, q - 1))}
               >
                 <Minus className="h-3 w-3 text-slate-500" />
@@ -411,7 +460,11 @@ export default function OrderCustomizationSheet({ item, vendor, open, onOpenChan
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 rounded-lg hover:bg-white transition-colors"
+                disabled={maxAllowedToAdd !== null && quantity >= maxAllowedToAdd}
+                className={cn(
+                  "h-8 w-8 rounded-lg hover:bg-white transition-colors",
+                  maxAllowedToAdd !== null && quantity >= maxAllowedToAdd && "opacity-40 cursor-not-allowed"
+                )}
                 onClick={() => setQuantity(q => q + 1)}
               >
                 <Plus className="h-3 w-3 text-slate-500" />
@@ -421,16 +474,24 @@ export default function OrderCustomizationSheet({ item, vendor, open, onOpenChan
             {/* Add to order CTA */}
             <Button
               size="lg"
-              disabled={!isShopOpen}
+              disabled={!isShopOpen || (maxAllowedToAdd !== null && maxAllowedToAdd <= 0)}
               className={cn(
                 "flex-1 h-12 rounded-xl font-bold text-sm shadow-md transition-all group relative overflow-hidden",
-                !isShopOpen
+                (!isShopOpen || (maxAllowedToAdd !== null && maxAllowedToAdd <= 0))
                   ? "bg-muted text-muted-foreground cursor-not-allowed opacity-75"
                   : "shadow-primary/20"
               )}
               onClick={handleAddToOrder}
             >
-              {isShopOpen ? (
+              {!isShopOpen ? (
+                <span className="flex items-center justify-center gap-1.5">
+                  Closed • {shopStatus?.msg || 'Unavailable'}
+                </span>
+              ) : maxAllowedToAdd !== null && maxAllowedToAdd <= 0 ? (
+                <span className="flex items-center justify-center gap-1.5 text-xs">
+                  Max in Cart ({maxStock} available)
+                </span>
+              ) : (
                 <div className="flex items-center justify-between w-full">
                   <div className="flex flex-col items-start leading-tight">
                     {hasSaving && (
@@ -450,10 +511,6 @@ export default function OrderCustomizationSheet({ item, vendor, open, onOpenChan
                     <ShoppingBag className="h-4 w-4" />
                   </span>
                 </div>
-              ) : (
-                <span className="flex items-center justify-center gap-1.5">
-                  Closed • {shopStatus?.msg || 'Unavailable'}
-                </span>
               )}
             </Button>
           </div>

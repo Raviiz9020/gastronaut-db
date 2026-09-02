@@ -34,10 +34,12 @@ import {
   MapPin,
   UserCheck,
   Copy,
-  Check
+  Check,
+  QrCode
 } from 'lucide-react';
 import { format } from 'date-fns';
 import ConfirmationDialog from '@/components/confirmation-dialog';
+import PayoutQrDialog from '@/components/payout-qr-dialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { sendVendorSettlementEmail } from '@/ai/flows/send-vendor-settlement-email';
@@ -103,6 +105,7 @@ export default function CommissionSettlementsPage() {
   const [isLoadingVendors, setIsLoadingVendors] = useState(true);
   const [expandedVendor, setExpandedVendor] = useState<string | null>(null);
   const [settlingVendor, setSettlingVendor] = useState<VendorSettlementClaim | VendorOwedBalance | null>(null);
+  const [qrPayoutVendor, setQrPayoutVendor] = useState<VendorSettlementClaim | VendorOwedBalance | null>(null);
 
   // Rider Payout States
   const [riderClaimedOrders, setRiderClaimedOrders] = useState<Order[]>([]);
@@ -110,6 +113,7 @@ export default function CommissionSettlementsPage() {
   const [isLoadingRiders, setIsLoadingRiders] = useState(true);
   const [expandedRider, setExpandedRider] = useState<string | null>(null);
   const [settlingRider, setSettlingRider] = useState<RiderSettlementClaim | RiderOwedBalance | null>(null);
+  const [qrPayoutRider, setQrPayoutRider] = useState<RiderSettlementClaim | RiderOwedBalance | null>(null);
 
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -408,15 +412,16 @@ export default function CommissionSettlementsPage() {
     return Number(riderOwedBalances.reduce((sum, b) => sum + b.totalOwedAmount, 0).toFixed(2));
   }, [riderOwedBalances]);
 
-  const handleConfirmVendorSettlement = async () => {
-    if (!settlingVendor) return;
+  const handleConfirmVendorSettlement = async (targetVendor?: VendorSettlementClaim | VendorOwedBalance) => {
+    const activeTarget = targetVendor || settlingVendor || qrPayoutVendor;
+    if (!activeTarget) return;
 
     setIsProcessing(true);
     try {
       const batch = writeBatch(db);
       const nowIso = new Date().toISOString();
 
-      settlingVendor.orders.forEach((ord) => {
+      activeTarget.orders.forEach((ord) => {
         const orderRef = doc(db, 'orders', ord.orderId);
         batch.update(orderRef, {
           adminSettlementStatus: 'settled',
@@ -426,20 +431,20 @@ export default function CommissionSettlementsPage() {
 
       await batch.commit();
 
-      const amount = settlingVendor.totalNetPayout;
+      const amount = activeTarget.totalNetPayout;
       
       // Look up vendor details for email dispatch
-      const vendorObj = allVendors.find(v => v.username === settlingVendor.vendorUsername);
+      const vendorObj = allVendors.find(v => v.username === activeTarget.vendorUsername);
       const vendorEmail = vendorObj?.email;
 
       if (vendorEmail) {
-        const totalSubtotal = Number(settlingVendor.orders.reduce((sum, ord) => sum + (ord.subtotal || 0), 0).toFixed(2));
-        const totalCommission = Number(settlingVendor.orders.reduce((sum, ord) => sum + (ord.commissionAmount || 0), 0).toFixed(2));
+        const totalSubtotal = Number(activeTarget.orders.reduce((sum, ord) => sum + (ord.subtotal || 0), 0).toFixed(2));
+        const totalCommission = Number(activeTarget.orders.reduce((sum, ord) => sum + (ord.commissionAmount || 0), 0).toFixed(2));
         const netPayout = Math.max(0, Number((totalSubtotal - totalCommission).toFixed(2)));
 
-        const settlementId = `SETTLE-${format(new Date(), 'yyyyMMdd')}-${settlingVendor.vendorUsername.slice(0, 6).toUpperCase()}`;
+        const settlementId = `SETTLE-${format(new Date(), 'yyyyMMdd')}-${activeTarget.vendorUsername.slice(0, 6).toUpperCase()}`;
 
-        const sortedVendorOrders = [...settlingVendor.orders].sort((a, b) => {
+        const sortedVendorOrders = [...activeTarget.orders].sort((a, b) => {
           const idA = a.displayId || a.orderId || '';
           const idB = b.displayId || b.orderId || '';
           const numA = parseInt(idA.replace(/\D/g, ''), 10) || 0;
@@ -460,16 +465,16 @@ export default function CommissionSettlementsPage() {
 
         sendVendorSettlementEmail({
           vendor: {
-            username: settlingVendor.vendorUsername,
-            shopName: settlingVendor.vendorShopName,
+            username: activeTarget.vendorUsername,
+            shopName: activeTarget.vendorShopName,
             email: vendorEmail,
-            contact: vendorObj?.contact || settlingVendor.vendorContact,
+            contact: vendorObj?.contact || activeTarget.vendorContact,
             upiId: vendorObj?.upiId
           },
           settlementDetails: {
             settlementId,
             settledAt: nowIso,
-            paymentMode: 'paymentMode' in settlingVendor ? settlingVendor.paymentMode : 'Direct Payout',
+            paymentMode: 'paymentMode' in activeTarget && typeof (activeTarget as any).paymentMode === 'string' ? (activeTarget as any).paymentMode : 'UPI Transfer',
             totalSubtotal,
             totalCommission,
             netPayout,
@@ -485,16 +490,17 @@ export default function CommissionSettlementsPage() {
 
         toast({
           title: 'Settlement Confirmed!',
-          description: `Settled ₹${amount} for ${settlingVendor.vendorShopName} & statement emailed to ${vendorEmail}.`,
+          description: `Settled ₹${amount} for ${activeTarget.vendorShopName} & statement emailed to ${vendorEmail}.`,
         });
       } else {
         toast({
           title: 'Settlement Confirmed!',
-          description: `Successfully settled ₹${amount} payout for ${settlingVendor.vendorShopName}.`,
+          description: `Successfully settled ₹${amount} payout for ${activeTarget.vendorShopName}.`,
         });
       }
 
       setSettlingVendor(null);
+      setQrPayoutVendor(null);
     } catch (e: any) {
       console.error('Error confirming vendor settlement:', e);
       toast({
@@ -507,15 +513,16 @@ export default function CommissionSettlementsPage() {
     }
   };
 
-  const handleConfirmRiderSettlement = async () => {
-    if (!settlingRider) return;
+  const handleConfirmRiderSettlement = async (targetRider?: RiderSettlementClaim | RiderOwedBalance) => {
+    const activeRider = targetRider || settlingRider || qrPayoutRider;
+    if (!activeRider) return;
 
     setIsProcessing(true);
     try {
       const batch = writeBatch(db);
       const nowIso = new Date().toISOString();
 
-      settlingRider.orders.forEach((ord) => {
+      activeRider.orders.forEach((ord) => {
         const orderRef = doc(db, 'orders', ord.orderId);
         batch.update(orderRef, {
           riderSettlementStatus: 'settled',
@@ -525,14 +532,14 @@ export default function CommissionSettlementsPage() {
 
       await batch.commit();
 
-      const amount = 'totalPayoutAmount' in settlingRider ? settlingRider.totalPayoutAmount : settlingRider.totalOwedAmount;
+      const amount = 'totalPayoutAmount' in activeRider ? activeRider.totalPayoutAmount : activeRider.totalOwedAmount;
       
       // Look up rider details for email dispatch
-      const riderObj = riders.find(r => r.id === settlingRider.riderId);
+      const riderObj = riders.find(r => r.id === activeRider.riderId);
       const riderEmail = riderObj?.email;
 
       if (riderEmail) {
-        const sortedRiderOrders = [...settlingRider.orders].sort((a, b) => {
+        const sortedRiderOrders = [...activeRider.orders].sort((a, b) => {
           const idA = a.displayId || a.orderId || '';
           const idB = b.displayId || b.orderId || '';
           const numA = parseInt(idA.replace(/\D/g, ''), 10) || 0;
@@ -541,8 +548,8 @@ export default function CommissionSettlementsPage() {
           return idA.localeCompare(idB, undefined, { numeric: true, sensitivity: 'base' });
         });
 
-        const totalPayout = Number(settlingRider.orders.reduce((sum, ord) => sum + (ord.riderPayout || 0), 0).toFixed(2));
-        const settlementId = `RIDER-SETTLE-${format(new Date(), 'yyyyMMdd')}-${settlingRider.riderId.slice(0, 6).toUpperCase()}`;
+        const totalPayout = Number(activeRider.orders.reduce((sum, ord) => sum + (ord.riderPayout || 0), 0).toFixed(2));
+        const settlementId = `RIDER-SETTLE-${format(new Date(), 'yyyyMMdd')}-${activeRider.riderId.slice(0, 6).toUpperCase()}`;
 
         const orderSummaries = sortedRiderOrders.map(ord => ({
           displayId: ord.displayId || ord.orderId || 'HYPER',
@@ -554,17 +561,17 @@ export default function CommissionSettlementsPage() {
 
         sendRiderSettlementEmail({
           rider: {
-            id: settlingRider.riderId,
-            name: settlingRider.riderName,
+            id: activeRider.riderId,
+            name: activeRider.riderName,
             email: riderEmail,
-            contact: riderObj?.contact || settlingRider.riderContact,
-            upiId: riderObj?.upiId || settlingRider.riderUpiId,
-            vehicleNumber: riderObj?.vehicleNumber || settlingRider.riderVehicleNumber
+            contact: riderObj?.contact || activeRider.riderContact,
+            upiId: riderObj?.upiId || ('riderUpiId' in activeRider ? activeRider.riderUpiId : ''),
+            vehicleNumber: riderObj?.vehicleNumber || ('riderVehicleNumber' in activeRider ? activeRider.riderVehicleNumber : '')
           },
           settlementDetails: {
             settlementId,
             settledAt: nowIso,
-            paymentMode: 'paymentMode' in settlingRider ? settlingRider.paymentMode : 'Direct Payout',
+            paymentMode: 'paymentMode' in activeRider && typeof (activeRider as any).paymentMode === 'string' ? (activeRider as any).paymentMode : 'UPI Transfer',
             totalDeliveries: orderSummaries.length,
             totalPayout,
             orders: orderSummaries
@@ -579,16 +586,17 @@ export default function CommissionSettlementsPage() {
 
         toast({
           title: 'Rider Settlement Confirmed!',
-          description: `Settled ₹${amount} for ${settlingRider.riderName} & statement emailed to ${riderEmail}.`,
+          description: `Settled ₹${amount} for ${activeRider.riderName} & statement emailed to ${riderEmail}.`,
         });
       } else {
         toast({
           title: 'Rider Settlement Confirmed!',
-          description: `Successfully settled ₹${amount} delivery payout for ${settlingRider.riderName}.`,
+          description: `Successfully settled ₹${amount} delivery payout for ${activeRider.riderName}.`,
         });
       }
 
       setSettlingRider(null);
+      setQrPayoutRider(null);
     } catch (e: any) {
       console.error('Error confirming rider settlement:', e);
       toast({
@@ -833,26 +841,39 @@ export default function CommissionSettlementsPage() {
                               </div>
                             </div>
 
-                            <Button
-                              onClick={() => setSettlingVendor(owed)}
-                              disabled={isProcessing}
-                              className="rounded-xl text-white bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 shadow-md font-bold px-5 h-10"
-                            >
-                              <CheckCheck className="h-4 w-4 mr-2" />
-                              Settle Payout
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setQrPayoutVendor(owed)}
+                                className="rounded-xl border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 font-bold h-10 px-3.5 gap-1.5 shadow-sm"
+                                title="Scan dynamic UPI QR to transfer net payout"
+                              >
+                                <QrCode className="h-4 w-4" />
+                                <span>Pay QR</span>
+                              </Button>
 
-                            {owed.vendorContact && (
-                              <a href={`tel:${owed.vendorContact}`} title="Call Vendor">
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="rounded-xl h-10 w-10 border-primary/20 text-primary hover:bg-primary/10 shrink-0"
-                                >
-                                  <Phone className="h-4 w-4" />
-                                </Button>
-                              </a>
-                            )}
+                              <Button
+                                onClick={() => setSettlingVendor(owed)}
+                                disabled={isProcessing}
+                                className="rounded-xl text-white bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 shadow-md font-bold px-4 h-10"
+                              >
+                                <CheckCheck className="h-4 w-4 mr-1.5" />
+                                Settle
+                              </Button>
+
+                              {owed.vendorContact && (
+                                <a href={`tel:${owed.vendorContact}`} title="Call Vendor">
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="rounded-xl h-10 w-10 border-primary/20 text-primary hover:bg-primary/10 shrink-0"
+                                  >
+                                    <Phone className="h-4 w-4" />
+                                  </Button>
+                                </a>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </CardHeader>
@@ -1049,14 +1070,27 @@ export default function CommissionSettlementsPage() {
                               </div>
                             </div>
 
-                            <Button
-                              onClick={() => setSettlingVendor(claim)}
-                              disabled={isProcessing}
-                              className="rounded-xl text-white bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-md font-bold px-5 h-10"
-                            >
-                              <CheckCheck className="h-4 w-4 mr-2" />
-                              Confirm Settlement
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setQrPayoutVendor(claim)}
+                                className="rounded-xl border-green-500/30 text-green-600 hover:bg-green-500/10 font-bold h-10 px-3.5 gap-1.5 shadow-sm"
+                                title="Scan dynamic UPI QR to transfer net payout"
+                              >
+                                <QrCode className="h-4 w-4" />
+                                <span>Pay QR</span>
+                              </Button>
+
+                              <Button
+                                onClick={() => setSettlingVendor(claim)}
+                                disabled={isProcessing}
+                                className="rounded-xl text-white bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-md font-bold px-4 h-10"
+                              >
+                                <CheckCheck className="h-4 w-4 mr-1.5" />
+                                Settle
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </CardHeader>
@@ -1286,14 +1320,27 @@ export default function CommissionSettlementsPage() {
                               </span>
                             </div>
 
-                            <Button
-                              onClick={() => setSettlingRider(owed)}
-                              disabled={isProcessing}
-                              className="rounded-xl text-white bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 shadow-md font-bold px-5 h-10"
-                            >
-                              <CheckCheck className="h-4 w-4 mr-2" />
-                              Settle Payout
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setQrPayoutRider(owed)}
+                                className="rounded-xl border-orange-500/30 text-orange-600 hover:bg-orange-500/10 font-bold h-10 px-3.5 gap-1.5 shadow-sm"
+                                title="Scan dynamic UPI QR to transfer rider payout"
+                              >
+                                <QrCode className="h-4 w-4" />
+                                <span>Pay QR</span>
+                              </Button>
+
+                              <Button
+                                onClick={() => setSettlingRider(owed)}
+                                disabled={isProcessing}
+                                className="rounded-xl text-white bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 shadow-md font-bold px-4 h-10"
+                              >
+                                <CheckCheck className="h-4 w-4 mr-1.5" />
+                                Settle
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </CardHeader>
@@ -1442,14 +1489,27 @@ export default function CommissionSettlementsPage() {
                               </span>
                             </div>
 
-                            <Button
-                              onClick={() => setSettlingRider(claim)}
-                              disabled={isProcessing}
-                              className="rounded-xl text-white bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-md font-bold px-5 h-10"
-                            >
-                              <CheckCheck className="h-4 w-4 mr-2" />
-                              Confirm Settlement
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setQrPayoutRider(claim)}
+                                className="rounded-xl border-green-500/30 text-green-600 hover:bg-green-500/10 font-bold h-10 px-3.5 gap-1.5 shadow-sm"
+                                title="Scan dynamic UPI QR to transfer rider payout"
+                              >
+                                <QrCode className="h-4 w-4" />
+                                <span>Pay QR</span>
+                              </Button>
+
+                              <Button
+                                onClick={() => setSettlingRider(claim)}
+                                disabled={isProcessing}
+                                className="rounded-xl text-white bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-md font-bold px-4 h-10"
+                              >
+                                <CheckCheck className="h-4 w-4 mr-1.5" />
+                                Settle
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </CardHeader>
@@ -1592,6 +1652,42 @@ export default function CommissionSettlementsPage() {
         title="Confirm Rider Delivery Payout Settlement?"
         description={`Are you sure you want to confirm settlement for ${settlingRider?.riderName}? This will mark ₹${settlingRider && ('totalPayoutAmount' in settlingRider ? settlingRider.totalPayoutAmount : settlingRider.totalOwedAmount)} across ${settlingRider?.orders.length} delivered order(s) as settled.`}
       />
+
+      {/* Vendor Payout QR Dialog */}
+      {qrPayoutVendor && (
+        <PayoutQrDialog
+          isOpen={!!qrPayoutVendor}
+          onOpenChange={(open) => !open && setQrPayoutVendor(null)}
+          title={`Pay Net Payout — ${qrPayoutVendor.vendorShopName}`}
+          payeeName={qrPayoutVendor.vendorShopName}
+          payeeType="vendor"
+          upiId={allVendors.find(v => v.username === qrPayoutVendor.vendorUsername)?.upiId || undefined}
+          contact={(qrPayoutVendor.vendorContact || allVendors.find(v => v.username === qrPayoutVendor.vendorUsername)?.contact) || undefined}
+          netPayout={qrPayoutVendor.totalNetPayout}
+          totalSubtotal={qrPayoutVendor.totalSubtotal}
+          totalCommission={qrPayoutVendor.totalCommissionAmount}
+          ordersCount={qrPayoutVendor.orders.length}
+          onConfirmSettlement={() => handleConfirmVendorSettlement(qrPayoutVendor)}
+          isProcessing={isProcessing}
+        />
+      )}
+
+      {/* Rider Payout QR Dialog */}
+      {qrPayoutRider && (
+        <PayoutQrDialog
+          isOpen={!!qrPayoutRider}
+          onOpenChange={(open) => !open && setQrPayoutRider(null)}
+          title={`Pay Rider Payout — ${qrPayoutRider.riderName}`}
+          payeeName={qrPayoutRider.riderName}
+          payeeType="rider"
+          upiId={(riders.find(r => r.id === qrPayoutRider.riderId)?.upiId || ('riderUpiId' in qrPayoutRider ? (qrPayoutRider as any).riderUpiId : '')) || undefined}
+          contact={(qrPayoutRider.riderContact || riders.find(r => r.id === qrPayoutRider.riderId)?.contact) || undefined}
+          netPayout={'totalPayoutAmount' in qrPayoutRider ? qrPayoutRider.totalPayoutAmount : qrPayoutRider.totalOwedAmount}
+          ordersCount={qrPayoutRider.orders.length}
+          onConfirmSettlement={() => handleConfirmRiderSettlement(qrPayoutRider)}
+          isProcessing={isProcessing}
+        />
+      )}
     </div>
   );
 }
