@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Building, Rocket, ChevronLeft, Upload, Loader2, Info, Mail, Bike, Home, AlertCircle, KeyRound, MapPin, BadgePercent } from 'lucide-react';
+import { Building, Rocket, ChevronLeft, Upload, Loader2, Info, Mail, Bike, Home, AlertCircle, KeyRound, MapPin, BadgePercent, Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useVendor } from '@/context/vendor-context';
@@ -394,252 +394,560 @@ export default function VendorDetailsPage() {
 
   return (
     <>
-    <div className="flex flex-col flex-1 items-center justify-center p-4">
-      <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-4xl"
-      >
-        {vendor && !vendor.isApproved && (
-            <Alert variant="default" className="mb-6 bg-blue-900/20 border-blue-500/30 text-foreground">
-                <Info className="h-4 w-4 text-blue-400" />
-                <AlertTitle className="text-blue-300">Welcome to HyperDelivery!</AlertTitle>
-                <AlertDescription>
-                    Thank you for signing up. Please fill out your shop details below. To get your account approved and start selling, please contact us at: <strong className="font-bold text-black">+917083609020</strong>
-                </AlertDescription>
-            </Alert>
-        )}
-      <Card className="w-full bg-card/80 backdrop-blur-sm border-primary/20 box-glow-primary rounded-3xl">
-          <form onSubmit={handleSubmit}>
-        <CardHeader>
-          <div className="flex items-center justify-center gap-3 mb-2">
-              <Building className="h-8 w-8 text-primary"/>
-              <CardTitle className="font-headline text-4xl text-center text-primary">Vendor Details</CardTitle>
-          </div>
-          <CardDescription className="text-center text-card-foreground">Please provide your restaurant or shop information.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-            <div className="space-y-6">
-              <div className="space-y-2">
-                  <Label htmlFor="shopName">Shop Name</Label>
-                  <Input id="shopName" placeholder="e.g., The Future Eatery" value={shopName} onChange={(e) => setShopName(e.target.value)} required/>
-              </div>
-              <div className="space-y-2">
-                  <Label htmlFor="category">Shop Category</Label>
-                  <Input 
-                      id="category" 
-                      value={category || 'To be assigned by admin'} 
-                      readOnly 
-                      className="bg-muted/50 cursor-not-allowed"
-                  />
-              </div>
-              <div className="space-y-2">
-                  <Label htmlFor="commission" className="flex items-center gap-1.5">
-                      <BadgePercent className="h-4 w-4 text-primary" />
-                      Commission Rate (Per Order)
-                  </Label>
-                  <Input 
-                      id="commission" 
-                      value={
-                        vendor?.isCommissionOn 
-                          ? `${vendor?.commissionPercentage ?? 0}% Commission (Managed by Superadmin)`
-                          : 'Disabled / Subscription Mode (Managed by Superadmin)'
-                      } 
-                      readOnly 
-                      className="bg-muted/50 cursor-not-allowed font-medium text-muted-foreground"
-                  />
-              </div>
-              <div className="space-y-2">
-                  <Label htmlFor="contact">Contact Number</Label>
-                  <div className="flex items-center border rounded-full px-3 bg-background">
-                      <span className="text-muted-foreground">+91</span>
-                      <div className="mx-2 h-4 w-px bg-border" />
-                      <Input
-                          id="contact"
-                          type="tel"
-                          placeholder="9876543210"
-                          value={contact}
-                          onChange={(e) => setContact(e.target.value.replace(/[^0-9]/g, ''))}
-                          maxLength={10}
-                          required
-                          className="border-none focus-visible:ring-0 focus-visible:ring-offset-0 flex-1 px-0 h-9"
-                      />
-                  </div>
-              </div>
-              <div className="space-y-2">
-                  <Label htmlFor="upiId">UPI ID</Label>
-                  <Input id="upiId" placeholder="your-id@okhdfcbank" value={upiId} onChange={(e) => setUpiId(e.target.value)}/>
-              </div>
-              <div className="space-y-2">
-                  <Label htmlFor="telegramChatId">Telegram Chat ID (for Notifications)</Label>
-                  <Input id="telegramChatId" placeholder="e.g., -100123456789" value={telegramChatId} onChange={(e) => setTelegramChatId(e.target.value)}/>
-                  <p className="text-xs text-muted-foreground">Find this with a bot like @userinfobot on Telegram.</p>
-              </div>
-              <div className="space-y-2">
-                  <Label htmlFor="minOrderAmount">Minimum Order Amount (₹)</Label>
-                  <Input id="minOrderAmount" type="number" placeholder="0" value={minOrderAmount} onChange={(e) => setMinOrderAmount(Number(e.target.value))} required/>
-              </div>
-              <div className="space-y-2">
-                  <Label htmlFor="freeDeliveryDistanceKm">Free Delivery Distance (km)</Label>
-                  <Input 
-                    id="freeDeliveryDistanceKm" 
-                    type="number" 
-                    step="0.1" 
-                    min="0" 
-                    max="50" 
-                    placeholder="0 (Enter 0 or leave empty for global slab)" 
-                    value={freeDeliveryDistanceKm || ''} 
-                    onChange={(e) => setFreeDeliveryDistanceKm(Number(e.target.value))}
-                  />
-                  <p className="text-xs text-muted-foreground">Deliveries within this distance get ₹0 delivery fee. Outside this radius, platform standard slabs apply.</p>
-              </div>
-              <div className="space-y-2">
-                  <Label>Delivery Options</Label>
-                  <RadioGroup value={deliveryType} onValueChange={(v) => setDeliveryType(v as DeliveryType)} className="flex gap-4 pt-2">
-                      <div className="flex items-center gap-2">
-                          <RadioGroupItem value="All" id="all-delivery"/>
-                          <Label htmlFor="all-delivery" className="font-normal flex items-center gap-2"><Bike className="h-4 w-4"/> All Options</Label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                          <RadioGroupItem value="Self Pickup Only" id="self-pickup"/>
-                          <Label htmlFor="self-pickup" className="font-normal flex items-center gap-2"><Home className="h-4 w-4"/> Self-Pickup Only</Label>
-                      </div>
-                  </RadioGroup>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="dineInTables">Number of Dine-in Tables (Optional)</Label>
-                <Input id="dineInTables" type="number" placeholder="e.g., 10" value={dineInTables} onChange={(e) => setDineInTables(Number(e.target.value))}/>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="tagline">Tagline</Label>
-                <Input id="tagline" placeholder="e.g., The tastiest synth-burgers in the quadrant." value={tagline} onChange={(e) => setTagline(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="address">Full Address</Label>
-                <Input id="address" placeholder="123, Cybernetic City, Neo-Delhi" value={address} onChange={(e) => setAddress(e.target.value)} required/>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="googleMapsUrl">Google Maps URL (Optional)</Label>
-                <Input id="googleMapsUrl" placeholder="https://maps.app.goo.gl/..." value={googleMapsUrl} onChange={(e) => setGoogleMapsUrl(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="about">About your shop</Label>
-                <Textarea id="about" placeholder="Tell customers about your business..." value={about} onChange={(e) => setAbout(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="workingHours">Working Hours</Label>
-                <Textarea id="workingHours" placeholder="e.g., Breakfast: 8-11 AM, Lunch: 1-4 PM, Dinner: 7-11 PM" value={workingHours} onChange={(e) => setWorkingHours(e.target.value)} />
+      <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20 pb-16">
+        {/* Top Header & Quick Actions */}
+        <div className="sticky top-0 z-30 bg-background/85 backdrop-blur-md border-b border-border/60 py-3.5 px-4 sm:px-8">
+          <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Link href="/admin/dashboard" passHref>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+              </Link>
+              <div>
+                <h1 className="text-lg sm:text-xl font-extrabold font-headline text-foreground flex items-center gap-2">
+                  <Building className="h-5 w-5 text-primary" />
+                  Shop Settings
+                </h1>
+                <p className="text-xs text-muted-foreground hidden sm:block">
+                  Manage your store profile, delivery rules, and business operations.
+                </p>
               </div>
             </div>
-            <div className="space-y-4">
-                <div className="space-y-2">
-                      <Label>Shop Image</Label>
-                      <div className="w-full aspect-video rounded-2xl bg-muted flex items-center justify-center overflow-hidden">
-                          {shopImage ? (
-                              <Image src={shopImage} alt="Shop image preview" width={400} height={225} className="object-cover h-full w-full"/>
-                          ) : (
-                              <span className="text-sm text-muted-foreground">Image will appear here</span>
-                          )}
-                      </div>
-                  </div>
-                  <div className="flex gap-2">
-                      <Button type="button" onClick={handleUploadClick} variant="outline" className="w-full" disabled={isSaving}>
-                              <Upload className="mr-2 h-4 w-4"/> Upload Shop Image
-                      </Button>
-                          <input
-                          type="file"
-                          ref={fileInputRef}
-                          onChange={handleFileSelect}
-                          className="hidden"
-                          accept="image/png, image/jpeg, image/webp"
-                      />
-                  </div>
-                  <div className="space-y-2 pt-4 border-t border-primary/10">
-                     <div className="flex flex-col space-y-3 rounded-2xl border p-4 shadow-sm">
-                        <div className="flex flex-row items-center justify-between">
+
+            <div className="flex items-center gap-2.5">
+              <Link href={`/vendor/${vendor?.slug || vendor?.username}`} target="_blank" className="hidden sm:inline-flex">
+                <Button variant="outline" size="sm" className="rounded-full text-xs font-semibold gap-1.5 h-9">
+                  <span>View Storefront</span>
+                  <Rocket className="h-3.5 w-3.5 text-primary" />
+                </Button>
+              </Link>
+
+              <Button
+                type="button"
+                onClick={(e) => {
+                  const form = document.getElementById('vendor-details-form') as HTMLFormElement;
+                  if (form) form.requestSubmit();
+                }}
+                size="sm"
+                className="rounded-full font-bold text-xs h-9 px-4 gap-1.5 shadow-xs"
+                disabled={isSaveDisabled}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <Rocket className="h-3.5 w-3.5" />
+                    <span>Save Changes</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-6xl mx-auto px-4 sm:px-8 pt-6">
+          {vendor && !vendor.isApproved && (
+            <Alert variant="default" className="mb-6 rounded-2xl bg-blue-950/20 border-blue-500/30 text-foreground">
+              <Info className="h-4 w-4 text-blue-400" />
+              <AlertTitle className="text-blue-300 font-bold">Welcome to HyperDelivery!</AlertTitle>
+              <AlertDescription className="text-xs text-muted-foreground mt-1">
+                Thank you for signing up. Please fill out your shop details below. To get your account approved and start selling, contact us at: <strong className="font-bold text-foreground">+917083609020</strong>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <form id="vendor-details-form" onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left Form Area with Categorized Tabs */}
+              <div className="lg:col-span-8 space-y-6">
+                <Tabs defaultValue="profile" className="w-full">
+                  <TabsList className="grid grid-cols-4 w-full h-11 rounded-2xl bg-muted/70 p-1 border border-border/50">
+                    <TabsTrigger value="profile" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-xs">
+                      <Building className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Profile</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="location" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-xs">
+                      <MapPin className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Location</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="fulfillment" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-xs">
+                      <Bike className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Fulfillment</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="security" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-xs">
+                      <KeyRound className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Security</span>
+                    </TabsTrigger>
+                  </TabsList>
+
+                  {/* Tab 1: Profile & Identity */}
+                  <TabsContent value="profile" className="mt-4 space-y-4">
+                    <Card className="rounded-3xl border-border/70 shadow-xs bg-card/90 backdrop-blur-sm">
+                      <CardHeader className="pb-4">
+                        <CardTitle className="text-base font-bold flex items-center gap-2">
+                          <Building className="h-4 w-4 text-primary" /> Store Identity
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          Basic information displayed to customers browsing your store.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="shopName" className="text-xs font-bold">Shop Name *</Label>
+                            <Input
+                              id="shopName"
+                              placeholder="e.g., The Future Eatery"
+                              value={shopName}
+                              onChange={(e) => setShopName(e.target.value)}
+                              required
+                              className="rounded-xl h-10 text-xs"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label htmlFor="category" className="text-xs font-bold">Shop Category</Label>
+                            <Input 
+                              id="category" 
+                              value={category || 'To be assigned by admin'} 
+                              readOnly 
+                              className="rounded-xl h-10 text-xs bg-muted/50 cursor-not-allowed text-muted-foreground"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label htmlFor="tagline" className="text-xs font-bold">Tagline</Label>
+                          <Input
+                            id="tagline"
+                            placeholder="e.g., Authentic home-cooked flavours & gourmet treats"
+                            value={tagline}
+                            onChange={(e) => setTagline(e.target.value)}
+                            className="rounded-xl h-10 text-xs"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label htmlFor="about" className="text-xs font-bold">About your shop</Label>
+                          <Textarea
+                            id="about"
+                            placeholder="Tell customers about your kitchen, specialties, and story..."
+                            value={about}
+                            onChange={(e) => setAbout(e.target.value)}
+                            rows={3}
+                            className="rounded-xl text-xs"
+                          />
+                        </div>
+
+                        <div className="space-y-2 pt-2 border-t border-border/50">
+                          <Label className="text-xs font-bold">Shop Banner / Logo Image</Label>
+                          <div className="flex items-center gap-4">
+                            <div className="relative w-28 h-20 rounded-2xl bg-muted/60 border border-border/60 overflow-hidden shrink-0 shadow-2xs">
+                              {shopImage ? (
+                                <Image src={shopImage} alt="Shop preview" fill className="object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground">
+                                  No Image
+                                </div>
+                              )}
+                            </div>
+                            <div className="space-y-1.5">
+                              <Button
+                                type="button"
+                                onClick={handleUploadClick}
+                                variant="outline"
+                                size="sm"
+                                className="rounded-full text-xs font-bold gap-1.5"
+                                disabled={isSaving}
+                              >
+                                <Upload className="h-3.5 w-3.5 text-primary" />
+                                <span>Upload New Banner</span>
+                              </Button>
+                              <p className="text-[11px] text-muted-foreground">
+                                Recommended 16:9 ratio (PNG, JPG, or WebP). Automatically compressed.
+                              </p>
+                              <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileSelect}
+                                className="hidden"
+                                accept="image/png, image/jpeg, image/webp"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  {/* Tab 2: Location & Contact */}
+                  <TabsContent value="location" className="mt-4 space-y-4">
+                    <Card className="rounded-3xl border-border/70 shadow-xs bg-card/90 backdrop-blur-sm">
+                      <CardHeader className="pb-4">
+                        <CardTitle className="text-base font-bold flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-primary" /> Location & Contact Info
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          Where customers and delivery partners can reach you.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="contact" className="text-xs font-bold">Contact Mobile Number *</Label>
+                          <div className="flex items-center border border-border/80 rounded-xl px-3 bg-background h-10 shadow-2xs">
+                            <span className="text-xs font-bold text-muted-foreground mr-2">+91</span>
+                            <div className="h-4 w-px bg-border mr-2" />
+                            <Input
+                              id="contact"
+                              type="tel"
+                              placeholder="9876543210"
+                              value={contact}
+                              onChange={(e) => setContact(e.target.value.replace(/[^0-9]/g, ''))}
+                              maxLength={10}
+                              required
+                              className="border-none focus-visible:ring-0 focus-visible:ring-offset-0 flex-1 px-0 h-9 text-xs font-medium"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label htmlFor="address" className="text-xs font-bold">Full Address *</Label>
+                          <Input
+                            id="address"
+                            placeholder="e.g., Shop 4, Near Gandhi Statue, Main Road, Kolhapur"
+                            value={address}
+                            onChange={(e) => setAddress(e.target.value)}
+                            required
+                            className="rounded-xl h-10 text-xs"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label htmlFor="googleMapsUrl" className="text-xs font-bold">Google Maps Directions URL</Label>
+                          <Input
+                            id="googleMapsUrl"
+                            placeholder="https://maps.app.goo.gl/..."
+                            value={googleMapsUrl}
+                            onChange={(e) => setGoogleMapsUrl(e.target.value)}
+                            className="rounded-xl h-10 text-xs"
+                          />
+                          <p className="text-[11px] text-muted-foreground">
+                            Customers can tap &quot;Directions&quot; on your storefront to navigate directly to your location.
+                          </p>
+                        </div>
+
+                        <div className="space-y-1.5 pt-2 border-t border-border/50">
+                          <Label htmlFor="workingHours" className="text-xs font-bold">Operating Hours</Label>
+                          <Textarea
+                            id="workingHours"
+                            placeholder="e.g., Daily: 9:00 AM - 10:00 PM (Lunch: 1:00 PM - 3:30 PM)"
+                            value={workingHours}
+                            onChange={(e) => setWorkingHours(e.target.value)}
+                            rows={2}
+                            className="rounded-xl text-xs"
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  {/* Tab 3: Fulfillment & Ordering Ops */}
+                  <TabsContent value="fulfillment" className="mt-4 space-y-4">
+                    <Card className="rounded-3xl border-border/70 shadow-xs bg-card/90 backdrop-blur-sm">
+                      <CardHeader className="pb-4">
+                        <CardTitle className="text-base font-bold flex items-center gap-2">
+                          <Bike className="h-4 w-4 text-primary" /> Fulfillment & Ordering Settings
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          Configure delivery radius, UPI payment destination, and dine-in features.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="upiId" className="text-xs font-bold">UPI ID (For Customer QR Payments)</Label>
+                            <Input
+                              id="upiId"
+                              placeholder="your-id@okhdfcbank"
+                              value={upiId}
+                              onChange={(e) => setUpiId(e.target.value)}
+                              className="rounded-xl h-10 text-xs"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label htmlFor="telegramChatId" className="text-xs font-bold">Telegram Chat ID (Instant Alerts)</Label>
+                            <Input
+                              id="telegramChatId"
+                              placeholder="e.g., -100123456789"
+                              value={telegramChatId}
+                              onChange={(e) => setTelegramChatId(e.target.value)}
+                              className="rounded-xl h-10 text-xs"
+                            />
+                            <p className="text-[10px] text-muted-foreground">
+                              Find via @userinfobot on Telegram to receive live order dispatch alerts.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border/50">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="minOrderAmount" className="text-xs font-bold">Minimum Order Amount (₹)</Label>
+                            <Input
+                              id="minOrderAmount"
+                              type="number"
+                              placeholder="0"
+                              value={minOrderAmount}
+                              onChange={(e) => setMinOrderAmount(Number(e.target.value))}
+                              className="rounded-xl h-10 text-xs"
+                              required
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label htmlFor="freeDeliveryDistanceKm" className="text-xs font-bold">Free Delivery Radius (km)</Label>
+                            <Input
+                              id="freeDeliveryDistanceKm"
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              max="50"
+                              placeholder="0"
+                              value={freeDeliveryDistanceKm || ''}
+                              onChange={(e) => setFreeDeliveryDistanceKm(Number(e.target.value))}
+                              className="rounded-xl h-10 text-xs"
+                            />
+                            <p className="text-[10px] text-muted-foreground">
+                              Orders within this distance receive ₹0 delivery fee.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 pt-2 border-t border-border/50">
+                          <Label className="text-xs font-bold">Supported Delivery Modes</Label>
+                          <RadioGroup value={deliveryType} onValueChange={(v) => setDeliveryType(v as DeliveryType)} className="flex flex-wrap gap-4 pt-1">
+                            <div className="flex items-center gap-2 bg-muted/50 px-3 py-2 rounded-xl border border-border/60">
+                              <RadioGroupItem value="All" id="all-delivery" />
+                              <Label htmlFor="all-delivery" className="text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                                <Bike className="h-3.5 w-3.5 text-primary" /> Delivery + Self-Pickup
+                              </Label>
+                            </div>
+                            <div className="flex items-center gap-2 bg-muted/50 px-3 py-2 rounded-xl border border-border/60">
+                              <RadioGroupItem value="Self Pickup Only" id="self-pickup" />
+                              <Label htmlFor="self-pickup" className="text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                                <Home className="h-3.5 w-3.5 text-primary" /> Self-Pickup Only
+                              </Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+
+                        <div className="space-y-1.5 pt-2 border-t border-border/50">
+                          <Label htmlFor="dineInTables" className="text-xs font-bold">Dine-in Tables Count (Optional)</Label>
+                          <Input
+                            id="dineInTables"
+                            type="number"
+                            placeholder="e.g., 8"
+                            value={dineInTables}
+                            onChange={(e) => setDineInTables(Number(e.target.value))}
+                            className="rounded-xl h-10 text-xs max-w-xs"
+                          />
+                          <p className="text-[11px] text-muted-foreground">
+                            Enables customer QR ordering for on-premise tables if set &gt; 0.
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  {/* Tab 4: Account, Security & Alerts */}
+                  <TabsContent value="security" className="mt-4 space-y-4">
+                    <Card className="rounded-3xl border-border/70 shadow-xs bg-card/90 backdrop-blur-sm">
+                      <CardHeader className="pb-4">
+                        <CardTitle className="text-base font-bold flex items-center gap-2">
+                          <KeyRound className="h-4 w-4 text-primary" /> Account & Security
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          Manage login access and email marketing communication.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="commission" className="text-xs font-bold flex items-center gap-1.5">
+                            <BadgePercent className="h-3.5 w-3.5 text-primary" /> Commission Tier
+                          </Label>
+                          <Input
+                            id="commission"
+                            value={
+                              vendor?.isCommissionOn
+                                ? `${vendor?.commissionPercentage ?? 0}% Commission (Managed by Superadmin)`
+                                : 'Disabled / Subscription Mode (Managed by Superadmin)'
+                            }
+                            readOnly
+                            className="rounded-xl h-10 text-xs bg-muted/50 cursor-not-allowed font-medium text-muted-foreground"
+                          />
+                        </div>
+
+                        <div className="rounded-2xl border border-border/60 p-4 bg-muted/20 space-y-3">
+                          <div className="flex items-center justify-between">
                             <div className="space-y-0.5">
-                                <Label>Email Preferences</Label>
-                                <p className="text-sm text-muted-foreground">
-                                    Receive marketing campaigns and special offers via email.
-                                </p>
+                              <Label className="text-xs font-bold">Email Marketing & Offers</Label>
+                              <p className="text-[11px] text-muted-foreground">
+                                Receive promotional campaigns, growth tips, and special merchant offers.
+                              </p>
                             </div>
                             <Checkbox
-                                checked={emailPreferences.campaigns}
-                                onCheckedChange={(checked) => setEmailPreferences(prev => ({...prev, campaigns: !!checked}))}
+                              checked={emailPreferences.campaigns}
+                              onCheckedChange={(checked) => setEmailPreferences(prev => ({ ...prev, campaigns: !!checked }))}
                             />
+                          </div>
+                          {!emailPreferences.campaigns && (
+                            <div className="text-[11px] text-destructive flex items-center gap-1.5 pt-2 border-t border-destructive/20 font-medium">
+                              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                              <span>You might miss out on important product updates and promotional perks!</span>
+                            </div>
+                          )}
                         </div>
-                         {!(emailPreferences.campaigns) && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -5 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="text-xs text-destructive flex items-center gap-2 pt-2 border-t border-destructive/20"
+
+                        {vendor?.isAccountLinkingEnabled && (
+                          <div className="rounded-2xl border border-border/60 p-4 space-y-3">
+                            <Label className="text-xs font-bold">Primary Google Login Account</Label>
+                            <Input value={vendor?.email || 'Not set'} disabled className="rounded-xl h-10 text-xs bg-muted/50" />
+                            <Button
+                              type="button"
+                              onClick={handleLinkAccount}
+                              disabled={isLinking}
+                              variant="outline"
+                              className="w-full rounded-full text-xs font-bold gap-2 h-10"
                             >
-                                <AlertCircle className="h-4 w-4"/>
-                                You might miss out on important offers and updates!
-                            </motion.div>
+                              {isLinking ? <Loader2 className="h-4 w-4 animate-spin" /> : <GoogleIcon />}
+                              <span>{isLinking ? 'Processing...' : 'Link New Google Account'}</span>
+                            </Button>
+                            <p className="text-[11px] text-muted-foreground text-center">
+                              Changes the Google account linked with this restaurant dashboard.
+                            </p>
+                          </div>
                         )}
-                    </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                </Tabs>
+
+                {/* Terms Agreement Pill Checkbox */}
+                <div className="rounded-2xl border border-border/60 p-4 bg-card/60 flex items-start gap-3 shadow-2xs">
+                  <Checkbox
+                    id="terms"
+                    checked={termsAccepted}
+                    onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
+                    className="mt-0.5"
+                  />
+                  <div className="text-xs leading-relaxed text-muted-foreground">
+                    <label htmlFor="terms" className="font-semibold text-foreground cursor-pointer mr-1">
+                      I accept the terms and conditions.
+                    </label>
+                    You agree to our{' '}
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="p-0 h-auto text-xs font-bold text-primary inline"
+                      onClick={() => setIsTermsDialogOpen(true)}
+                    >
+                      Terms of Service and Privacy Policy
+                    </Button>
+                    .
+                  </div>
                 </div>
-                {vendor?.isAccountLinkingEnabled && (
-                 <div className="space-y-3 pt-4 border-t border-primary/10">
-                    <h3 className="font-semibold flex items-center gap-2"><KeyRound className="h-4 w-4"/>Account Security</h3>
-                     <div className="p-4 border rounded-2xl space-y-3">
-                        <Label>Login Email</Label>
-                        <Input value={vendor?.email || 'Not set'} disabled />
-                         <Button type="button" onClick={handleLinkAccount} disabled={isLinking} className="w-full flex items-center gap-2">
-                            {isLinking ? <Loader2 className="h-4 w-4 animate-spin"/> : <GoogleIcon />}
-                            {isLinking ? 'Processing...' : 'Link New Google Account'}
-                         </Button>
-                        <p className="text-xs text-muted-foreground text-center">
-                            Use this to change the Google account you use to log in. Your old login will be disabled.
-                        </p>
-                    </div>
-                </div>
-                )}
-            </div>
-          </div>
-            <div className="flex items-start space-x-3 pt-4 px-6">
-              <Checkbox id="terms" checked={termsAccepted} onCheckedChange={(checked) => setTermsAccepted(checked as boolean)} />
-              <div className="grid gap-1.5 leading-none">
-                  <label
-                      htmlFor="terms"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                      Accept terms and conditions
-                  </label>
-                  <p className="text-sm text-muted-foreground">
-                      You agree to our{' '}
-                      <Button
-                          type="button"
-                          variant="link"
-                          className="p-0 h-auto text-sm"
-                          onClick={() => setIsTermsDialogOpen(true)}
-                      >
-                          Terms and Policies
-                      </Button>
-                      .
-                  </p>
               </div>
-          </div>
-        </CardContent>
-        <CardFooter className="flex-col gap-4 mt-6">
-          <Button type="submit" size="lg" className="w-full text-lg border-neutral-700" variant="outline" disabled={isSaveDisabled}>
-              {isSaving ? <Loader2 className="animate-spin" /> : <><Rocket className="mr-2 h-5 w-5"/>Save Details</>}
-          </Button>
-           <Link href="/admin/dashboard" passHref className="w-full">
-            <Button variant="outline" size="lg" className="w-full text-lg border-neutral-700" type="button">
-                <ChevronLeft className="mr-2 h-5 w-5"/>
-                Back
-            </Button>
-          </Link>
-        </CardFooter>
-        </form>
-      </Card>
-      </motion.div>
-    </div>
-    <TermsDialog isOpen={isTermsDialogOpen} onOpenChange={setIsTermsDialogOpen} />
+
+              {/* Right Side: Live Customer View Preview Card */}
+              <div className="lg:col-span-4 space-y-4">
+                <div className="sticky top-20 space-y-4">
+                  <Card className="rounded-3xl border border-border/70 bg-card/95 backdrop-blur-md shadow-xs overflow-hidden">
+                    <div className="p-4 border-b border-border/60 bg-muted/30">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Rocket className="h-3.5 w-3.5 text-primary" /> Live Customer View Preview
+                      </h3>
+                    </div>
+
+                    {/* Preview Hero Card */}
+                    <div className="relative h-20 w-full bg-gradient-to-r from-primary/25 via-primary/10 to-amber-500/15">
+                      <div className="absolute -bottom-6 left-4">
+                        <div className="relative w-14 h-14 rounded-2xl overflow-hidden border-2 border-card shadow-md bg-card">
+                          <Image
+                            src={shopImage || 'https://placehold.co/120x120.png'}
+                            alt={shopName || 'Vendor'}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="px-4 pt-8 pb-4 space-y-2.5">
+                      <div>
+                        <h4 className="font-headline font-extrabold text-base text-foreground truncate">
+                          {shopName || 'Your Restaurant Name'}
+                        </h4>
+                        <p className="text-[11px] text-muted-foreground line-clamp-1">
+                          {tagline || 'Fresh Food & Gourmet Delights'}
+                        </p>
+                      </div>
+
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>Open Now • Taking Orders</span>
+                      </div>
+
+                      <div className="space-y-1.5 pt-2 border-t border-border/50 text-[11px] text-muted-foreground">
+                        {workingHours && (
+                          <div className="flex items-center gap-1.5 font-medium text-foreground">
+                            <Clock className="h-3 w-3 text-primary shrink-0" />
+                            <span className="truncate">{workingHours}</span>
+                          </div>
+                        )}
+                        {address && (
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="h-3 w-3 text-primary shrink-0" />
+                            <span className="truncate">{address}</span>
+                          </div>
+                        )}
+                        {contact && (
+                          <div className="flex items-center gap-1.5">
+                            <Mail className="h-3 w-3 text-primary shrink-0" />
+                            <span>+91 {contact}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {minOrderAmount > 0 && (
+                        <div className="bg-primary/10 rounded-xl px-3 py-1 text-[11px] font-bold text-primary flex items-center justify-between">
+                          <span>Min. Order</span>
+                          <span>₹{minOrderAmount}</span>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+
+                  {/* Quick Bottom Action Button */}
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="w-full rounded-2xl font-bold text-xs shadow-md gap-2"
+                    disabled={isSaveDisabled}
+                  >
+                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
+                    <span>Save Shop Details</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+      <TermsDialog isOpen={isTermsDialogOpen} onOpenChange={setIsTermsDialogOpen} />
     </>
   );
 }

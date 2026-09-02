@@ -144,13 +144,22 @@ const OrderTable = memo(({ ordersToShow, isCompletedTab = false, onStatusChange,
         const isDineIn = deliveryOption === 'Dine-In';
 
         return (
-            <div className="space-y-1 text-xs text-muted-foreground mt-2">
+            <div className="mt-1.5">
                 {deliveryOption && (
-                    <div className="flex items-center gap-2">
-                        {deliveryOption === 'Home Delivery' && <Bike className="h-4 w-4 text-orange-500"/>}
-                        {deliveryOption === 'Self Pickup' && <Home className="h-4 w-4 text-purple-500"/>}
-                        {isDineIn && <Utensils className="h-4 w-4 text-blue-500"/>}
-                        <span>{deliveryOption}{isDineIn && order.customer.name.startsWith("Table") ? ` (${order.customer.name})` : ''}</span>
+                    <div className="inline-flex items-center gap-1">
+                        {isDineIn ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-white bg-blue-600 px-2 py-0.5 rounded-full shadow-2xs uppercase tracking-wider">
+                                <Utensils className="h-3 w-3"/> {order.customer.name.startsWith("Table") ? order.customer.name : 'Dine-In Table'}
+                            </span>
+                        ) : deliveryOption === 'Self Pickup' ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-white bg-purple-600 px-2 py-0.5 rounded-full shadow-2xs uppercase tracking-wider">
+                                <Home className="h-3 w-3"/> Pickup
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-white bg-orange-600 px-2 py-0.5 rounded-full shadow-2xs uppercase tracking-wider">
+                                <Bike className="h-3 w-3"/> Delivery
+                            </span>
+                        )}
                     </div>
                 )}
             </div>
@@ -186,15 +195,15 @@ const OrderTable = memo(({ ordersToShow, isCompletedTab = false, onStatusChange,
                   <TableCell className="font-medium text-xs">
                       {order.displayId || order.orderId}
                       <DeliveryInfo order={order}/>
-                      <div className="flex items-center gap-1 mt-2">
+                      <div className="flex items-center gap-1.5 mt-2">
                         {canShowPayButton && (
-                            <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => onShowQrCode(order)}>
-                                <QrCode className="h-3 w-3 mr-1"/> Pay
+                            <Button variant="outline" size="sm" className="h-7 px-2.5 rounded-full text-xs font-bold gap-1 text-primary border-primary/30" onClick={() => onShowQrCode(order)}>
+                                <QrCode className="h-3 w-3"/> Pay
                             </Button>
                         )}
                         {canEditOrder && (
-                            <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => onEditOrder(order)}>
-                                <Edit className="h-3 w-3 mr-1"/> Edit
+                            <Button variant="outline" size="sm" className="h-7 px-2.5 rounded-full text-xs font-bold gap-1" onClick={() => onEditOrder(order)}>
+                                <Edit className="h-3 w-3"/> Edit
                             </Button>
                         )}
                       </div>
@@ -419,8 +428,9 @@ export default function AdminOrdersPage() {
                 />
             </div>
             <Link href="/admin/dashboard/orders/live" passHref>
-                <Button variant="outline">
-                    <Laptop className="mr-2 h-4 w-4"/> Full Screen
+                <Button variant="outline" className="rounded-full font-bold text-xs gap-1.5 h-9 bg-card hover:bg-muted shadow-xs">
+                    <Laptop className="h-3.5 w-3.5 text-primary"/>
+                    <span>Live KDS Full Screen</span>
                 </Button>
             </Link>
         </div>

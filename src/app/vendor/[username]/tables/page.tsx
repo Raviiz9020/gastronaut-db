@@ -21,6 +21,8 @@ import {
   ShoppingCart,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Ban,
   Building,
   User,
@@ -181,6 +183,7 @@ const AddItemDialog = ({
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [customizingItem, setCustomizingItem] = useState<MenuItem | null>(null);
+  const categoryScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -302,195 +305,300 @@ const AddItemDialog = ({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="max-w-3xl h-[90vh] flex flex-col p-0"
+          className="max-w-3xl h-[90vh] flex flex-col p-0 rounded-3xl overflow-hidden border border-border/70 bg-card"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <DialogHeader className="sr-only">
-            <DialogTitle>Add Items to Table</DialogTitle>
-          </DialogHeader>
-          <div className="flex-grow overflow-hidden flex flex-col pt-4 px-2 sm:px-6">
-            <div className="relative mb-2 flex-shrink-0 mx-2 pr-8">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          {/* Dialog Header with Search */}
+          <DialogHeader className="p-4 sm:p-5 pb-3 border-b border-border/50 bg-muted/20 space-y-3">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-base sm:text-lg font-bold font-headline flex items-center gap-2">
+                <Utensils className="h-5 w-5 text-primary" />
+                <span>Add Items to Table</span>
+              </DialogTitle>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search menu..."
+                placeholder="Search dishes or drinks..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-9"
+                className="pl-9 pr-9 h-9 text-xs rounded-full border-border/70 bg-background"
               />
               {searchQuery && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full"
                   onClick={() => setSearchQuery('')}
                 >
-                  <X className="h-4 w-4 text-muted-foreground" />
+                  <X className="h-3.5 w-3.5 text-muted-foreground" />
                 </Button>
               )}
             </div>
-            <Tabs value={selectedCategory} onValueChange={handleCategoryClick} className="h-full flex flex-col flex-1 overflow-hidden mt-2">
-              <div className="flex-shrink-0 w-full overflow-x-auto hide-scrollbar group">
-                <div className="flex w-max animate-scroll hover:animation-pause">
-                  <TabsList className="bg-transparent p-0">
-                    {['All', ...categories].map((cat) => (
-                      <TabsTrigger key={`${cat}-1`} value={cat} className="rounded-full shrink-0">
-                        {cat}
-                      </TabsTrigger>
-                    ))}
-                    {['All', ...categories].map((cat) => (
-                      <TabsTrigger key={`${cat}-2`} value={cat} className="rounded-full shrink-0" aria-hidden="true">
-                        {cat}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </div>
+
+            {/* Category Pills Strip with Left/Right Arrows & Wheel Scroll */}
+            <div className="relative flex items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 rounded-full shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+                onClick={() => {
+                  if (categoryScrollRef.current) {
+                    categoryScrollRef.current.scrollBy({ left: -200, behavior: 'smooth' });
+                  }
+                }}
+                title="Scroll categories left"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+
+              <div
+                ref={categoryScrollRef}
+                onWheel={(e) => {
+                  if (categoryScrollRef.current) {
+                    e.preventDefault();
+                    categoryScrollRef.current.scrollLeft += e.deltaY;
+                  }
+                }}
+                className="flex items-center gap-1.5 overflow-x-auto py-1 scroll-smooth hide-scrollbar flex-1"
+              >
+                {['All', ...categories].map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => handleCategoryClick(cat)}
+                    className={cn(
+                      "px-3 py-1 text-xs font-bold rounded-full transition-all shrink-0 cursor-pointer border whitespace-nowrap",
+                      selectedCategory === cat
+                        ? "bg-primary text-primary-foreground border-primary shadow-2xs"
+                        : "bg-muted/80 hover:bg-muted text-muted-foreground border-border/50 hover:text-foreground"
+                    )}
+                  >
+                    {cat}
+                  </button>
+                ))}
               </div>
-              <ScrollArea className="flex-grow mt-2">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 pr-4">
-                  {filteredMenuItems.length > 0 ? filteredMenuItems.map((item) => {
-                    const isCustomizable = item.customizations && item.customizations.length > 0;
-                    const simpleQuantity = isCustomizable ? 0 : (selectedItems.find(i => i.menuItem.id === item.id && Object.keys(i.customizationDetails).length === 0)?.quantity || 0);
 
-                    const hasMandatoryOptions = item.customizations?.some(c => Number(c.minSelect) > 0) ?? false;
-                    let startingPrice = 0;
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 rounded-full shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+                onClick={() => {
+                  if (categoryScrollRef.current) {
+                    categoryScrollRef.current.scrollBy({ left: 200, behavior: 'smooth' });
+                  }
+                }}
+                title="Scroll categories right"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </DialogHeader>
 
-                    if (!isCustomizable) {
-                      startingPrice = item.isDiscountActive && item.discountPrice ? item.discountPrice : item.price;
-                    } else {
-                      const basePrice = hasMandatoryOptions ? 0 : (item.isDiscountActive && item.discountPrice ? item.discountPrice : item.price);
+          {/* Menu Items Grid */}
+          <div className="flex-1 overflow-hidden p-3 sm:p-5 pt-3">
+            <ScrollArea className="h-full pr-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {filteredMenuItems.length > 0 ? filteredMenuItems.map((item) => {
+                  const isCustomizable = item.customizations && item.customizations.length > 0;
+                  const simpleQuantity = isCustomizable ? 0 : (selectedItems.find(i => i.menuItem.id === item.id && Object.keys(i.customizationDetails).length === 0)?.quantity || 0);
 
-                      let mandatoryCustomizationsPrice = 0;
-                      item.customizations?.forEach(c => {
-                        if (Number(c.minSelect) > 0) {
-                          const groupMinOptionPrice = Math.min(...c.options.map(o => {
-                            return item.isDiscountActive ? o.price : (o.originalPrice || o.price);
-                          }));
-                          if (groupMinOptionPrice !== Infinity) {
-                            mandatoryCustomizationsPrice += groupMinOptionPrice;
+                  const hasMandatoryOptions = item.customizations?.some(c => Number(c.minSelect) > 0) ?? false;
+                  let startingPrice = 0;
+
+                  if (!isCustomizable) {
+                    startingPrice = item.isDiscountActive && item.discountPrice ? item.discountPrice : item.price;
+                  } else {
+                    const basePrice = hasMandatoryOptions ? 0 : (item.isDiscountActive && item.discountPrice ? item.discountPrice : item.price);
+
+                    let mandatoryCustomizationsPrice = 0;
+                    item.customizations?.forEach(c => {
+                      if (Number(c.minSelect) > 0) {
+                        const groupMinOptionPrice = Math.min(...c.options.map(o => {
+                          return item.isDiscountActive ? o.price : (o.originalPrice || o.price);
+                        }));
+                        if (groupMinOptionPrice !== Infinity) {
+                          mandatoryCustomizationsPrice += groupMinOptionPrice;
+                        }
+                      }
+                    });
+
+                    const calculatedPrice = basePrice + mandatoryCustomizationsPrice;
+
+                    if (calculatedPrice === 0) {
+                      let minOptPrice = Infinity;
+                      item.customizations?.forEach(group => {
+                        group.options.forEach(o => {
+                          const optPrice = item.isDiscountActive ? o.price : (o.originalPrice || o.price);
+                          if (optPrice < minOptPrice) {
+                            minOptPrice = optPrice;
                           }
-                        }
-                      });
-
-                      const calculatedPrice = basePrice + mandatoryCustomizationsPrice;
-
-                      if (calculatedPrice === 0) {
-                        let minOptPrice = Infinity;
-                        item.customizations?.forEach(group => {
-                          group.options.forEach(o => {
-                            const optPrice = item.isDiscountActive ? o.price : (o.originalPrice || o.price);
-                            if (optPrice < minOptPrice) {
-                              minOptPrice = optPrice;
-                            }
-                          });
                         });
-                        if (minOptPrice !== Infinity) {
-                          startingPrice = minOptPrice;
-                        } else {
-                          startingPrice = calculatedPrice;
-                        }
+                      });
+                      if (minOptPrice !== Infinity) {
+                        startingPrice = minOptPrice;
                       } else {
                         startingPrice = calculatedPrice;
                       }
+                    } else {
+                      startingPrice = calculatedPrice;
                     }
+                  }
 
-                    return (
-                      <div key={item.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">
+                  const isVeg = item.isVeg;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        "flex items-center justify-between p-3 rounded-2xl border border-border/70 bg-card hover:border-primary/40 transition-all shadow-2xs gap-2",
+                        simpleQuantity > 0 && "border-primary/50 bg-primary/5"
+                      )}
+                    >
+                      <div className="flex-1 min-w-0 pr-1">
+                        <div className="flex items-center gap-1.5">
+                          {typeof item.isVeg === 'boolean' && (
+                            <span className={cn(
+                              "w-2 h-2 rounded-full shrink-0",
+                              isVeg ? "bg-emerald-500" : "bg-rose-500"
+                            )} title={isVeg ? "Veg" : "Non-Veg"} />
+                          )}
+                          <p className="text-xs sm:text-sm font-bold text-foreground leading-snug line-clamp-1">
                             {item.name}
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            {isCustomizable ? 'Starts at ' : ''}
-                            ₹{startingPrice.toFixed(2)}
+                        </div>
+                        <p className="text-xs font-extrabold text-foreground mt-0.5">
+                          {isCustomizable ? 'Starts ₹' : '₹'}
+                          {startingPrice.toFixed(0)}
+                        </p>
+                        {typeof item.stock === 'number' && !isCustomizable && (vendor?.isInventory || vendor?.category === 'Bakery' || item.stock <= 5) && (
+                          <p className={cn(
+                            "text-[10px] font-bold mt-0.5",
+                            item.stock <= 5 ? "text-destructive" : "text-amber-500"
+                          )}>
+                            {item.stock} left
                           </p>
-                          {typeof item.stock === 'number' && !isCustomizable && (vendor?.isInventory || vendor?.category === 'Bakery' || item.stock <= 5) && (
-                            <p className={cn(
-                              "text-xs font-semibold mt-1",
-                              item.stock <= 5 ? "text-destructive" : "text-amber-500"
-                            )}>
-                              {item.stock} left
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {isCustomizable ? (
-                            <Button size="sm" variant="outline" className="h-7 rounded-full px-3 text-xs" onClick={() => setCustomizingItem(item)}>
-                              Customize
-                            </Button>
-                          ) : (
-                            <>
-                              <Button variant="outline" size="icon" className="h-7 w-7 rounded-full" onClick={() => handleSimpleQuantityChange(item, -1)}><Minus className="h-4 w-4" /></Button>
-                              <Input
-                                type="number"
-                                value={simpleQuantity || 0}
-                                onChange={(e) => handleSimpleQuantityChange(item, e.target.value)}
-                                className="h-7 w-12 rounded-full text-center p-0 border-input"
-                                onWheel={e => (e.target as HTMLElement).blur()}
-                              />
-                              <Button variant="outline" size="icon" className="h-7 w-7 rounded-full" onClick={() => handleSimpleQuantityChange(item, 1)}><Plus className="h-4 w-4" /></Button>
-                            </>
-                          )}
-                        </div>
+                        )}
                       </div>
-                    )
-                  }) : (
-                    <div className="text-center py-8 text-muted-foreground md:col-span-2">No items found.</div>
-                  )}
-                </div>
-              </ScrollArea>
-            </Tabs>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        {isCustomizable ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7.5 rounded-full px-3 text-xs font-bold border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                            onClick={() => setCustomizingItem(item)}
+                          >
+                            Customize ▾
+                          </Button>
+                        ) : simpleQuantity > 0 ? (
+                          <div className="flex items-center gap-1 bg-muted/80 p-0.5 rounded-full border border-border/60">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 rounded-full"
+                              onClick={() => handleSimpleQuantityChange(item, -1)}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="w-5 text-center font-bold text-xs">{simpleQuantity}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 rounded-full"
+                              onClick={() => handleSimpleQuantityChange(item, 1)}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7.5 rounded-full px-3 text-xs font-bold border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                            onClick={() => handleSimpleQuantityChange(item, 1)}
+                          >
+                            + ADD
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <div className="text-center py-12 text-xs text-muted-foreground sm:col-span-2">
+                    No dishes found matching your selection.
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
           </div>
 
-          <DialogFooter className="p-6">
-            <Collapsible className="w-full">
-              <div className="flex justify-between items-center">
+          {/* Bottom Floating Order Summary & Action Bar */}
+          <DialogFooter className="p-3 sm:p-4 border-t border-border/50 bg-muted/20">
+            <Collapsible className="w-full space-y-2">
+              <div className="flex items-center justify-between gap-2">
                 <CollapsibleTrigger asChild>
-                  <Button variant="ghost" className={cn("flex items-center gap-2", selectedItems.length === 0 && "invisible")}>
-                    <ShoppingCart className="h-5 w-5" />
-                    <span>{selectedItems.reduce((acc, item) => acc + item.quantity, 0)} Items</span>
-                    <ChevronDown className="h-4 w-4" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "flex items-center gap-2 text-xs font-bold rounded-full h-9",
+                      selectedItems.length === 0 && "invisible"
+                    )}
+                  >
+                    <ShoppingCart className="h-4 w-4 text-primary" />
+                    <span>{selectedItems.reduce((acc, item) => acc + item.quantity, 0)} Items (₹{summaryTotal.toFixed(0)})</span>
+                    <ChevronDown className="h-3.5 w-3.5" />
                   </Button>
                 </CollapsibleTrigger>
-                <Button onClick={handleAddClick} disabled={selectedItems.length === 0}>
-                  Add Items
+
+                <Button
+                  onClick={handleAddClick}
+                  disabled={selectedItems.length === 0}
+                  className="rounded-full text-xs font-extrabold h-9 px-5 bg-primary text-primary-foreground shadow-xs hover:bg-primary/90"
+                >
+                  Add to Table {summaryTotal > 0 && `(₹${summaryTotal.toFixed(0)})`}
                 </Button>
               </div>
+
               <CollapsibleContent>
-                <div className="mt-4 p-4 border rounded-2xl max-h-40 overflow-y-auto">
-                  <h4 className="text-sm font-semibold mb-2">Selected Items</h4>
-                  <div className="space-y-2 text-xs">
+                <div className="p-3 border border-border/60 bg-card rounded-2xl max-h-40 overflow-y-auto space-y-1.5 shadow-xs">
+                  <h4 className="text-xs font-bold text-foreground">Selected Items</h4>
+                  <div className="space-y-1.5 text-xs">
                     {selectedItems.map(item => (
-                      <div key={item.cartItemId} className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="font-medium">{item.quantity} x {item.menuItem.name}</div>
+                      <div key={item.cartItemId} className="flex justify-between items-start border-b border-border/30 pb-1 last:border-0">
+                        <div className="flex-1 min-w-0 pr-2">
+                          <div className="font-bold text-foreground">{item.quantity}x {item.menuItem.name}</div>
                           {(() => {
                             const custText = getCustomizationsText({
                               customizations: item.menuItem.customizations,
                               customizationDetails: item.customizationDetails
                             });
                             return custText ? (
-                              <div className="text-[10px] text-muted-foreground mt-0.5 max-w-[200px] line-clamp-2 italic">
+                              <div className="text-[10px] text-muted-foreground mt-0.5 italic">
                                 {custText}
                               </div>
                             ) : null;
                           })()}
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className="font-mono mt-0.5">₹{(item.price * item.quantity).toFixed(2)}</span>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full text-destructive hover:bg-destructive hover:text-white" onClick={() => handleRemoveSelectedItem(item.cartItemId)}><Trash2 className="h-3 w-3" /></Button>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="font-bold text-xs">₹{(item.price * item.quantity).toFixed(0)}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleRemoveSelectedItem(item.cartItemId)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
                         </div>
                       </div>
                     ))}
                   </div>
-                  {summaryTotal > 0 && (
-                    <>
-                      <Separator className="my-2" />
-                      <div className="flex justify-between font-bold text-sm">
-                        <span>Total</span>
-                        <span className="font-mono">₹{summaryTotal.toFixed(2)}</span>
-                      </div>
-                    </>
-                  )}
                 </div>
               </CollapsibleContent>
             </Collapsible>
@@ -512,7 +620,7 @@ const AddItemDialog = ({
 };
 
 
-const QrCodeDialog = ({ order, vendor, open, onOpenChange }: { order: Order | null, vendor: Vendor | null, open: boolean, onOpenChange: (open: boolean) => void }) => {
+const QrCodeDialog = ({ order, vendor, open, onOpenChange }: { order: Order | null, vendor?: Vendor | null, open: boolean, onOpenChange: (open: boolean) => void }) => {
   const [qrCodeUrl, setQrCodeUrl] = useState('');
 
   useEffect(() => {
@@ -567,7 +675,7 @@ const BillViewDialog = ({
   onComplete,
 }: {
   order: Order | null;
-  vendor: Vendor | null;
+  vendor?: Vendor | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onComplete: (orderId: string, takeAwayIdentifier?: string) => void;
@@ -833,79 +941,146 @@ const TableCard = ({
 }) => {
   const isOccupied = !!order;
   const total = order?.totalPrice || 0;
-
   const isTakeAway = typeof tableNumber === 'string' && tableNumber.startsWith('Take Away');
 
-  const cardClasses = cn(
-    "w-full h-auto flex flex-col justify-between rounded-2xl transition-all",
-    isTakeAway
-      ? "bg-blue-500/10 border-blue-500/30"
-      : (isOccupied ? "bg-red-500/10 border-red-500/30" : "bg-green-500/10 border-green-500/30")
-  );
-
-  const headerTextClasses = cn(
-    "text-2xl font-bold flex items-center gap-2",
-    isTakeAway
-      ? "text-blue-600"
-      : (isOccupied ? "text-red-600" : "text-green-600")
-  );
-
   return (
-    <Card className={cardClasses}>
-      <CardHeader className="p-4 flex flex-row items-center justify-between">
-        <span className={headerTextClasses}>
-          <Utensils className="h-6 w-6" /> {tableNumber}
-        </span>
-        {isOccupied && <div className="font-bold text-lg text-foreground">₹{total.toFixed(2)}</div>}
+    <Card className={cn(
+      "w-full h-auto flex flex-col justify-between rounded-2xl transition-all shadow-xs border bg-card overflow-hidden",
+      isTakeAway
+        ? (isOccupied ? "border-purple-500/50 shadow-xs" : "border-purple-500/30 hover:border-purple-500/50 shadow-xs")
+        : isOccupied
+        ? "border-red-500/40 shadow-xs"
+        : "border-emerald-500/30 hover:border-emerald-500/50 shadow-xs"
+    )}>
+      {/* Card Header - Purple for Takeaway, Red for Occupied Dine-in, Soft Green for Available Dine-in */}
+      <CardHeader className={cn(
+        "p-3 border-b flex flex-row items-center justify-between gap-2 transition-colors",
+        isTakeAway
+          ? (isOccupied ? "bg-purple-600 text-white border-purple-700 dark:bg-purple-600" : "bg-purple-500 text-white border-purple-600 dark:bg-purple-600")
+          : isOccupied
+          ? "bg-red-500 text-white border-red-600 dark:bg-red-600"
+          : "bg-emerald-500 text-white border-emerald-600 dark:bg-emerald-600"
+      )}>
+        <div className="flex items-center gap-2">
+          {isTakeAway ? (
+            <Package className="h-4 w-4 text-white" />
+          ) : (
+            <Utensils className="h-4 w-4 text-white" />
+          )}
+          <span className="text-sm font-bold font-headline text-white">
+            {typeof tableNumber === 'number' ? `Table ${tableNumber}` : tableNumber}
+          </span>
+        </div>
+
+        {isOccupied ? (
+          <div className="text-right">
+            <span className="text-sm font-black text-white">₹{total.toFixed(0)}</span>
+          </div>
+        ) : (
+          <span className={cn(
+            "inline-flex items-center gap-1 text-[10px] font-extrabold bg-white/95 px-2 py-0.5 rounded-full shadow-2xs uppercase tracking-wider",
+            isTakeAway ? "text-purple-800" : "text-emerald-800"
+          )}>
+            {isTakeAway ? "Takeaway" : "Available"}
+          </span>
+        )}
       </CardHeader>
-      <CardContent className="p-4 pt-0 flex-grow">
+
+      {/* Card Content */}
+      <CardContent className="p-3.5 flex-grow flex flex-col justify-center min-h-[100px]">
         {isOccupied && order.items.length > 0 ? (
-          <div className="text-xs text-muted-foreground space-y-1">
+          <div className="text-xs text-muted-foreground space-y-1 w-full">
             {order.items.map((item, index) => {
               const custText = getCustomizationsText(item);
               return (
-                <div key={item.cartItemId || index} className="flex flex-col py-1 border-b last:border-b-0 border-dashed">
-                  <div className="flex justify-between items-center">
-                    <span className="truncate pr-2 font-medium text-foreground">{item.quantity}x {item.name}</span>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <Button variant="outline" size="icon" className="h-5 w-5 rounded-full" onClick={() => onItemQuantityChange(order.orderId, item.cartItemId, -1)}><Minus className="h-3 w-3" /></Button>
-                      <span className="w-4 text-center font-bold text-foreground">{item.quantity}</span>
-                      <Button variant="outline" size="icon" className="h-5 w-5 rounded-full" onClick={() => onItemQuantityChange(order.orderId, item.cartItemId, 1)}><Plus className="h-3 w-3" /></Button>
-                      <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full" onClick={() => onRemoveItem(order.orderId, item.cartItemId)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                <div key={item.cartItemId || index} className="py-1.5 border-b last:border-b-0 border-border/40">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1 pr-1">
+                      <span className="font-bold text-foreground text-xs leading-snug break-words">
+                        {item.quantity}x {item.name}
+                      </span>
+                      {custText && (
+                        <p className="text-[10px] text-muted-foreground italic leading-tight mt-0.5">
+                          {custText}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-5 w-5 rounded-full text-muted-foreground hover:text-foreground"
+                        onClick={() => onItemQuantityChange(order.orderId, item.cartItemId, -1)}
+                      >
+                        <Minus className="h-2.5 w-2.5" />
+                      </Button>
+                      <span className="w-4 text-center font-bold text-foreground text-xs">{item.quantity}</span>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-5 w-5 rounded-full text-muted-foreground hover:text-foreground"
+                        onClick={() => onItemQuantityChange(order.orderId, item.cartItemId, 1)}
+                      >
+                        <Plus className="h-2.5 w-2.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => onRemoveItem(order.orderId, item.cartItemId)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
                     </div>
                   </div>
-                  {custText && (
-                    <span className="text-[10px] text-muted-foreground pl-1 italic">
-                      {custText}
-                    </span>
-                  )}
                 </div>
               );
             })}
           </div>
-        ) : !isTakeAway && (
-          <p className="text-sm text-green-600">Available</p>
-        )}
-        {isTakeAway && !isOccupied && (
-          <p className="text-sm text-blue-600">Ready for new order</p>
+        ) : !isTakeAway ? (
+          <div className="text-center py-4 space-y-1 text-muted-foreground">
+            <p className="text-xs font-semibold">Vacant</p>
+            <p className="text-[10px]">Ready for seating</p>
+          </div>
+        ) : (
+          <div className="text-center py-4 space-y-1 text-muted-foreground">
+            <p className="text-xs font-semibold">Takeaway Counter</p>
+            <p className="text-[10px]">Over-the-counter orders</p>
+          </div>
         )}
       </CardContent>
-      <CardFooter className="p-2 bg-card/50 rounded-b-2xl flex-wrap justify-center gap-2">
-        <Button className="flex-1" variant="outline" size="sm" onClick={() => onAddItem(tableNumber)}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add
+
+      {/* Card Footer */}
+      <CardFooter className="p-2.5 bg-muted/10 border-t border-border/50 flex flex-wrap items-center gap-2">
+        <Button
+          className={cn(
+            "flex-1 rounded-full text-xs font-bold h-8 shadow-xs",
+            !isOccupied && "bg-card hover:bg-muted text-foreground border border-border/70"
+          )}
+          variant={isOccupied ? "outline" : "outline"}
+          size="sm"
+          onClick={() => onAddItem(tableNumber)}
+        >
+          <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
+          {isOccupied ? "Add Item" : "Seat Table"}
         </Button>
         {isOccupied && (
           <>
-            <Button variant="outline" size="icon" onClick={() => onShowQrCode(order)}>
-              <QrCode className="h-4 w-4" />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-2.5 rounded-full text-xs font-bold shrink-0 text-foreground"
+              onClick={() => onShowQrCode(order)}
+              title="Show QR Code"
+            >
+              <QrCode className="h-3.5 w-3.5" />
             </Button>
             <Button
-              className="flex-1 text-white bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 bg-[length:200%_auto] animate-gradient-move"
+              className="flex-1 rounded-full text-xs font-bold h-8 bg-primary text-primary-foreground shadow-xs hover:bg-primary/90"
               size="sm"
               onClick={() => onViewBill(order)}
             >
-              <IndianRupee className="mr-2 h-4 w-4" />
+              <IndianRupee className="mr-1 h-3.5 w-3.5" />
               Bill
             </Button>
           </>
@@ -1061,6 +1236,26 @@ export default function TableViewPage() {
     const cats = new Set(vendorMenuItems.map(item => item.category));
     return Array.from(cats);
   }, [vendorMenuItems]);
+
+  const tableCount = vendor?.dineInTables || 0;
+  const takeAwayTables = useMemo(() => ['Take Away'], []);
+
+  const { availableCount, occupiedCount, activeDiningTotal } = useMemo(() => {
+    let available = 0;
+    let occupied = 0;
+    let total = 0;
+
+    for (let i = 1; i <= tableCount; i++) {
+      const order = tableOrders[String(i)];
+      if (order) {
+        occupied++;
+        total += order.totalPrice || 0;
+      } else {
+        available++;
+      }
+    }
+    return { availableCount: available, occupiedCount: occupied, activeDiningTotal: total };
+  }, [tableCount, tableOrders]);
 
   const handleOpenAddItemDialog = (tableIdentifier: number | string) => {
     setAddItemDialogState({ open: true, tableNumber: tableIdentifier });
@@ -1242,35 +1437,77 @@ export default function TableViewPage() {
     );
   }
 
-  const tableCount = vendor?.dineInTables || 0;
-  const takeAwayTables = ['Take Away'];
-
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-background text-foreground">
       <Header pageVendor={vendor} />
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <Collapsible open={isDrawerOpen} onOpenChange={setIsDrawerOpen} className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <CollapsibleTrigger asChild>
-              <Button variant="outline" className="rounded-full">
-                <Package className="mr-2 h-4 w-4" />
-                Active Customer Orders ({activeCustomerOrders.length})
-                <ChevronDown className="ml-2 h-4 w-4 transition-transform data-[state=open]:rotate-180" />
-              </Button>
-            </CollapsibleTrigger>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground flex items-center gap-2">
-                Today's Sales
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleFetchTodaysSales} disabled={isFetchingSales}>
-                  {isFetchingSales ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                </Button>
-              </p>
-              <p className="text-2xl font-bold text-green-600">
-                {todaysSales !== null ? `₹${todaysSales.toFixed(2)}` : '₹--.--'}
-              </p>
-            </div>
+      <main className="flex-1 container mx-auto px-4 py-6 max-w-7xl">
+        {/* Floor Control & Summary Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 bg-card p-4 rounded-2xl border border-border/70 shadow-2xs">
+          <div>
+            <h1 className="text-lg sm:text-xl font-bold font-headline text-foreground flex items-center gap-2">
+              <Utensils className="h-5 w-5 text-primary" />
+              <span>Dine-In Tables</span>
+            </h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {vendor?.shopName}
+            </p>
           </div>
-          <CollapsibleContent>
+
+          {/* Real-time Status Badges */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="h-8 inline-flex items-center gap-1.5 px-3 rounded-full text-xs font-semibold bg-muted text-foreground border border-border/60">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+              <span>{availableCount} Available</span>
+            </div>
+
+            <div className="h-8 inline-flex items-center gap-1.5 px-3 rounded-full text-xs font-semibold bg-muted text-foreground border border-border/60">
+              <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+              <span>{occupiedCount} Occupied {activeDiningTotal > 0 && `(₹${activeDiningTotal.toFixed(0)})`}</span>
+            </div>
+
+            {/* Today's Sales */}
+            <div className="h-8 inline-flex items-center gap-1.5 px-3 rounded-full text-xs font-semibold bg-muted text-foreground border border-border/60">
+              <IndianRupee className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span>Today: {typeof todaysSales === 'number' ? `₹${todaysSales.toFixed(0)}` : '₹--'}</span>
+              <button
+                type="button"
+                onClick={handleFetchTodaysSales}
+                disabled={isFetchingSales}
+                className="hover:text-primary transition-colors cursor-pointer ml-0.5"
+                title="Refresh Today's Sales"
+              >
+                {isFetchingSales ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              </button>
+            </div>
+
+            {/* Active Customer Online Orders Trigger */}
+            <Collapsible open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    "h-8 inline-flex items-center gap-1.5 px-3 rounded-full text-xs transition-all shadow-xs cursor-pointer border",
+                    activeCustomerOrders.length > 0
+                      ? "bg-red-600 hover:bg-red-700 text-white animate-bounce border-red-700 font-extrabold"
+                      : "bg-muted hover:bg-muted/80 text-foreground font-semibold border-border/60"
+                  )}
+                >
+                  <Package className={cn("h-3.5 w-3.5", activeCustomerOrders.length > 0 ? "text-white" : "text-primary")} />
+                  <span>Online Orders ({activeCustomerOrders.length})</span>
+                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isDrawerOpen && "rotate-180")} />
+                </button>
+              </CollapsibleTrigger>
+            </Collapsible>
+          </div>
+        </div>
+
+        {/* Collapsible Online Customer Orders */}
+        {isDrawerOpen && (
+          <div className="mb-6 p-4 rounded-3xl border border-orange-500/30 bg-orange-500/5 shadow-xs">
+            <h3 className="text-xs font-extrabold uppercase tracking-wider text-orange-600 dark:text-orange-400 mb-3 flex items-center gap-1.5">
+              <Package className="h-3.5 w-3.5" />
+              <span>Incoming Online Customer Orders</span>
+            </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {activeCustomerOrders.length > 0 ? (
                 activeCustomerOrders.map((order, index) => (
@@ -1283,21 +1520,15 @@ export default function TableViewPage() {
                   />
                 ))
               ) : (
-                <p className="text-center text-muted-foreground col-span-full py-4">No active customer orders.</p>
+                <p className="text-center text-xs text-muted-foreground col-span-full py-4">No active online customer orders.</p>
               )}
             </div>
-          </CollapsibleContent>
-        </Collapsible>
+          </div>
+        )}
 
-        <Separator />
-
-        <div className="text-center my-8">
-          <h1 className="font-headline text-4xl text-primary">Dine-In Table View</h1>
-          <p className="text-muted-foreground">{vendor?.shopName}</p>
-        </div>
-
+        {/* Tables Floor Plan Grid */}
         {tableCount > 0 || takeAwayTables.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
             {Array.from({ length: tableCount }, (_, i) => i + 1).map((tableNum) => (
               <TableCard
                 key={tableNum}
@@ -1324,9 +1555,9 @@ export default function TableViewPage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-20">
-            <p className="text-muted-foreground">You have not configured any dine-in tables.</p>
-            <Button variant="link" asChild><Link href="/admin/details">Go to settings to add tables</Link></Button>
+          <div className="text-center py-20 bg-card rounded-3xl border border-dashed border-border/80">
+            <p className="text-sm text-muted-foreground">You have not configured any dine-in tables.</p>
+            <Button variant="link" asChild className="mt-2 font-bold"><Link href="/admin/details">Go to settings to add tables</Link></Button>
           </div>
         )}
       </main>

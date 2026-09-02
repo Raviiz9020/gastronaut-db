@@ -100,19 +100,19 @@ export default function VendorKdsBoard({
     switch (option) {
       case 'Home Delivery':
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-orange-600 dark:text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full">
+          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-white bg-orange-600 px-2.5 py-0.5 rounded-full shadow-2xs uppercase tracking-wider">
             <Bike className="h-3 w-3" /> Delivery
           </span>
         );
       case 'Self Pickup':
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full">
+          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-white bg-purple-600 px-2.5 py-0.5 rounded-full shadow-2xs uppercase tracking-wider">
             <Home className="h-3 w-3" /> Pickup
           </span>
         );
       case 'Dine-In':
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">
+          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-white bg-blue-600 px-2.5 py-0.5 rounded-full shadow-2xs uppercase tracking-wider">
             <Utensils className="h-3 w-3" /> {customerName.startsWith('Table') ? customerName : 'Dine-In'}
           </span>
         );
@@ -130,16 +130,26 @@ export default function VendorKdsBoard({
       <Card
         key={order.orderId}
         className={cn(
-          "rounded-2xl border bg-card/90 shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col justify-between",
-          stage === 'new' && "border-amber-500/50 ring-1 ring-amber-500/20",
-          stage === 'prep' && "border-blue-500/40",
-          stage === 'ready' && "border-purple-500/40"
+          "rounded-2xl border shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col justify-between",
+          isDineIn
+            ? "border-blue-500/50 bg-blue-500/10 dark:bg-blue-950/30 ring-1 ring-blue-500/30"
+            : isSelfPickup
+            ? "border-purple-500/40 bg-purple-500/5 dark:bg-purple-950/20 ring-1 ring-purple-500/20"
+            : "border-orange-500/40 bg-orange-500/5 dark:bg-orange-950/20 ring-1 ring-orange-500/20",
+          stage === 'new' && "animate-pulse"
         )}
       >
         {/* Ticket Header */}
-        <div className="p-3.5 border-b border-border/50 bg-muted/20">
+        <div className={cn(
+          "p-3.5 border-b",
+          isDineIn
+            ? "bg-blue-500/20 border-blue-500/30"
+            : isSelfPickup
+            ? "bg-purple-500/15 border-purple-500/25"
+            : "bg-orange-500/15 border-orange-500/25"
+        )}>
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-extrabold font-headline text-foreground">
                 #{order.displayId || order.orderId.slice(-4).toUpperCase()}
               </span>
