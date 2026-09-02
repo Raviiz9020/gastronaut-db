@@ -2,6 +2,7 @@
 'use client';
 
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 import { CartProvider } from '@/context/cart-context';
@@ -47,11 +48,24 @@ export const useAppContext = () => {
 };
 
 
+const GA_MEASUREMENT_ID =
+  process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ||
+  process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID ||
+  'G-TWDTCQ04E5';
+
 // We need to wrap the layout content in a client component to use usePathname
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const [isOrderPlacedDialogOpen, setIsOrderPlacedDialogOpen] = useState(false);
   const { setCurrentCustomer } = useCustomer();
+  const pathname = usePathname();
 
+  useEffect(() => {
+    if (pathname && typeof window !== 'undefined' && (window as any).gtag && GA_MEASUREMENT_ID) {
+      (window as any).gtag('config', GA_MEASUREMENT_ID, {
+        page_path: pathname,
+      });
+    }
+  }, [pathname]);
 
   const showOrderPlacedDialog = () => setIsOrderPlacedDialogOpen(true);
   const closeOrderPlacedDialog = () => setIsOrderPlacedDialogOpen(false);
@@ -91,6 +105,28 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap"
           rel="stylesheet"
         />
+        {GA_MEASUREMENT_ID && (
+          <>
+            <Script
+              strategy="afterInteractive"
+              src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+            />
+            <Script
+              id="google-analytics"
+              strategy="afterInteractive"
+              dangerouslySetInnerHTML={{
+                __html: `
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  gtag('js', new Date());
+                  gtag('config', '${GA_MEASUREMENT_ID}', {
+                    page_path: window.location.pathname,
+                  });
+                `,
+              }}
+            />
+          </>
+        )}
       </head>
       <body className="font-body antialiased">
         <SuperAdminProvider>
