@@ -26,7 +26,7 @@ import { useState, useMemo, useEffect, useRef, memo } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { Calendar as CalendarIcon, Star, Store, Wallet, Bike, CreditCard, Home, QrCode, ClipboardCheck, Utensils, Laptop, Edit, MessageSquare } from 'lucide-react';
+import { Calendar as CalendarIcon, Star, Store, Wallet, Bike, CreditCard, Home, QrCode, ClipboardCheck, Utensils, Laptop, Edit, MessageSquare, LayoutGrid, LayoutList } from 'lucide-react';
 import { format, subDays, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '@/components/ui/textarea';
@@ -37,6 +37,7 @@ import CancellationReasonDialog from '@/components/cancellation-reason-dialog';
 import { useVendor } from '@/context/vendor-context';
 import { Switch } from '@/components/ui/switch';
 import QrCodeDialog from '@/components/qr-code-dialog';
+import VendorKdsBoard from '@/components/vendor-kds-board';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -314,6 +315,7 @@ export default function AdminOrdersPage() {
   const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [qrCodeOrder, setQrCodeOrder] = useState<Order | null>(null);
+  const [activeViewMode, setActiveViewMode] = useState<'kanban' | 'table'>('kanban');
 
   const sortedOrders = useMemo(() => {
     return [...orders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -428,21 +430,71 @@ export default function AdminOrdersPage() {
                 <TabsTrigger value="active" className="rounded-full">Active Orders ({activeOrders.length})</TabsTrigger>
                 <TabsTrigger value="completed" className="rounded-full">All Orders ({filteredCompletedOrders.length})</TabsTrigger>
             </TabsList>
-            <TabsContent value="active">
-                <Card className="rounded-3xl">
-                    <CardHeader>
-                    <CardTitle>Active Orders</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <OrderTable 
-                            ordersToShow={activeOrders} 
-                            onStatusChange={handleStatusChange} 
-                            onAssignDeliveryBoy={handleAssignDeliveryBoy}
-                            onShowQrCode={setQrCodeOrder}
-                            onEditOrder={handleEditOrder}
-                        />
-                    </CardContent>
-                </Card>
+            <TabsContent value="active" className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                    <div>
+                        <h3 className="text-sm sm:text-base font-bold font-headline text-foreground">
+                            Live Order Pipeline
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                            Tactile Kitchen Display System (KDS) for cooking progression & dispatch
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-full shrink-0 border border-border/60 shadow-xs">
+                        <button
+                            type="button"
+                            onClick={() => setActiveViewMode('kanban')}
+                            className={cn(
+                                "flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-full transition-all cursor-pointer",
+                                activeViewMode === 'kanban'
+                                    ? "bg-primary text-primary-foreground shadow-xs scale-105"
+                                    : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            <LayoutGrid className="h-3.5 w-3.5" />
+                            KDS Board
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveViewMode('table')}
+                            className={cn(
+                                "flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-full transition-all cursor-pointer",
+                                activeViewMode === 'table'
+                                    ? "bg-primary text-primary-foreground shadow-xs scale-105"
+                                    : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            <LayoutList className="h-3.5 w-3.5" />
+                            Table View
+                        </button>
+                    </div>
+                </div>
+
+                {activeViewMode === 'kanban' ? (
+                    <VendorKdsBoard
+                        orders={activeOrders}
+                        onStatusChange={handleStatusChange}
+                        onAssignDeliveryBoy={handleAssignDeliveryBoy}
+                        onShowQrCode={setQrCodeOrder}
+                        onEditOrder={handleEditOrder}
+                    />
+                ) : (
+                    <Card className="rounded-3xl">
+                        <CardHeader>
+                            <CardTitle>Active Orders</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <OrderTable 
+                                ordersToShow={activeOrders} 
+                                onStatusChange={handleStatusChange} 
+                                onAssignDeliveryBoy={handleAssignDeliveryBoy}
+                                onShowQrCode={setQrCodeOrder}
+                                onEditOrder={handleEditOrder}
+                            />
+                        </CardContent>
+                    </Card>
+                )}
             </TabsContent>
             <TabsContent value="completed">
                  <Card className="rounded-3xl">

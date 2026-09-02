@@ -5,7 +5,7 @@ import { useOrder } from '@/context/order-context';
 import { useMenu } from '@/context/menu-context';
 import { useDelivery } from '@/context/delivery-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Utensils, Package, Bike, IndianRupee, User, Crown, Building, Star, ExternalLink, Loader2, Users2, Clock, PieChart, Sparkles, Lightbulb, TrendingUp, AlertTriangle, FileSpreadsheet, Trophy, Award, LayoutList, ArrowUpDown, RefreshCw, TrendingDown, MessageSquare } from 'lucide-react';
+import { Utensils, Package, Bike, IndianRupee, User, Crown, Building, Star, ExternalLink, Loader2, Users2, Clock, PieChart, Sparkles, Lightbulb, TrendingUp, AlertTriangle, FileSpreadsheet, Trophy, Award, LayoutList, ArrowUpDown, RefreshCw, TrendingDown, MessageSquare, Target } from 'lucide-react';
 import type { Order, OrderStatus, MenuItem, Vendor } from '@/types';
 import Link from 'next/link';
 import { useState, useEffect, useMemo, useTransition } from 'react';
@@ -13,11 +13,12 @@ import { useVendor } from '@/context/vendor-context';
 import { useExpense } from '@/context/expense-context';
 import { format, subDays, eachDayOfInterval, parseISO, getYear, getMonth } from 'date-fns';
 import RevenueChart from './revenue-chart';
+import VendorKitchenPulseBar from '@/components/vendor-kitchen-pulse-bar';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { generateGmbAuthUrl } from '@/ai/flows/handle-gbp-oauth';
-import { getVendorInsights } from '@/ai/flows/get-vendor-insights';
+import { getVendorInsights, type VendorInsightsOutput } from '@/ai/flows/get-vendor-insights';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Image from 'next/image';
@@ -83,6 +84,7 @@ export default function AdminDashboardPage() {
 
   const [selectedYear, setSelectedYear] = useState<number | 'all'>('all');
   const [selectedMonth, setSelectedMonth] = useState<number | 'all'>('all');
+  const [kpiPeriod, setKpiPeriod] = useState<'today' | '7days' | 'month' | 'all'>('all');
 
 
   const handleGmbConnect = async () => {
@@ -174,6 +176,96 @@ export default function AdminDashboardPage() {
   
   const totalRevenue = allCompletedOrders.reduce((sum, order) => sum + order.totalPrice, 0);
   const totalOrders = vendorOrders.length;
+
+  const todayRevenue = useMemo(() => {
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    return vendorOrders
+      .filter((o) => (o.status === 'Delivered' || o.status === 'Picked Up') && o.createdAt?.startsWith(todayStr))
+      .reduce((sum, o) => sum + o.totalPrice, 0);
+  }, [vendorOrders]);
+
+  const past7DaysDailyRevenue = useMemo(() => {
+    const days = eachDayOfInterval({
+      start: subDays(new Date(), 6),
+      end: new Date(),
+    });
+    return days.map((day) => {
+      const dayStr = format(day, 'yyyy-MM-dd');
+      return vendorOrders
+        .filter((o) => (o.status === 'Delivered' || o.status === 'Picked Up') && o.createdAt?.startsWith(dayStr))
+        .reduce((sum, o) => sum + o.totalPrice, 0);
+    });
+  }, [vendorOrders]);
+
+  const {
+    periodRevenue,
+    periodOrdersCount,
+    periodCompletedOrdersCount,
+    periodExpenses,
+    periodAov,
+    periodLabel,
+  } = useMemo(() => {
+    let ordersList = vendorOrders;
+    let completedList = allCompletedOrders;
+    let label = 'All Time';
+
+    const now = new Date();
+    const todayStr = format(now, 'yyyy-MM-dd');
+
+    if (kpiPeriod === 'today') {
+      label = 'Today';
+      ordersList = vendorOrders.filter((o) => o.createdAt?.startsWith(todayStr));
+      completedList = allCompletedOrders.filter((o) => o.createdAt?.startsWith(todayStr));
+    } else if (kpiPeriod === '7days') {
+      label = 'Last 7 Days';
+      const sevenDaysAgo = subDays(now, 7);
+      ordersList = vendorOrders.filter((o) => parseISO(o.createdAt) >= sevenDaysAgo);
+      completedList = allCompletedOrders.filter((o) => parseISO(o.createdAt) >= sevenDaysAgo);
+    } else if (kpiPeriod === 'month') {
+      label = 'This Month';
+      const currentYear = getYear(now);
+      const currentMonth = getMonth(now);
+      ordersList = vendorOrders.filter((o) => {
+        const d = parseISO(o.createdAt);
+        return getYear(d) === currentYear && getMonth(d) === currentMonth;
+      });
+      completedList = allCompletedOrders.filter((o) => {
+        const d = parseISO(o.createdAt);
+        return getYear(d) === currentYear && getMonth(d) === currentMonth;
+      });
+    }
+
+    const rev = completedList.reduce((sum, o) => sum + o.totalPrice, 0);
+    const aov = completedList.length > 0 ? rev / completedList.length : 0;
+
+    let exp = 0;
+    if (vendor?.isExpenseTrackingEnabled) {
+      if (kpiPeriod === 'today') {
+        exp = expenses.filter((e) => e.date?.startsWith(todayStr)).reduce((sum, e) => sum + e.amount, 0);
+      } else if (kpiPeriod === '7days') {
+        const sevenDaysAgo = subDays(now, 7);
+        exp = expenses.filter((e) => parseISO(e.date) >= sevenDaysAgo).reduce((sum, e) => sum + e.amount, 0);
+      } else if (kpiPeriod === 'month') {
+        const currentYear = getYear(now);
+        const currentMonth = getMonth(now);
+        exp = expenses.filter((e) => {
+          const d = parseISO(e.date);
+          return getYear(d) === currentYear && getMonth(d) === currentMonth;
+        }).reduce((sum, e) => sum + e.amount, 0);
+      } else {
+        exp = expenses.reduce((sum, e) => sum + e.amount, 0);
+      }
+    }
+
+    return {
+      periodRevenue: rev,
+      periodOrdersCount: ordersList.length,
+      periodCompletedOrdersCount: completedList.length,
+      periodExpenses: exp,
+      periodAov: aov,
+      periodLabel: label,
+    };
+  }, [kpiPeriod, vendorOrders, allCompletedOrders, expenses, vendor?.isExpenseTrackingEnabled]);
   
   const availableYears = useMemo(() => {
     if (allCompletedOrders.length === 0) return [];
@@ -458,85 +550,189 @@ export default function AdminDashboardPage() {
             )}
        </div>
 
+        {/* Live Kitchen Operational Pulse & Today's Goal Ring */}
+        <VendorKitchenPulseBar
+          vendor={vendor}
+          orders={vendorOrders}
+          todayRevenue={todayRevenue}
+          past7DaysDailyRevenue={past7DaysDailyRevenue}
+        />
+
+        {/* Performance Snapshot Header & Period Selector */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+          <div>
+            <h3 className="text-sm sm:text-base font-bold font-headline text-foreground tracking-tight">
+              Performance Snapshot
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Financial and operational health overview for {periodLabel.toLowerCase()}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-full shrink-0 border border-border/60 shadow-xs">
+            {(
+              [
+                { id: 'today', label: 'Today' },
+                { id: '7days', label: '7 Days' },
+                { id: 'month', label: 'This Month' },
+                { id: 'all', label: 'All Time' },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setKpiPeriod(tab.id)}
+                className={cn(
+                  "px-3 py-1 text-xs font-bold rounded-full transition-all cursor-pointer",
+                  kpiPeriod === tab.id
+                    ? "bg-primary text-primary-foreground shadow-xs scale-105"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Modern Glassmorphic KPI Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3.5 sm:gap-4">
+          {/* 1. Gross Revenue Card */}
+          <Card className="rounded-3xl border border-border/70 hover:border-emerald-500/40 bg-card/85 backdrop-blur-md shadow-xs hover:shadow-md transition-all duration-300 xl:col-span-1 group overflow-hidden">
+            <Link href="/admin/dashboard/revenue" className="h-full flex flex-col justify-between p-4 sm:p-5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-muted-foreground tracking-tight">
+                  Gross Revenue
+                </span>
+                <span className="w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shadow-xs group-hover:scale-110 transition-transform">
+                  <IndianRupee className="h-4 w-4" />
+                </span>
+              </div>
+              <div className="mt-3">
+                <div className="text-xl sm:text-2xl font-extrabold text-foreground tracking-tight">
+                  ₹{periodRevenue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                  {periodCompletedOrdersCount} completed orders
+                </p>
+              </div>
+            </Link>
+          </Card>
+
+          {/* 2. Estimated Net Profit Card (if expense tracking enabled) */}
+          {vendor?.isExpenseTrackingEnabled && (
+            <Card className="rounded-3xl border border-border/70 hover:border-blue-500/40 bg-card/85 backdrop-blur-md shadow-xs hover:shadow-md transition-all duration-300 xl:col-span-1 group overflow-hidden">
+              <Link href="/admin/dashboard/expenses" className="h-full flex flex-col justify-between p-4 sm:p-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-muted-foreground tracking-tight">
+                    Est. Net Profit
+                  </span>
+                  <span className="w-8 h-8 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold shadow-xs group-hover:scale-110 transition-transform">
+                    <TrendingUp className="h-4 w-4" />
+                  </span>
+                </div>
+                <div className="mt-3">
+                  <div className="text-xl sm:text-2xl font-extrabold text-foreground tracking-tight">
+                    ₹{(periodRevenue - periodExpenses).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                    After ₹{periodExpenses.toLocaleString('en-IN', { maximumFractionDigits: 0 })} expenses
+                  </p>
+                </div>
+              </Link>
+            </Card>
+          )}
+
+          {/* 3. Total Orders & Active Queue */}
+          <Card className="rounded-3xl border border-border/70 hover:border-amber-500/40 bg-card/85 backdrop-blur-md shadow-xs hover:shadow-md transition-all duration-300 xl:col-span-1 group overflow-hidden">
+            <Link href="/admin/dashboard/orders" className="h-full flex flex-col justify-between p-4 sm:p-5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-muted-foreground tracking-tight">
+                  Total Orders
+                </span>
+                <span className="w-8 h-8 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold shadow-xs group-hover:scale-110 transition-transform">
+                  <Package className="h-4 w-4" />
+                </span>
+              </div>
+              <div className="mt-3">
+                <div className="text-xl sm:text-2xl font-extrabold text-foreground tracking-tight">
+                  {periodOrdersCount}
+                </div>
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5 truncate">
+                  {pendingOrdersCount} active in kitchen
+                </p>
+              </div>
+            </Link>
+          </Card>
+
+          {/* 4. Average Order Value (AOV) */}
+          <Card className="rounded-3xl border border-border/70 hover:border-purple-500/40 bg-card/85 backdrop-blur-md shadow-xs hover:shadow-md transition-all duration-300 xl:col-span-1 group overflow-hidden">
+            <div className="h-full flex flex-col justify-between p-4 sm:p-5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-muted-foreground tracking-tight">
+                  Avg. Order Value
+                </span>
+                <span className="w-8 h-8 rounded-full bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold shadow-xs group-hover:scale-110 transition-transform">
+                  <Target className="h-4 w-4" />
+                </span>
+              </div>
+              <div className="mt-3">
+                <div className="text-xl sm:text-2xl font-extrabold text-foreground tracking-tight">
+                  ₹{periodAov.toFixed(0)}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                  Per completed order
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          {/* 5. Menu Catalog */}
+          <Card className="rounded-3xl border border-border/70 hover:border-rose-500/40 bg-card/85 backdrop-blur-md shadow-xs hover:shadow-md transition-all duration-300 xl:col-span-1 group overflow-hidden">
+            <Link href="/admin/dashboard/menu" className="h-full flex flex-col justify-between p-4 sm:p-5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-muted-foreground tracking-tight">
+                  Live Menu Items
+                </span>
+                <span className="w-8 h-8 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold shadow-xs group-hover:scale-110 transition-transform">
+                  <Utensils className="h-4 w-4" />
+                </span>
+              </div>
+              <div className="mt-3">
+                <div className="text-xl sm:text-2xl font-extrabold text-foreground tracking-tight">
+                  {vendorMenuItems.length}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                  Active in catalog
+                </p>
+              </div>
+            </Link>
+          </Card>
+
+          {/* 6. Delivery Squad */}
+          <Card className="rounded-3xl border border-border/70 hover:border-indigo-500/40 bg-card/85 backdrop-blur-md shadow-xs hover:shadow-md transition-all duration-300 xl:col-span-1 group overflow-hidden">
+            <Link href="/admin/dashboard/delivery" className="h-full flex flex-col justify-between p-4 sm:p-5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-muted-foreground tracking-tight">
+                  Delivery Fleet
+                </span>
+                <span className="w-8 h-8 rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold shadow-xs group-hover:scale-110 transition-transform">
+                  <Bike className="h-4 w-4" />
+                </span>
+              </div>
+              <div className="mt-3">
+                <div className="text-xl sm:text-2xl font-extrabold text-foreground tracking-tight">
+                  {deliveryTeam.length}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                  Assigned riders
+                </p>
+              </div>
+            </Link>
+          </Card>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-            <Card className="rounded-3xl xl:col-span-1">
-                <Link href="/admin/dashboard/revenue" className="h-full">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-                        <IndianRupee className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">₹{totalRevenue.toFixed(2)}</div>
-                        <p className="text-xs text-muted-foreground">From {allCompletedOrders.length} completed orders</p>
-                    </CardContent>
-                </Link>
-            </Card>
-
-            {vendor?.isExpenseTrackingEnabled && (
-                <Card className="rounded-3xl xl:col-span-1">
-                    <Link href="/admin/dashboard/expenses" className="h-full">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Last 7 Days Expense</CardTitle>
-                            <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">₹{last7DaysExpenses.toFixed(2)}</div>
-                            <p className="text-xs text-muted-foreground">Total recorded expenses</p>
-                        </CardContent>
-                    </Link>
-                </Card>
-            )}
-
-            <Card className="rounded-3xl xl:col-span-1">
-                <Link href="/admin/dashboard/orders" className="h-full">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-                        <Package className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{totalOrders}</div>
-                        <p className="text-xs text-muted-foreground">{pendingOrdersCount} pending</p>
-                    </CardContent>
-                </Link>
-            </Card>
-
-            <Card className="rounded-3xl xl:col-span-1">
-                <Link href="/admin/dashboard/menu" className="h-full">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Menu Items</CardTitle>
-                        <Utensils className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{vendorMenuItems.length}</div>
-                        <p className="text-xs text-muted-foreground">Available for order</p>
-                    </CardContent>
-                </Link>
-            </Card>
-
-            <Card className="rounded-3xl xl:col-span-1">
-                 <Link href="/admin/dashboard/delivery" className="h-full">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Delivery Team Size</CardTitle>
-                        <Bike className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{deliveryTeam.length}</div>
-                        <p className="text-xs text-muted-foreground">Active delivery personnel</p>
-                    </CardContent>
-                </Link>
-            </Card>
-
-            <Card className="rounded-3xl xl:col-span-1">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Average Order Value</CardTitle>
-                    <IndianRupee className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold">₹{averageOrderValue.toFixed(2)}</div>
-                    <p className="text-xs text-muted-foreground">Per completed order</p>
-                </CardContent>
-            </Card>
-
             <Card className="rounded-3xl lg:col-span-2 xl:col-span-3">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2"><PieChart className="h-4 w-4"/>Order Type Breakdown</CardTitle>

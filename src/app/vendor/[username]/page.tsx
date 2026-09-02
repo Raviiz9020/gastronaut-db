@@ -189,58 +189,129 @@ const MenuItemRow = ({
   const isItemEffectivelyAvailable = item.isAvailable && isShopOpen && isEffectivelyInStock;
 
   return (
-    <div ref={itemRef} className={cn("flex items-start gap-3 py-3 rounded-full -mx-2 px-2 transition-colors duration-200 relative", isItemEffectivelyAvailable ? 'cursor-pointer hover:bg-muted/50' : 'opacity-50 grayscale cursor-not-allowed')} onClick={() => isItemEffectivelyAvailable && onRowClick(item)}>
-
-      {!isItemEffectivelyAvailable && (
-        <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-10 rounded-full">
-          <p className="text-foreground font-bold text-sm text-center px-4">
-            {!isShopOpen ? (shopStatus?.msg || 'Closed') : (!isEffectivelyInStock ? 'Out of Stock' : 'Not available')}
-          </p>
-        </div>
+    <div
+      ref={itemRef}
+      className={cn(
+        "flex items-start justify-between gap-3 p-3 sm:p-3.5 rounded-2xl border border-border/60 bg-card transition-all duration-200 relative group",
+        isItemEffectivelyAvailable
+          ? "cursor-pointer hover:border-primary/40 hover:shadow-xs hover:bg-card/95"
+          : "opacity-60 grayscale-[0.5] cursor-not-allowed bg-muted/20"
       )}
-
-      <motion.div
-        layoutId={layoutId}
-        className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden flex-shrink-0"
-        onClick={(e) => {
-          e.stopPropagation();
-          onImageClick(item, layoutId);
-        }}
-      >
-        <Image
-          src={imageToDisplay || 'https://placehold.co/100x100.png'}
-          alt={item.name}
-          fill
-          className="object-cover"
-          data-ai-hint={item.aiHint}
-          placeholder={item.blurDataUrl ? 'blur' : 'empty'}
-          blurDataURL={item.blurDataUrl}
-        />
-      </motion.div>
-      <div className="flex-1">
-        <h4 className="font-semibold text-sm sm:text-base">{item.name}</h4>
-        <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
-        <div className="flex justify-between items-center mt-2">
-          <div>
-            <p className="text-sm sm:text-base">
-              {isCustomizable && <span className="text-[10px] block text-muted-foreground font-normal -mb-0.5">From</span>}
-              ₹{displayPrice.toFixed(0)}
-            </p>
-            {hasDiscount && item.price > 0 && (
-              <p className="text-xs text-muted-foreground line-through">
-                ₹{item.price.toFixed(2)}
-              </p>
+      onClick={() => isItemEffectivelyAvailable && onRowClick(item)}
+    >
+      {/* Left: Dietary Icon, Dish Details & Pricing */}
+      <div className="flex-1 min-w-0 pr-1">
+        <div className="flex items-center gap-1.5 mb-1">
+          {/* Veg/Non-Veg icon */}
+          <span
+            className={cn(
+              "w-3.5 h-3.5 rounded-xs border flex items-center justify-center bg-background shrink-0",
+              item.isVeg ? "border-emerald-600" : "border-red-600"
             )}
-            {typeof item.stock === 'number' && item.stock > 0 && !item.customizations?.length && (vendor?.isInventory || vendor?.category === 'Bakery' || item.stock <= 5) && (
-              <p className={cn(
-                "text-xs font-semibold mt-1",
-                item.stock <= 5 ? "text-destructive" : "text-amber-600"
-              )}>
-                {item.stock} available
-              </p>
+            title={item.isVeg ? "Vegetarian" : "Non-Vegetarian"}
+          >
+            <span
+              className={cn(
+                "w-1.5 h-1.5 rounded-full",
+                item.isVeg ? "bg-emerald-600" : "bg-red-600"
+              )}
+            />
+          </span>
+
+          {hasDiscount && (
+            <span className="text-[8px] font-extrabold px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+              Offer
+            </span>
+          )}
+        </div>
+
+        <h4 className="font-bold text-xs sm:text-sm text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-1">
+          {item.name}
+        </h4>
+
+        {item.description && (
+          <p className="text-[11px] text-muted-foreground line-clamp-1 sm:line-clamp-2 mt-0.5 leading-relaxed">
+            {item.description}
+          </p>
+        )}
+
+        <div className="flex items-baseline gap-1.5 mt-1.5 flex-wrap">
+          {isCustomizable && (
+            <span className="text-[9px] text-muted-foreground font-semibold">From</span>
+          )}
+          <span className="text-sm sm:text-base font-extrabold text-foreground tracking-tight">
+            ₹{displayPrice.toFixed(0)}
+          </span>
+          {hasDiscount && item.price > 0 && (
+            <span className="text-[11px] text-muted-foreground line-through font-medium">
+              ₹{item.price.toFixed(0)}
+            </span>
+          )}
+        </div>
+
+        {typeof item.stock === 'number' && item.stock > 0 && !item.customizations?.length && (vendor?.isInventory || vendor?.category === 'Bakery' || item.stock <= 5) && (
+          <p className={cn(
+            "text-[10px] font-bold mt-1",
+            item.stock <= 5 ? "text-destructive" : "text-amber-600 dark:text-amber-400"
+          )}>
+            Only {item.stock} left!
+          </p>
+        )}
+      </div>
+
+      {/* Right: Food Thumbnail & Add Button */}
+      <div className="flex flex-col items-center shrink-0">
+        <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-muted/60 border border-border/50 shadow-2xs">
+          <motion.div
+            layoutId={layoutId}
+            className="w-full h-full relative cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              onImageClick(item, layoutId);
+            }}
+          >
+            <Image
+              src={imageToDisplay || 'https://placehold.co/100x100.png'}
+              alt={item.name}
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-200"
+              data-ai-hint={item.aiHint}
+              placeholder={item.blurDataUrl ? 'blur' : 'empty'}
+              blurDataURL={item.blurDataUrl}
+            />
+          </motion.div>
+
+          {/* Sold Out / Unavailable Overlay */}
+          {!isItemEffectivelyAvailable && (
+            <div className="absolute inset-0 bg-background/85 backdrop-blur-xs flex items-center justify-center z-10 p-1">
+              <span className="text-[9px] font-extrabold text-destructive text-center uppercase tracking-wider">
+                {!isShopOpen ? (shopStatus?.msg || 'Closed') : (!isEffectivelyInStock ? 'Sold Out' : 'Out')}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Tactile + ADD Button */}
+        {isItemEffectivelyAvailable && (
+          <div className="w-16 -mt-3.5 z-10 flex flex-col items-center">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full h-7 rounded-full border-2 border-primary text-primary font-extrabold text-[11px] bg-background hover:bg-primary hover:text-primary-foreground shadow-sm transition-all uppercase tracking-wider flex items-center justify-center gap-0.5 p-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRowClick(item);
+              }}
+            >
+              ADD {isCustomizable && <ChevronDown className="h-3 w-3" />}
+            </Button>
+            {isCustomizable && (
+              <span className="text-[8px] text-muted-foreground text-center block mt-0.5 font-semibold">
+                customisable
+              </span>
             )}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -270,7 +341,6 @@ const CombinedMenuItemRow = ({
   }, [vendor]);
 
   const isShopOpen = !shopStatus || shopStatus.status === VendorStatus.OPEN;
-
   const isEffectivelyAvailable = items.some(item => isItemInStock(item, vendor?.isInventory)) && isShopOpen;
 
   const halfPortion = items.find(item => item.name.toLowerCase().includes('half'));
@@ -282,50 +352,117 @@ const CombinedMenuItemRow = ({
   const halfStock = halfPortion?.stock;
   const fullStock = fullPortion?.stock;
 
-
   return (
-    <div ref={itemRef} className={cn("flex items-start gap-3 py-3 rounded-full -mx-2 px-2 transition-colors duration-200 relative", !isEffectivelyAvailable ? 'opacity-50 grayscale cursor-not-allowed' : 'cursor-pointer hover:bg-muted/50')} onClick={() => isEffectivelyAvailable && onRowClick(items)}>
-
-      {!isEffectivelyAvailable && (
-        <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-10 rounded-full">
-          <p className="text-foreground font-bold text-sm text-center px-4">
-            {!isShopOpen ? (shopStatus?.msg || 'Closed') : 'Out of Stock'}
-          </p>
-        </div>
+    <div
+      ref={itemRef}
+      className={cn(
+        "flex items-start justify-between gap-3 p-3 sm:p-3.5 rounded-2xl border border-border/60 bg-card transition-all duration-200 relative group",
+        isEffectivelyAvailable
+          ? "cursor-pointer hover:border-primary/40 hover:shadow-xs hover:bg-card/95"
+          : "opacity-60 grayscale-[0.5] cursor-not-allowed bg-muted/20"
       )}
+      onClick={() => isEffectivelyAvailable && onRowClick(items)}
+    >
+      {/* Left: Dish Details & Portions */}
+      <div className="flex-1 min-w-0 pr-1">
+        <div className="flex items-center gap-1.5 mb-1">
+          <span
+            className={cn(
+              "w-3.5 h-3.5 rounded-xs border flex items-center justify-center bg-background shrink-0",
+              primaryItem.isVeg ? "border-emerald-600" : "border-red-600"
+            )}
+            title={primaryItem.isVeg ? "Vegetarian" : "Non-Vegetarian"}
+          >
+            <span
+              className={cn(
+                "w-1.5 h-1.5 rounded-full",
+                primaryItem.isVeg ? "bg-emerald-600" : "bg-red-600"
+              )}
+            />
+          </span>
+          <span className="text-[8px] font-bold px-1.5 py-0.2 rounded-full bg-muted text-muted-foreground border border-border/50">
+            2 Portions
+          </span>
+        </div>
 
-      <motion.div
-        layoutId={layoutId}
-        className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden flex-shrink-0"
-        onClick={(e) => {
-          e.stopPropagation();
-          onImageClick(primaryItem, layoutId);
-        }}
-      >
-        <Image
-          src={imageToDisplay || 'https://placehold.co/100x100.png'}
-          alt={baseName}
-          fill
-          className="object-cover"
-          data-ai-hint={primaryItem.aiHint}
-          placeholder={primaryItem.blurDataUrl ? 'blur' : 'empty'}
-          blurDataURL={primaryItem.blurDataUrl}
-        />
-      </motion.div>
-      <div className="flex-1">
-        <h4 className="font-semibold text-sm sm:text-base">{baseName}</h4>
-        <p className="text-xs text-muted-foreground mt-1">{primaryItem.description}</p>
-        <div className="flex justify-between items-center mt-2">
-          <p className="text-sm sm:text-base">
-            {halfPrice !== null && `Half: ₹${halfPrice.toFixed(0)}`}
-            {halfPrice !== null && fullPrice !== null && ' / '}
-            {fullPrice !== null && `Full: ₹${fullPrice.toFixed(0)}`}
+        <h4 className="font-bold text-xs sm:text-sm text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-1">
+          {baseName}
+        </h4>
+
+        {primaryItem.description && (
+          <p className="text-[11px] text-muted-foreground line-clamp-1 sm:line-clamp-2 mt-0.5 leading-relaxed">
+            {primaryItem.description}
           </p>
+        )}
+
+        <div className="flex items-baseline gap-1.5 mt-1.5 text-xs sm:text-sm font-extrabold text-foreground flex-wrap">
+          {halfPrice !== null && (
+            <span className="bg-muted/80 px-2.5 py-0.5 rounded-full border border-border/50 text-[11px] font-bold">
+              Half: ₹{halfPrice.toFixed(0)}
+            </span>
+          )}
+          {fullPrice !== null && (
+            <span className="bg-muted/80 px-2.5 py-0.5 rounded-full border border-border/50 text-[11px] font-bold">
+              Full: ₹{fullPrice.toFixed(0)}
+            </span>
+          )}
         </div>
-        <div className="text-xs text-destructive font-semibold mt-1">
-          {typeof halfStock === 'number' && halfStock > 0 && (vendor?.isInventory || vendor?.category === 'Bakery' || halfStock <= 5) && <span>{halfStock} half available. </span>}
-          {typeof fullStock === 'number' && fullStock > 0 && (vendor?.isInventory || vendor?.category === 'Bakery' || fullStock <= 5) && <span>{fullStock} full available.</span>}
+
+        <div className="text-[10px] text-destructive font-bold mt-1 space-x-1.5">
+          {typeof halfStock === 'number' && halfStock > 0 && (vendor?.isInventory || vendor?.category === 'Bakery' || halfStock <= 5) && <span>Only {halfStock} half left! </span>}
+          {typeof fullStock === 'number' && fullStock > 0 && (vendor?.isInventory || vendor?.category === 'Bakery' || fullStock <= 5) && <span>Only {fullStock} full left!</span>}
         </div>
+      </div>
+
+      {/* Right: Food Thumbnail & Add Button */}
+      <div className="flex flex-col items-center shrink-0">
+        <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-muted/60 border border-border/50 shadow-2xs">
+          <motion.div
+            layoutId={layoutId}
+            className="w-full h-full relative cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              onImageClick(primaryItem, layoutId);
+            }}
+          >
+            <Image
+              src={imageToDisplay || 'https://placehold.co/100x100.png'}
+              alt={baseName}
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-200"
+              data-ai-hint={primaryItem.aiHint}
+              placeholder={primaryItem.blurDataUrl ? 'blur' : 'empty'}
+              blurDataURL={primaryItem.blurDataUrl}
+            />
+          </motion.div>
+
+          {!isEffectivelyAvailable && (
+            <div className="absolute inset-0 bg-background/85 backdrop-blur-xs flex items-center justify-center z-10 p-1">
+              <span className="text-[9px] font-extrabold text-destructive text-center uppercase tracking-wider">
+                {!isShopOpen ? (shopStatus?.msg || 'Closed') : 'Sold Out'}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {isEffectivelyAvailable && (
+          <div className="w-16 -mt-3.5 z-10 flex flex-col items-center">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full h-7 rounded-full border-2 border-primary text-primary font-extrabold text-[11px] bg-background hover:bg-primary hover:text-primary-foreground shadow-sm transition-all uppercase tracking-wider flex items-center justify-center gap-0.5 p-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRowClick(items);
+              }}
+            >
+              ADD <ChevronDown className="h-3 w-3" />
+            </Button>
+            <span className="text-[8px] text-muted-foreground text-center block mt-0.5 font-semibold">
+              select portion
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -952,127 +1089,139 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
           />
         )}
       </AnimatePresence>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-6 sm:py-8">
         <div className="w-full max-w-5xl mx-auto">
-          <div className="flex justify-center items-center mb-6">
-            <div className="relative w-48 h-48 sm:w-56 sm:h-56">
-              <div className="absolute inset-0 rounded-full overflow-hidden shadow-lg border-4 border-background">
-                <Image
-                  src={vendor.shopImage || 'https://placehold.co/224x224.png'}
-                  alt={vendor.shopName || 'Vendor'}
-                  fill
-                  className="object-cover"
-                />
-                <div className="absolute inset-0 rounded-full overflow-hidden">
-                  {[...Array(12)].map((_, i) => (
-                    <Sparkles
-                      key={i}
-                      className="absolute top-1/2 left-1/2 h-5 w-5 animate-firework"
-                      style={{
-                        '--i': i + 1,
-                        color: `hsl(${i * 30}, 90%, 60%)`,
-                        animationDelay: `${(i * 0.1).toFixed(1)}s`
-                      } as React.CSSProperties}
+          {/* Modern Restaurant Hero Card */}
+          <div className="rounded-3xl border border-border/70 bg-card/95 backdrop-blur-md overflow-hidden shadow-xs mb-6">
+            {/* Top Cover Banner */}
+            <div className="relative h-28 sm:h-36 w-full bg-gradient-to-r from-primary/25 via-primary/10 to-amber-500/15">
+              {/* PDF Download Button top-right */}
+              <div className="absolute top-3 right-3 z-10">
+                <Button
+                  onClick={generatePdf}
+                  size="sm"
+                  variant="secondary"
+                  className="rounded-full text-xs font-bold gap-1.5 backdrop-blur-md bg-background/80 shadow-xs hover:bg-background"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Menu PDF</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Main Header Info Area */}
+            <div className="px-5 sm:px-8 pb-6 pt-0 relative">
+              {/* Floating Avatar & Title Row */}
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between -mt-10 sm:-mt-14 gap-3 sm:gap-4 mb-3">
+                <div className="flex items-end gap-3.5 sm:gap-4">
+                  <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-3xl overflow-hidden border-4 border-card shadow-md bg-card shrink-0">
+                    <Image
+                      src={vendor.shopImage || 'https://placehold.co/224x224.png'}
+                      alt={vendor.shopName || 'Vendor'}
+                      fill
+                      className="object-cover"
                     />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+                  </div>
 
-          <div className="text-center">
-            <div className="flex justify-center items-center gap-2">
-              <CardTitle className="font-headline text-4xl text-primary">
-                {vendor.shopName}
-              </CardTitle>
-            </div>
-            <CardDescription>{vendor.tagline || 'Full Menu'}</CardDescription>
-            {/* Premium Status Badge */}
-            {(() => {
-              const statusInfo = VendorStatusManager.getShopStatus(vendor);
-              const isOpen = statusInfo.status === VendorStatus.OPEN;
-              const isTempClosed = statusInfo.status === VendorStatus.CLOSED_TEMP;
-              
-              let badgeColor = 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
-              let pulseColor = 'bg-emerald-500';
-              
-              if (isTempClosed) {
-                badgeColor = 'bg-destructive/10 text-destructive border-destructive/20';
-                pulseColor = 'bg-destructive';
-              } else if (!isOpen) {
-                badgeColor = 'bg-amber-500/10 text-amber-500 border-amber-500/20';
-                pulseColor = 'bg-amber-500';
-              }
-
-              return (
-                <div className="flex justify-center items-center mt-3">
-                  <div className={cn("inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border shadow-sm backdrop-blur-sm", badgeColor)}>
-                    <span className="relative flex h-2 w-2">
-                      <span className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", pulseColor)}></span>
-                      <span className={cn("relative inline-flex rounded-full h-2 w-2", pulseColor)}></span>
-                    </span>
-                    <span>{statusInfo.msg}</span>
+                  <div className="min-w-0 pb-0.5">
+                    <h1 className="font-headline text-xl sm:text-3xl font-extrabold text-foreground tracking-tight truncate">
+                      {vendor.shopName}
+                    </h1>
+                    <p className="text-xs sm:text-sm text-muted-foreground font-medium line-clamp-1 mt-0.5">
+                      {vendor.tagline || 'Fresh Food & Gourmet Delights'}
+                    </p>
                   </div>
                 </div>
-              );
-            })()}
-            {vendor.workingHours && (
-              <div className="flex items-center justify-center gap-2 text-sm text-foreground font-bold mt-2">
-                <Clock className="h-4 w-4" />
-                <span className="whitespace-pre-line">{vendor.workingHours}</span>
+
+                {/* Live Status Pill */}
+                {(() => {
+                  const statusInfo = VendorStatusManager.getShopStatus(vendor);
+                  const isOpen = statusInfo.status === VendorStatus.OPEN;
+                  const isTempClosed = statusInfo.status === VendorStatus.CLOSED_TEMP;
+
+                  let badgeColor = 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
+                  let pulseColor = 'bg-emerald-500';
+
+                  if (isTempClosed) {
+                    badgeColor = 'bg-destructive/15 text-destructive border-destructive/30';
+                    pulseColor = 'bg-destructive';
+                  } else if (!isOpen) {
+                    badgeColor = 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30';
+                    pulseColor = 'bg-amber-500';
+                  }
+
+                  return (
+                    <div className="shrink-0">
+                      <div className={cn("inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border shadow-2xs backdrop-blur-sm", badgeColor)}>
+                        <span className="relative flex h-2 w-2">
+                          <span className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", pulseColor)} />
+                          <span className={cn("relative inline-flex rounded-full h-2 w-2", pulseColor)} />
+                        </span>
+                        <span>{statusInfo.msg}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
-            )}
-            <div className="flex justify-center items-center gap-2 mt-2">
-              <p className="text-xs text-primary font-semibold">
-                If you wish you can order from here , just click the menu
-              </p>
-              <Button onClick={generatePdf} size="icon" variant="outline" className="h-8 w-8">
-                <Download className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="mt-4 flex flex-wrap justify-center items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-              {vendor.address && (
-                <div className="flex flex-col items-center gap-1">
+
+              {/* Highlights & Store Metadata */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-3 border-t border-border/60 text-xs text-muted-foreground">
+                {vendor.workingHours && (
+                  <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                    <Clock className="h-3.5 w-3.5 text-primary" />
+                    <span>{vendor.workingHours}</span>
+                  </div>
+                )}
+                {vendor.address && (
                   <div className="flex items-center gap-1.5">
-                    <MapPin className="h-4 w-4" />
-                    <span>{vendor.address}</span>
+                    <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span className="truncate max-w-[260px]">{vendor.address}</span>
+                    {vendor.googleMapsUrl && (
+                      <a
+                        href={vendor.googleMapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline flex items-center gap-0.5 font-bold"
+                      >
+                        Directions <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
                   </div>
-                  {vendor.googleMapsUrl && (
-                    <a href={vendor.googleMapsUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
-                      View on Google Maps <ExternalLink className="h-3 w-3" />
-                    </a>
-                  )}
-                </div>
-              )}
-              {vendor.contact && (
-                <div className="flex items-center gap-1.5">
-                  <Phone className="h-4 w-4" />
-                  <a href={`tel:${vendor.contact}`} className="hover:underline">{vendor.contact.replace('+91', '')}</a>
-                </div>
-              )}
-              {vendor.minOrderAmount && vendor.minOrderAmount > 0 ? (
-                <div className="flex items-center gap-1.5 font-semibold text-primary">
-                  <Info className="h-4 w-4" />
-                  <span>Minimum Order: ₹{vendor.minOrderAmount.toFixed(2)}</span>
-                </div>
-              ) : null}
+                )}
+                {vendor.contact && (
+                  <a
+                    href={`tel:${vendor.contact}`}
+                    className="flex items-center gap-1.5 hover:text-primary font-semibold transition-colors"
+                  >
+                    <Phone className="h-3.5 w-3.5 text-primary" />
+                    <span>{vendor.contact.replace('+91', '')}</span>
+                  </a>
+                )}
+                {vendor.minOrderAmount && vendor.minOrderAmount > 0 ? (
+                  <div className="flex items-center gap-1.5 font-bold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full">
+                    <Info className="h-3.5 w-3.5" />
+                    <span>Min. Order: ₹{vendor.minOrderAmount.toFixed(0)}</span>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
 
-          <div className="mt-6 mb-4 max-w-md mx-auto">
+          {/* Search Box */}
+          <div className="mb-4 max-w-md mx-auto">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search this vendor's menu..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-9 border-purple-500"
+                className="pl-9 pr-9 text-xs rounded-2xl h-10 border-border/80 focus:border-primary shadow-xs"
               />
               {searchQuery && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full"
                   onClick={() => setSearchQuery('')}
                 >
                   <X className="h-4 w-4 text-muted-foreground" />
@@ -1081,42 +1230,50 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
             </div>
           </div>
 
+          {/* Sticky Interactive Category Pills Bar */}
           {!isSearching && vendorCategories.length > 0 && (
-            <div className="sticky top-[65px] bg-background/90 backdrop-blur-sm z-40 py-2 my-4 -mx-2 px-2 overflow-x-auto hide-scrollbar group">
-              <div className="flex w-max animate-scroll hover:animation-pause">
+            <div className="sticky top-[60px] bg-background/95 backdrop-blur-md z-40 py-2.5 my-4 -mx-4 px-4 border-y border-border/60 overflow-x-auto no-scrollbar shadow-xs">
+              <div className="flex items-center gap-2 max-w-5xl mx-auto">
+                {discountedItems.length > 0 && (
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 px-3.5 py-1 text-xs font-bold rounded-full transition-all cursor-pointer shrink-0 bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/25"
+                    onClick={() => {
+                      const el = categoryRefs.current['discounted-section'];
+                      if (el) {
+                        const yOffset = -140;
+                        const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                        window.scrollTo({ top: y, behavior: 'smooth' });
+                      }
+                    }}
+                  >
+                    <Tag className="h-3 w-3 text-amber-500" />
+                    Special Deals ({discountedItems.length})
+                  </button>
+                )}
+
                 {vendorCategories.map((category) => (
-                  <Button
-                    key={`${category}-1`}
-                    variant="outline"
-                    className="rounded-full shrink-0 mx-2"
+                  <button
+                    key={category}
+                    type="button"
+                    className="px-3.5 py-1 text-xs font-bold rounded-full transition-all cursor-pointer shrink-0 bg-muted/70 hover:bg-primary hover:text-primary-foreground text-foreground border border-border/50 shadow-2xs"
                     onClick={() => handleCategoryClick(category)}
                   >
                     {category}
-                  </Button>
-                ))}
-                {/* Duplicate for seamless loop */}
-                {vendorCategories.map((category) => (
-                  <Button
-                    key={`${category}-2`}
-                    variant="outline"
-                    className="rounded-full shrink-0 mx-2"
-                    onClick={() => handleCategoryClick(category)}
-                    aria-hidden="true"
-                  >
-                    {category}
-                  </Button>
+                  </button>
                 ))}
               </div>
             </div>
           )}
 
-          <CardContent className="mt-4">
+          {/* Menu Sections Grid */}
+          <div className="mt-4">
             {isSearching ? (
               <>
                 {Object.keys(menuItemsByCategory).length > 0 ? (
                   Object.entries(menuItemsByCategory).map(([category, itemGroups]) => (
                     <div key={category} className="mb-8">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                         {itemGroups.map((group, index) => {
                           if (group.length > 1) {
                             return <CombinedMenuItemRow key={`${group[0].id}-${index}`} items={group} onImageClick={handleImageClick} onRowClick={() => handleCombinedItemRowClick(group)} prefix={'menu-item-image'} vendor={vendor} itemRef={el => { if (el) itemRefs.current[group[0].id] = el; }} />;
@@ -1129,22 +1286,25 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
                     </div>
                   ))
                 ) : (
-                  <p className="text-center text-muted-foreground py-8">No items match your search.</p>
+                  <p className="text-center text-muted-foreground py-12">No dishes match your search.</p>
                 )}
               </>
             ) : (
               <>
+                {/* Discounted Items Section */}
                 {discountedItems.length > 0 && (
-                  <div className="mb-8">
-                    <div className="flex justify-center my-6">
-                      <div className="bg-destructive/10 rounded-full px-4 py-2 inline-flex items-center gap-3">
-                        <Tag className="h-5 w-5 text-destructive" />
-                        <h3 className="text-xl font-bold text-destructive">
-                          Discounted Items
-                        </h3>
+                  <div className="mb-8" ref={el => { if (el) categoryRefs.current['discounted-section'] = el; }}>
+                    <div className="flex items-center gap-2 mb-4 pb-2 border-b border-amber-500/30">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-500 flex items-center justify-center font-bold">
+                        <Tag className="h-4 w-4" />
                       </div>
+                      <h3 className="text-lg font-bold font-headline text-foreground">
+                        Special Deals & Offers
+                      </h3>
+                      <span className="text-xs text-muted-foreground font-semibold">({discountedItems.length})</span>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                       {discountedItems.map((item) => (
                         <MenuItemRow
                           key={item.id}
@@ -1159,36 +1319,25 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
                         />
                       ))}
                     </div>
-                    <Separator className="my-6" />
                   </div>
                 )}
 
-                {Object.keys(menuItemsByCategory).length > 0 && (
-                  <div className="flex justify-center my-6">
-                    <div className="bg-destructive/10 rounded-full px-4 py-2 inline-flex items-center gap-3">
-                      <Utensils className="h-5 w-5 text-destructive" />
-                      <h3 className="text-xl font-bold text-destructive">
-                        Menu
-                      </h3>
-                    </div>
-                  </div>
-                )}
-
+                {/* Categorized Menu Sections */}
                 {Object.entries(menuItemsByCategory).map(([category, itemGroups]) => (
                   <div key={category} className="mb-8" ref={el => { if (el) categoryRefs.current[category] = el; }}>
-                    <div className="flex justify-center my-6">
-                      <Button
-                        variant="outline"
-                        className="rounded-full"
-                        onClick={() => handleCategoryClick(category)}
-                      >
-                        <Utensils className="h-5 w-5 text-primary mr-2" />
-                        <h3 className="text-xl font-bold text-primary">
-                          {category}
-                        </h3>
-                      </Button>
+                    <div className="flex items-center gap-2 mb-4 pb-2 border-b border-border/60">
+                      <div className="w-8 h-8 rounded-xl bg-primary/15 text-primary flex items-center justify-center font-bold">
+                        <Utensils className="h-4 w-4" />
+                      </div>
+                      <h3 className="text-lg font-bold font-headline text-foreground">
+                        {category}
+                      </h3>
+                      <span className="text-xs text-muted-foreground font-semibold">
+                        ({itemGroups.reduce((sum, g) => sum + g.length, 0)} items)
+                      </span>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                       {itemGroups.map((group, index) => {
                         if (group.length > 1) {
                           return (
@@ -1227,13 +1376,12 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
               </>
             )}
 
-
             {vendorMenuItems.length === 0 && !isSearching && (
-              <p className="text-center text-muted-foreground py-8">
+              <p className="text-center text-muted-foreground py-12">
                 This vendor has not added any menu items yet.
               </p>
             )}
-          </CardContent>
+          </div>
         </div>
       </div>
       <OrderCustomizationSheet

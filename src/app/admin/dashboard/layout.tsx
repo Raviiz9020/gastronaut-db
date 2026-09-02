@@ -17,6 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescript
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { generateGmbAuthUrl } from '@/ai/flows/handle-gbp-oauth';
 import GmbLocationDialog from './gmb-location-dialog';
+import VendorQuickStockDrawer from '@/components/vendor-quick-stock-drawer';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -274,7 +275,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     };
 
 
-    const showEmailPrompt = isMounted && vendor && !vendor.email;
+    const showEmailPrompt = !!(isMounted && vendor && !vendor.email);
     const vendorUrl = vendor ? `/vendor/${vendor.slug || vendor.username}` : '/';
 
     return (
@@ -284,9 +285,12 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 <header className="flex items-center justify-between p-4 border-b border-primary/10 gap-4">
                     <div>{/* This empty div helps with the flexbox layout */}</div>
                     <div className="flex items-center gap-2">
+                         {/* Quick 86 / Instant Sold-Out Switcher */}
+                         <VendorQuickStockDrawer />
+
                          <Link href={vendorUrl} passHref>
-                            <Button variant="outline">
-                                <Store className="mr-2 h-4 w-4"/> Menu
+                            <Button variant="outline" size="sm" className="h-8 rounded-full text-xs">
+                                <Store className="mr-1.5 h-3.5 w-3.5"/> Menu
                             </Button>
                         </Link>
                         {vendor && (
