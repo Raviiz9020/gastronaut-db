@@ -645,6 +645,12 @@ export default function SuperAdminDashboardPage() {
   const [featuresVendor, setFeaturesVendor] = useState<Vendor | null>(null);
   const [isFeaturesDialogOpen, setIsFeaturesDialogOpen] = useState(false);
 
+  // Dynamically resolve active vendor from allVendors so updates reflect immediately
+  const activeFeaturesVendor = useMemo(() => {
+    if (!featuresVendor) return null;
+    return allVendors.find(v => v.username === featuresVendor.username) || featuresVendor;
+  }, [allVendors, featuresVendor]);
+
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'approved' | 'pending' | 'demo' | 'dineIn' | 'commission'>('all');
@@ -723,31 +729,53 @@ export default function SuperAdminDashboardPage() {
   };
 
   const handleApprovalToggle = async (username: string) => {
+    setFeaturesVendor(prev => prev && prev.username === username ? ({ ...prev, isApproved: !prev.isApproved }) : prev);
     await toggleVendorApproval(username);
   };
 
   const handleGbpToggle = async (username: string, currentStatus: boolean) => {
+    setFeaturesVendor(prev => prev && prev.username === username ? ({ ...prev, isGbpEnabled: !currentStatus }) : prev);
     await toggleVendorGbpStatus(username, currentStatus);
   };
 
   const handleExpenseTrackingToggle = async (username: string, currentStatus: boolean) => {
+    setFeaturesVendor(prev => prev && prev.username === username ? ({ ...prev, isExpenseTrackingEnabled: !currentStatus }) : prev);
     await toggleVendorExpenseTracking(username, currentStatus);
   };
 
   const handleOfferCreationToggle = async (username: string, currentStatus: boolean) => {
+    setFeaturesVendor(prev => prev && prev.username === username ? ({ ...prev, isOfferCreationEnabled: !currentStatus }) : prev);
     await toggleVendorOfferCreation(username, currentStatus);
   };
 
   const handleDineInToggle = async (username: string, currentStatus: boolean) => {
+    setFeaturesVendor(prev => prev && prev.username === username ? ({ ...prev, canAcceptDineIn: !currentStatus }) : prev);
     await toggleDineInStatus(username, currentStatus);
   };
 
   const handleAiAssistantToggle = async (username: string, currentStatus: boolean) => {
+    setFeaturesVendor(prev => prev && prev.username === username ? ({ ...prev, isAiAssistantEnabled: !currentStatus }) : prev);
     await toggleAiAssistantStatus(username, currentStatus);
   };
 
   const handleAccountLinkingToggle = async (username: string, currentStatus: boolean) => {
+    setFeaturesVendor(prev => prev && prev.username === username ? ({ ...prev, isAccountLinkingEnabled: !currentStatus }) : prev);
     await toggleAccountLinkingStatus(username, currentStatus);
+  };
+
+  const handleDemoToggle = async (username: string, currentStatus: boolean) => {
+    setFeaturesVendor(prev => prev && prev.username === username ? ({ ...prev, isDemoAccount: !currentStatus }) : prev);
+    await toggleVendorDemoStatus(username, currentStatus);
+  };
+
+  const handleMenuRestrictionToggle = async (username: string, currentStatus: boolean) => {
+    setFeaturesVendor(prev => prev && prev.username === username ? ({ ...prev, isMenuEditDisabled: !currentStatus }) : prev);
+    await toggleMenuEditRestriction(username, currentStatus);
+  };
+
+  const handleInventoryToggle = async (username: string, currentStatus: boolean) => {
+    setFeaturesVendor(prev => prev && prev.username === username ? ({ ...prev, isInventory: !currentStatus }) : prev);
+    await toggleInventoryStatus(username, currentStatus);
   };
 
   const handleRewardsToggle = (vendor: Vendor) => {
@@ -755,12 +783,14 @@ export default function SuperAdminDashboardPage() {
       setRewardsVendor(vendor);
       setIsRewardsConfigOpen(true);
     } else {
+      setFeaturesVendor(prev => prev && prev.username === vendor.username ? ({ ...prev, isRewardsEnabled: false }) : prev);
       toggleVendorRewards(vendor.username, false);
     }
   };
 
   const handleRewardsConfigSave = async (config: { spend: number, points: number }) => {
     if (rewardsVendor) {
+      setFeaturesVendor(prev => prev && prev.username === rewardsVendor.username ? ({ ...prev, isRewardsEnabled: true, rewardsConfig: config }) : prev);
       await toggleVendorRewards(rewardsVendor.username, true, config);
     }
     setIsRewardsConfigOpen(false);
@@ -772,12 +802,14 @@ export default function SuperAdminDashboardPage() {
       setCommissionVendor(vendor);
       setIsCommissionConfigOpen(true);
     } else {
+      setFeaturesVendor(prev => prev && prev.username === vendor.username ? ({ ...prev, isCommissionOn: false, commissionPercentage: 0 }) : prev);
       toggleVendorCommission(vendor.username, false, 0);
     }
   };
 
   const handleCommissionConfigSave = async (percentage: number) => {
     if (commissionVendor) {
+      setFeaturesVendor(prev => prev && prev.username === commissionVendor.username ? ({ ...prev, isCommissionOn: true, commissionPercentage: percentage }) : prev);
       await toggleVendorCommission(commissionVendor.username, true, percentage);
     }
     setIsCommissionConfigOpen(false);
@@ -1168,7 +1200,7 @@ export default function SuperAdminDashboardPage() {
 
       {/* Feature Permissions Management Dialog */}
       <VendorFeaturesDialog
-        vendor={featuresVendor}
+        vendor={activeFeaturesVendor}
         open={isFeaturesDialogOpen}
         onOpenChange={setIsFeaturesDialogOpen}
         onToggleApproval={handleApprovalToggle}
@@ -1180,9 +1212,9 @@ export default function SuperAdminDashboardPage() {
         onToggleAccountLinking={handleAccountLinkingToggle}
         onToggleRewards={handleRewardsToggle}
         onToggleCommission={handleCommissionToggle}
-        onToggleDemo={toggleVendorDemoStatus}
-        onToggleMenuRestriction={toggleMenuEditRestriction}
-        onToggleInventory={toggleInventoryStatus}
+        onToggleDemo={handleDemoToggle}
+        onToggleMenuRestriction={handleMenuRestrictionToggle}
+        onToggleInventory={handleInventoryToggle}
       />
 
       {/* Dialogs */}

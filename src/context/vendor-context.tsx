@@ -562,162 +562,197 @@ export const VendorProvider = ({ children }: { children: ReactNode }) => {
     if (!vendorSnap.exists()) return;
 
     const vendor = vendorSnap.data();
+    const newStatus = !vendor.isApproved;
+    // Optimistic update
+    setAllVendors(prev => prev.map(v => v.username === username ? { ...v, isApproved: newStatus } : v));
     try {
-        await updateDoc(vendorRef, { isApproved: !vendor.isApproved });
-        fetchAllVendors(); // Re-fetch
+        await updateDoc(vendorRef, { isApproved: newStatus });
+        fetchAllVendors();
         toast({ title: 'Success', description: `Vendor approval status changed.` });
     } catch(e) {
         console.error("Error toggling vendor approval: ", e);
+        fetchAllVendors();
         toast({ title: 'Error', description: 'Could not change approval status.', variant: 'destructive' });
     }
   };
 
   const toggleShopOpenStatus = async (username: string, currentStatus: boolean) => {
     const vendorRef = doc(db, 'vendors', username);
+    const newStatus = !currentStatus;
+    setAllVendors(prev => prev.map(v => v.username === username ? { ...v, isShopOpen: newStatus } : v));
     try {
-        await updateDoc(vendorRef, { isShopOpen: !currentStatus });
-        // Optimistically update the current vendor if it's the one being changed
+        await updateDoc(vendorRef, { isShopOpen: newStatus });
         if (currentVendor?.username === username) {
-            setCurrentVendor(prev => prev ? { ...prev, isShopOpen: !currentStatus } : null);
+            setCurrentVendor(prev => prev ? { ...prev, isShopOpen: newStatus } : null);
         }
-        // For a non-snapshot approach, we would need to refetch:
         fetchAllVendors();
         toast({ title: 'Success', description: `Shop status has been updated.` });
     } catch(e) {
         console.error("Error toggling shop status: ", e);
+        fetchAllVendors();
         toast({ title: 'Error', description: 'Could not change shop status.', variant: 'destructive' });
     }
   };
 
   const toggleVendorGbpStatus = async (username: string, currentStatus: boolean) => {
     const vendorRef = doc(db, 'vendors', username);
+    const newStatus = !currentStatus;
+    setAllVendors(prev => prev.map(v => v.username === username ? { ...v, isGbpEnabled: newStatus } : v));
     try {
-        await updateDoc(vendorRef, { isGbpEnabled: !currentStatus });
-        fetchAllVendors(); // Re-fetch
+        await updateDoc(vendorRef, { isGbpEnabled: newStatus });
+        fetchAllVendors();
         toast({ title: 'Success', description: `GBP Feature status has been updated.` });
     } catch(e) {
         console.error("Error toggling GBP status: ", e);
+        fetchAllVendors();
         toast({ title: 'Error', description: 'Could not change GBP status.', variant: 'destructive' });
     }
   };
 
   const toggleVendorExpenseTracking = async (username: string, currentStatus: boolean) => {
     const vendorRef = doc(db, 'vendors', username);
+    const newStatus = !currentStatus;
+    setAllVendors(prev => prev.map(v => v.username === username ? { ...v, isExpenseTrackingEnabled: newStatus } : v));
     try {
-        await updateDoc(vendorRef, { isExpenseTrackingEnabled: !currentStatus });
+        await updateDoc(vendorRef, { isExpenseTrackingEnabled: newStatus });
         fetchAllVendors();
         toast({ title: 'Success', description: `Expense Tracking feature status has been updated.` });
     } catch(e) {
         console.error("Error toggling expense tracking: ", e);
+        fetchAllVendors();
         toast({ title: 'Error', description: 'Could not change expense tracking status.', variant: 'destructive' });
     }
   };
   
   const toggleVendorOfferCreation = async (username: string, currentStatus: boolean) => {
     const vendorRef = doc(db, 'vendors', username);
+    const newStatus = !currentStatus;
+    setAllVendors(prev => prev.map(v => v.username === username ? { ...v, isOfferCreationEnabled: newStatus } : v));
     try {
-        await updateDoc(vendorRef, { isOfferCreationEnabled: !currentStatus });
+        await updateDoc(vendorRef, { isOfferCreationEnabled: newStatus });
         fetchAllVendors();
         toast({ title: 'Success', description: `Offer Creation feature status has been updated.` });
     } catch(e) {
         console.error("Error toggling offer creation: ", e);
+        fetchAllVendors();
         toast({ title: 'Error', description: 'Could not change offer creation status.', variant: 'destructive' });
     }
   };
 
   const toggleDineInStatus = async (username: string, currentStatus: boolean) => {
     const vendorRef = doc(db, 'vendors', username);
+    const newStatus = !currentStatus;
+    setAllVendors(prev => prev.map(v => v.username === username ? { ...v, canAcceptDineIn: newStatus } : v));
     try {
-        await updateDoc(vendorRef, { canAcceptDineIn: !currentStatus });
+        await updateDoc(vendorRef, { canAcceptDineIn: newStatus });
         fetchAllVendors();
         toast({ title: 'Success', description: `Dine-In feature status has been updated.` });
     } catch (e) {
         console.error("Error toggling dine-in status: ", e);
+        fetchAllVendors();
         toast({ title: 'Error', description: 'Could not change dine-in status.', variant: 'destructive' });
     }
   };
   
   const toggleAiAssistantStatus = async (username: string, currentStatus: boolean) => {
     const vendorRef = doc(db, 'vendors', username);
+    const newStatus = !currentStatus;
+    setAllVendors(prev => prev.map(v => v.username === username ? { ...v, isAiAssistantEnabled: newStatus } : v));
     try {
-        await updateDoc(vendorRef, { isAiAssistantEnabled: !currentStatus });
+        await updateDoc(vendorRef, { isAiAssistantEnabled: newStatus });
         fetchAllVendors();
         toast({ title: 'Success', description: `AI Assistant feature status has been updated.` });
     } catch (e) {
         console.error("Error toggling AI Assistant status: ", e);
+        fetchAllVendors();
         toast({ title: 'Error', description: 'Could not change AI Assistant status.', variant: 'destructive' });
     }
   };
 
   const toggleAccountLinkingStatus = async (username: string, currentStatus: boolean) => {
     const vendorRef = doc(db, 'vendors', username);
+    const newStatus = !currentStatus;
+    setAllVendors(prev => prev.map(v => v.username === username ? { ...v, isAccountLinkingEnabled: newStatus } : v));
     try {
-        await updateDoc(vendorRef, { isAccountLinkingEnabled: !currentStatus });
+        await updateDoc(vendorRef, { isAccountLinkingEnabled: newStatus });
         fetchAllVendors();
         toast({ title: 'Success', description: `Account Linking feature has been updated.` });
     } catch(e) {
         console.error("Error toggling Account Linking status: ", e);
+        fetchAllVendors();
         toast({ title: 'Error', description: 'Could not change Account Linking status.', variant: 'destructive' });
     }
   };
   
   const toggleVendorRewards = async (username: string, enable: boolean, config?: { spend: number, points: number, minRedemptionPoints?: number }) => {
     const vendorRef = doc(db, 'vendors', username);
+    setAllVendors(prev => prev.map(v => v.username === username ? { ...v, isRewardsEnabled: enable, rewardsConfig: enable && config ? config : v.rewardsConfig } : v));
     try {
       const updateData: Partial<Vendor> = { isRewardsEnabled: enable };
       if (enable && config) {
         updateData.rewardsConfig = config;
       }
       await updateDoc(vendorRef, updateData as any);
-      fetchAllVendors(); // Re-fetch to update the UI
+      fetchAllVendors();
       toast({
         title: 'Success',
         description: `Rewards system for this vendor has been ${enable ? 'enabled' : 'disabled'}.`,
       });
     } catch (e) {
       console.error("Error toggling vendor rewards:", e);
+      fetchAllVendors();
       toast({ title: 'Error', description: 'Could not update rewards status.', variant: 'destructive' });
     }
   };
 
   const toggleVendorDemoStatus = async (username: string, currentStatus: boolean) => {
     const vendorRef = doc(db, 'vendors', username);
+    const newStatus = !currentStatus;
+    setAllVendors(prev => prev.map(v => v.username === username ? { ...v, isDemoAccount: newStatus } : v));
     try {
-        await updateDoc(vendorRef, { isDemoAccount: !currentStatus });
+        await updateDoc(vendorRef, { isDemoAccount: newStatus });
         fetchAllVendors();
         toast({ title: 'Success', description: `Demo status updated.` });
     } catch(e) {
         console.error("Error toggling demo status: ", e);
+        fetchAllVendors();
         toast({ title: 'Error', description: 'Could not change demo status.', variant: 'destructive' });
     }
   };
 
   const toggleMenuEditRestriction = async (username: string, currentStatus: boolean) => {
     const vendorRef = doc(db, 'vendors', username);
+    const newStatus = !currentStatus;
+    setAllVendors(prev => prev.map(v => v.username === username ? { ...v, isMenuEditDisabled: newStatus } : v));
     try {
-        await updateDoc(vendorRef, { isMenuEditDisabled: !currentStatus });
+        await updateDoc(vendorRef, { isMenuEditDisabled: newStatus });
         fetchAllVendors();
         toast({ title: 'Success', description: `Menu edit restriction updated.` });
     } catch(e) {
         console.error("Error toggling menu restriction: ", e);
+        fetchAllVendors();
         toast({ title: 'Error', description: 'Could not change menu restriction.', variant: 'destructive' });
     }
   };
 
   const toggleInventoryStatus = async (username: string, currentStatus: boolean) => {
     const vendorRef = doc(db, 'vendors', username);
+    const newStatus = !currentStatus;
+    setAllVendors(prev => prev.map(v => v.username === username ? { ...v, isInventory: newStatus } : v));
     try {
-        await updateDoc(vendorRef, { isInventory: !currentStatus });
+        await updateDoc(vendorRef, { isInventory: newStatus });
         fetchAllVendors();
         toast({ title: 'Success', description: `Inventory management status updated.` });
     } catch(e) {
         console.error("Error toggling inventory status: ", e);
+        fetchAllVendors();
         toast({ title: 'Error', description: 'Could not change inventory status.', variant: 'destructive' });
     }
   };
 
   const toggleVendorCommission = async (username: string, enable: boolean, percentage?: number) => {
     const vendorRef = doc(db, 'vendors', username);
+    setAllVendors(prev => prev.map(v => v.username === username ? { ...v, isCommissionOn: enable, commissionPercentage: enable ? (percentage ?? 0) : 0 } : v));
     try {
       const updateData: Partial<Vendor> = {
         isCommissionOn: enable,
@@ -731,6 +766,7 @@ export const VendorProvider = ({ children }: { children: ReactNode }) => {
       });
     } catch (e) {
       console.error("Error toggling vendor commission:", e);
+      fetchAllVendors();
       toast({ title: 'Error', description: 'Could not update commission settings.', variant: 'destructive' });
     }
   };
