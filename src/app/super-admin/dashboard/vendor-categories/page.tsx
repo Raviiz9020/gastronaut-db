@@ -1,29 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useVendorCategory } from '@/context/vendor-category-context';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import {
+  PlusCircle,
+  Edit,
+  Trash2,
+  Tag,
+  Search,
+  LayoutGrid,
+  List,
+  Image as ImageIcon,
+  Sparkles,
+  Layers,
+  Store,
+  X
+} from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import type { VendorCategory } from '@/types';
 import VendorCategoryForm from './vendor-category-form';
 import ConfirmationDialog from '@/components/confirmation-dialog';
 import Image from 'next/image';
+import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function SuperAdminVendorCategoryPage() {
   const { vendorCategories, removeVendorCategory } = useVendorCategory();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<VendorCategory | null>(null);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
-  
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+
   const handleAddNew = () => {
     setSelectedCategory(null);
     setIsFormOpen(true);
@@ -33,92 +44,368 @@ export default function SuperAdminVendorCategoryPage() {
     setSelectedCategory(item);
     setIsFormOpen(true);
   };
-  
+
   const handleDeleteConfirm = async (itemId: string) => {
     await removeVendorCategory(itemId);
     setItemToDelete(null);
   };
 
-  return (
-    <div className="flex-1 space-y-8 p-8 pt-6">
-       <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Manage Vendor Categories</h2>
-       </div>
+  const stats = useMemo(() => {
+    const total = vendorCategories.length;
+    const withImage = vendorCategories.filter(c => !!c.imageUrl).length;
+    const textOnly = total - withImage;
+    return { total, withImage, textOnly };
+  }, [vendorCategories]);
 
-      <Card className="rounded-3xl">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Vendor Categories</CardTitle>
+  const filteredCategories = useMemo(() => {
+    let list = vendorCategories;
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase().trim();
+      list = list.filter(c =>
+        c.name.toLowerCase().includes(q) ||
+        (c.aiHint && c.aiHint.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }, [vendorCategories, searchTerm]);
+
+  return (
+    <div className="min-h-screen bg-background p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+      {/* 1. Header Banner */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-card via-card to-primary/[0.05] p-5 sm:p-6 border border-border/80 shadow-xs">
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 shadow-2xs">
+                <Tag className="h-3 w-3" />
+                STORE CLASSIFICATIONS
+              </span>
+              <span className="text-muted-foreground text-xs font-semibold">
+                {stats.total} Active Categories
+              </span>
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-black font-headline text-foreground tracking-tight flex items-center gap-2.5">
+              <span>Vendor Categories</span>
+              <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/25 font-extrabold">
+                SUPER ADMIN
+              </span>
+            </h1>
+            <p className="text-xs text-muted-foreground font-medium">
+              Create and manage merchant business categories, search tags, and artwork
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {/* Add New Category Button */}
+            <Button
+              onClick={handleAddNew}
+              size="sm"
+              className="rounded-full text-xs font-bold gap-1.5 h-9 px-4 bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs"
+            >
+              <PlusCircle className="h-4 w-4" />
+              <span>Add Category</span>
+            </Button>
+
+            {/* View Mode Switcher */}
+            <div className="bg-muted p-1 rounded-2xl border border-border/70 flex items-center gap-1 shadow-2xs">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode('grid')}
+                className={cn(
+                  "h-8 px-3 rounded-xl text-xs font-bold transition-all",
+                  viewMode === 'grid'
+                    ? "bg-background text-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <LayoutGrid className="h-3.5 w-3.5 mr-1.5" />
+                Cards
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode('table')}
+                className={cn(
+                  "h-8 px-3 rounded-xl text-xs font-bold transition-all",
+                  viewMode === 'table'
+                    ? "bg-background text-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <List className="h-3.5 w-3.5 mr-1.5" />
+                Table
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. 3-KPI Bento Stats Ribbon */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="bg-card p-4 rounded-2xl border border-border/70 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-muted-foreground">
+            <span className="text-xs font-semibold">Total Categories</span>
+            <Tag className="h-4 w-4 text-primary" />
+          </div>
+          <p className="text-2xl font-black text-foreground">{stats.total}</p>
+          <p className="text-[10px] text-muted-foreground font-medium">Vendor business tags</p>
+        </div>
+
+        <div className="bg-card p-4 rounded-2xl border border-border/70 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-muted-foreground">
+            <span className="text-xs font-semibold">With Custom Artwork</span>
+            <ImageIcon className="h-4 w-4 text-emerald-600" />
+          </div>
+          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{stats.withImage}</p>
+          <p className="text-[10px] text-muted-foreground font-medium">Uploaded graphic badge</p>
+        </div>
+
+        <div className="bg-card p-4 rounded-2xl border border-border/70 shadow-2xs space-y-1">
+          <div className="flex items-center justify-between text-muted-foreground">
+            <span className="text-xs font-semibold">Text Only</span>
+            <Layers className="h-4 w-4 text-blue-500" />
+          </div>
+          <p className="text-2xl font-black text-blue-600 dark:text-blue-400">{stats.textOnly}</p>
+          <p className="text-[10px] text-muted-foreground font-medium">Default fallback badge</p>
+        </div>
+      </div>
+
+      {/* 3. Search Bar Ribbon */}
+      <div className="flex items-center justify-between gap-3 bg-card p-3 sm:p-4 rounded-2xl border border-border/70 shadow-2xs">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search category name, keywords..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 pr-8 h-9 text-xs rounded-full border-border/70 bg-background"
+          />
+          {searchTerm && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full"
+              onClick={() => setSearchTerm('')}
+            >
+              <X className="h-3.5 w-3.5 text-muted-foreground" />
+            </Button>
+          )}
+        </div>
+
+        <span className="text-xs font-bold text-muted-foreground hidden sm:inline">
+          Showing {filteredCategories.length} of {vendorCategories.length} categories
+        </span>
+      </div>
+
+      {/* 4. Content Area (Cards vs Table) */}
+      {filteredCategories.length > 0 ? (
+        viewMode === 'grid' ? (
+          /* Compact Bento Cards Grid */
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+            <AnimatePresence mode="popLayout">
+              {filteredCategories.map((item, index) => (
+                <motion.div
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.2, delay: index * 0.02 }}
+                  key={item.id}
+                >
+                  <Card className="rounded-2xl overflow-hidden border border-border/70 bg-card hover:border-foreground/20 hover:shadow-md transition-all shadow-2xs flex flex-col justify-between h-full group">
+                    <div>
+                      {/* Compact Image Preview Container */}
+                      <div className="relative h-24 w-full bg-muted/30 overflow-hidden border-b border-border/50 flex items-center justify-center">
+                        {item.imageUrl ? (
+                          <Image
+                            src={item.imageUrl}
+                            alt={item.name}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center justify-center gap-1 text-muted-foreground">
+                            <Store className="h-6 w-6 text-primary/40" />
+                            <span className="text-[9px] font-bold">No Artwork</span>
+                          </div>
+                        )}
+
+                        <span
+                          className={cn(
+                            "absolute top-1.5 right-1.5 inline-flex items-center gap-1 text-[8px] font-extrabold px-1.5 py-0.2 rounded-full backdrop-blur-md shadow-xs",
+                            item.imageUrl
+                              ? "bg-background/90 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                              : "bg-background/90 text-muted-foreground border border-border/60"
+                          )}
+                        >
+                          {item.imageUrl ? "Active" : "Text"}
+                        </span>
+                      </div>
+
+                      {/* Card Info */}
+                      <div className="p-2.5 sm:p-3 space-y-0.5">
+                        <h3 className="text-xs sm:text-sm font-bold font-headline text-foreground leading-snug truncate" title={item.name}>
+                          {item.name}
+                        </h3>
+                        {item.aiHint && item.aiHint !== item.name ? (
+                          <p className="text-[10px] text-muted-foreground truncate" title={item.aiHint}>
+                            Tag: {item.aiHint}
+                          </p>
+                        ) : (
+                          <p className="text-[10px] text-muted-foreground">Category</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Compact Action Buttons at Bottom */}
+                    <div className="p-2.5 sm:p-3 pt-0 flex items-center gap-1.5 border-t border-border/40 mt-1 pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 h-7 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-400 hover:bg-amber-600 hover:text-white border-amber-500/30 transition-all shadow-2xs px-2"
+                        onClick={() => handleEdit(item)}
+                      >
+                        <Edit className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 w-7 p-0 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white border border-rose-500/30 transition-all shadow-2xs shrink-0"
+                        onClick={() => setItemToDelete(item.id)}
+                        title="Delete Category"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </Card>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        ) : (
+          /* Master Table View */
+          <div className="bg-card rounded-3xl border border-border/70 overflow-hidden shadow-2xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-muted/40 text-muted-foreground border-b border-border/60 text-[10px] uppercase font-extrabold tracking-wider">
+                  <tr>
+                    <th className="py-3 px-4">Artwork</th>
+                    <th className="py-3 px-4">Category Name</th>
+                    <th className="py-3 px-4">Search Tag / AI Hint</th>
+                    <th className="py-3 px-4 text-center">Status</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {filteredCategories.map((item) => (
+                    <tr key={item.id} className="hover:bg-muted/30 transition-colors">
+                      {/* Artwork Preview */}
+                      <td className="py-3 px-4">
+                        <div className="w-10 h-10 rounded-2xl overflow-hidden relative border border-border/60 bg-muted/40 shrink-0">
+                          {item.imageUrl ? (
+                            <Image src={item.imageUrl} alt={item.name} fill className="object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-primary/50">
+                              <Store className="h-4 w-4" />
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Category Name */}
+                      <td className="py-3 px-4 font-bold text-foreground">
+                        {item.name}
+                      </td>
+
+                      {/* Search Tag / AI Hint */}
+                      <td className="py-3 px-4 text-muted-foreground">
+                        {item.aiHint || '—'}
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-3 px-4 text-center">
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-2xs",
+                            item.imageUrl
+                              ? "text-emerald-700 dark:text-emerald-400 bg-emerald-500/15 border border-emerald-500/30"
+                              : "text-muted-foreground bg-muted border border-border/60"
+                          )}
+                        >
+                          <span className={cn("w-1.5 h-1.5 rounded-full", item.imageUrl ? "bg-emerald-500" : "bg-muted-foreground")} />
+                          {item.imageUrl ? "Artwork Uploaded" : "Text Only"}
+                        </span>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 hover:bg-amber-600 hover:text-white border border-amber-500/30 transition-all"
+                            onClick={() => handleEdit(item)}
+                            title="Edit Category"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white border border-rose-500/30 transition-all"
+                            onClick={() => setItemToDelete(item.id)}
+                            title="Delete Category"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      ) : (
+        /* Empty State */
+        <div className="flex flex-col items-center justify-center py-24 text-center space-y-3 bg-card rounded-3xl border border-dashed border-border/80">
+          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+            <Tag className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-foreground">No vendor categories found</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Try adjusting your search query or add a new category.</p>
+          </div>
           <Button
             onClick={handleAddNew}
             size="sm"
-            className="rounded-full text-white bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 bg-[length:200%_auto] animate-gradient-move"
+            className="rounded-full text-xs font-bold gap-1.5 px-4"
           >
-            <PlusCircle className="mr-2 h-4 w-4" /> Add
+            <PlusCircle className="h-4 w-4" />
+            Add First Category
           </Button>
-        </CardHeader>
-        <CardContent>
-           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Image</TableHead>
-                <TableHead>Category Name</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {vendorCategories.length > 0 ? (
-                vendorCategories.map(item => (
-                  <TableRow key={item.id}>
-                     <TableCell>
-                      <div className="w-10 h-10 rounded-full overflow-hidden relative">
-                        {item.imageUrl ? (
-                          <Image src={item.imageUrl} alt={item.name} layout="fill" className="object-cover"/>
-                        ) : (
-                          <div className="w-full h-full bg-muted"/>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="icon" onClick={() => handleEdit(item)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          className="text-white bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 bg-[length:200%_auto] animate-gradient-move"
-                          onClick={() => setItemToDelete(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={3} className="h-24 text-center">
-                    No vendor categories yet.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
+      {/* Form Drawer */}
       <VendorCategoryForm
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
         category={selectedCategory}
       />
 
+      {/* Delete Confirmation Modal */}
       <ConfirmationDialog
         isOpen={!!itemToDelete}
         onOpenChange={(isOpen) => !isOpen && setItemToDelete(null)}
         onConfirm={() => itemToDelete && handleDeleteConfirm(itemToDelete)}
-        title="Are you sure?"
-        description="This action cannot be undone. This will permanently delete the vendor category. Existing vendors in this category will not be affected."
+        title="Delete Category?"
+        description="This action cannot be undone. This will permanently delete the vendor category. Existing vendors assigned to this category will not be affected."
       />
     </div>
   );

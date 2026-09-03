@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -59,10 +58,8 @@ export function Combobox({
   const handleSelect = (currentValue: string) => {
     onChange(currentValue);
     setOpen(false);
-    setInputValue(''); // Reset input on select
+    setInputValue('');
   };
-  
-  const popoverWidth = className?.includes('w-') ? className : "w-[200px]";
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -71,9 +68,9 @@ export function Combobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("justify-between", popoverWidth)}
+          className={cn("w-full justify-between h-9 text-xs rounded-xl border-border/70 bg-background font-medium", className)}
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 truncate min-w-0">
             {icon}
             <span className="truncate">
               {selectedLabel || placeholder}
@@ -86,31 +83,42 @@ export function Combobox({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className={cn("p-0", popoverWidth)}>
-        <Command>
+      <PopoverContent 
+        className="p-1 w-[var(--radix-popover-trigger-width)] min-w-[340px] max-w-[95vw] rounded-2xl shadow-xl border border-border/80 bg-popover z-50" 
+        align="start"
+      >
+        <Command className="rounded-xl">
           <CommandInput 
             placeholder={searchPlaceholder} 
             onValueChange={setInputValue}
             value={inputValue}
+            className="h-9 text-xs"
           />
-          <CommandList>
-            <CommandEmpty>{noResultsText}</CommandEmpty>
+          <CommandList className="max-h-64 p-1">
+            <CommandEmpty className="py-6 text-center text-xs text-muted-foreground font-medium">
+              {noResultsText}
+            </CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
-                  value={option.value}
-                  onSelect={handleSelect}
+                  value={`${option.label} ${option.value}`}
+                  onSelect={() => handleSelect(option.value)}
                   disabled={option.value === 'title'}
-                  className={option.value === 'title' ? "font-bold text-muted-foreground" : ""}
+                  className={cn(
+                    "cursor-pointer py-2 px-2.5 text-xs rounded-xl flex items-center justify-between transition-colors",
+                    option.value === 'title' ? "font-bold text-muted-foreground" : "hover:bg-muted"
+                  )}
                 >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value === option.value ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {option.label}
+                  <div className="flex items-center gap-2 truncate min-w-0">
+                    <Check
+                      className={cn(
+                        "h-3.5 w-3.5 shrink-0 text-primary",
+                        value === option.value ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    <span className="truncate">{option.label}</span>
+                  </div>
                 </CommandItem>
               ))}
             </CommandGroup>

@@ -185,14 +185,30 @@ const AddItemDialog = ({
   const [customizingItem, setCustomizingItem] = useState<MenuItem | null>(null);
   const categoryScrollRef = useRef<HTMLDivElement>(null);
 
+  const availableCategories = useMemo(() => {
+    const inStockItems = menuItems.filter(item => isItemInStock(item, vendor?.isInventory));
+    const activeCats = new Set<string>();
+    inStockItems.forEach(item => {
+      if (item.category && item.category.trim()) {
+        activeCats.add(item.category.trim());
+      }
+    });
+    // Only keep categories that actually contain at least 1 in-stock menu item
+    const cats = categories.filter(cat => cat !== 'All' && activeCats.has(cat));
+    activeCats.forEach(c => {
+      if (!cats.includes(c)) cats.push(c);
+    });
+    return cats;
+  }, [menuItems, categories, vendor]);
+
   useEffect(() => {
     if (open) {
       setSelectedItems([]);
-      setSelectedCategory(categories[0] || 'All');
+      setSelectedCategory('All');
       setSearchQuery('');
       setCustomizingItem(null);
     }
-  }, [open, categories]);
+  }, [open]);
 
   const filteredMenuItems = useMemo(() => {
     let items = menuItems.filter(
@@ -365,7 +381,7 @@ const AddItemDialog = ({
                 }}
                 className="flex items-center gap-1.5 overflow-x-auto py-1 scroll-smooth hide-scrollbar flex-1"
               >
-                {['All', ...categories].map((cat) => (
+                {['All', ...availableCategories].map((cat) => (
                   <button
                     key={cat}
                     type="button"
@@ -1233,9 +1249,10 @@ export default function TableViewPage() {
   }, [activeDineInOrders, vendor]);
 
   const vendorCategories = useMemo(() => {
-    const cats = new Set(vendorMenuItems.map(item => item.category));
+    const inStockItems = vendorMenuItems.filter(item => isItemInStock(item, vendor?.isInventory));
+    const cats = new Set(inStockItems.map(item => item.category).filter(Boolean));
     return Array.from(cats);
-  }, [vendorMenuItems]);
+  }, [vendorMenuItems, vendor]);
 
   const tableCount = vendor?.dineInTables || 0;
   const takeAwayTables = useMemo(() => ['Take Away'], []);

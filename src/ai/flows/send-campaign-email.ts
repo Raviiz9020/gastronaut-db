@@ -1,5 +1,3 @@
-
-
 'use server';
 
 /**
@@ -12,12 +10,18 @@ import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firesto
 import { db } from '@/lib/firebase';
 import type { Vendor, Customer } from '@/types';
 import nodemailer from 'nodemailer';
-import { uploadImageToStorage } from '@/lib/client-utils'; // Use client-side safe uploader
+import { uploadImageToStorage } from '@/lib/client-utils';
 
 const AudienceSchema = z.object({
   type: z.enum(['all-vendors', 'all-customers', 'specific-vendor', 'specific-customer', 'all']),
   vendorId: z.string().optional(),
   customerId: z.string().optional(),
+  recipientEmail: z.string().optional(),
+  recipientName: z.string().optional(),
+  recipientsList: z.array(z.object({
+    email: z.string(),
+    name: z.string().optional(),
+  })).optional(),
 });
 
 const SendCampaignEmailInputSchema = z.object({
@@ -49,7 +53,7 @@ const sendCampaignEmailFlow = ai.defineFlow(
     
     if (!process.env.EMAIL_USER || !process.env.EMAIL_APP_PASSWORD) {
         console.error('Email credentials are not set in environment variables.');
-        return { success: false, message: 'Server is not configured to send emails.', sentCount: 0 };
+        return { success: false, message: 'Server is not configured to send emails. Check EMAIL_USER and EMAIL_APP_PASSWORD.', sentCount: 0 };
     }
 
     let publicImageUrl = imageUrl;
@@ -62,43 +66,111 @@ const sendCampaignEmailFlow = ai.defineFlow(
       }
     }
 
+    let recipients: { email: string; name?: string }[] = [];
 
-    let recipients: (Vendor | Customer)[] = [];
-
-    // 1. Fetch recipients based on audience type
-    try {
+    // 1. Direct 1-on-1 recipient passed from client
+    if (audience.recipientEmail && audience.recipientEmail.trim() !== '') {
+      recipients = [{ email: audience.recipientEmail.trim(), name: audience.recipientName || 'Valued Member' }];
+    }
+    // 2. Direct recipients list passed from authenticated client session
+    else if (audience.recipientsList && audience.recipientsList.length > 0) {
+      recipients = audience.recipientsList.filter(r => r.email && r.email.trim() !== '');
+    }
+    // 3. Fallback: Query Firestore collections
+    else {
+      try {
         if (audience.type === 'all-vendors') {
             const vendorsRef = collection(db, 'vendors');
             const vendorSnapshot = await getDocs(vendorsRef);
             recipients = vendorSnapshot.docs
-              .map(doc => doc.data() as Vendor)
-              .filter(v => v.email && v.email.trim() !== "" && (v.emailPreferences?.campaigns ?? true));
+              .map(doc => ({ username: doc.id, ...doc.data() } as Vendor))
+              .filter(v => v.email && v.email.trim() !== "" && (v.emailPreferences?.campaigns ?? true))
+              .map(v => ({ email: v.email!, name: v.shopName || v.name }));
         } 
         
         else if (audience.type === 'all-customers') {
             const customersRef = collection(db, 'customers');
             const customerSnapshot = await getDocs(customersRef);
             recipients = customerSnapshot.docs
-              .map(doc => doc.data() as Customer)
-              .filter(c => c.email && c.email.trim() !== "" && (c.emailPreferences?.campaigns ?? true));
+              .map(doc => ({ username: doc.id, ...doc.data() } as Customer))
+              .filter(c => c.email && c.email.trim() !== "" && (c.emailPreferences?.campaigns ?? true))
+              .map(c => ({ email: c.email!, name: c.name }));
         } 
         
         else if (audience.type === 'specific-vendor' && audience.vendorId) {
-            const vendorRef = doc(db, 'vendors', audience.vendorId);
-            const docSnap = await getDoc(vendorRef);
-            const vendorData = docSnap.data() as Vendor;
-            if (docSnap.exists() && vendorData.email && (vendorData.emailPreferences?.campaigns ?? true)) {
-                recipients = [vendorData];
+            let targetVendor: Vendor | null = null;
+
+            try {
+                const vendorRef = doc(db, 'vendors', audience.vendorId);
+                const docSnap = await getDoc(vendorRef);
+                if (docSnap.exists()) {
+                    targetVendor = { username: docSnap.id, ...docSnap.data() } as Vendor;
+                }
+            } catch (e) {
+                console.warn("Direct vendor doc fetch failed, checking queries:", e);
             }
+
+            if (!targetVendor) {
+                const vendorsRef = collection(db, 'vendors');
+                const [byUsername, byShopName, byEmail] = await Promise.all([
+                    getDocs(query(vendorsRef, where('username', '==', audience.vendorId))),
+                    getDocs(query(vendorsRef, where('shopName', '==', audience.vendorId))),
+                    getDocs(query(vendorsRef, where('email', '==', audience.vendorId)))
+                ]);
+
+                const foundDoc = byUsername.docs[0] || byShopName.docs[0] || byEmail.docs[0];
+                if (foundDoc && foundDoc.exists()) {
+                    targetVendor = { username: foundDoc.id, ...foundDoc.data() } as Vendor;
+                }
+            }
+
+            if (!targetVendor) {
+                return { success: false, message: `Store "${audience.vendorId}" was not found in the database.`, sentCount: 0 };
+            }
+
+            if (!targetVendor.email || targetVendor.email.trim() === '') {
+                return { success: false, message: `Store "${targetVendor.shopName || targetVendor.name || audience.vendorId}" does not have a registered email address.`, sentCount: 0 };
+            }
+
+            recipients = [{ email: targetVendor.email, name: targetVendor.shopName || targetVendor.name }];
         } 
         
         else if (audience.type === 'specific-customer' && audience.customerId) {
-            const customerRef = doc(db, 'customers', audience.customerId);
-            const docSnap = await getDoc(customerRef);
-            const customerData = docSnap.data() as Customer;
-            if (docSnap.exists() && customerData.email && (customerData.emailPreferences?.campaigns ?? true)) {
-                recipients = [customerData];
+            let targetCustomer: Customer | null = null;
+
+            try {
+                const customerRef = doc(db, 'customers', audience.customerId);
+                const docSnap = await getDoc(customerRef);
+                if (docSnap.exists()) {
+                    targetCustomer = { username: docSnap.id, ...docSnap.data() } as Customer;
+                }
+            } catch (e) {
+                console.warn("Direct customer doc fetch failed, checking queries:", e);
             }
+
+            if (!targetCustomer) {
+                const customersRef = collection(db, 'customers');
+                const [byUsername, byEmail, byContact] = await Promise.all([
+                    getDocs(query(customersRef, where('username', '==', audience.customerId))),
+                    getDocs(query(customersRef, where('email', '==', audience.customerId))),
+                    getDocs(query(customersRef, where('contact', '==', audience.customerId)))
+                ]);
+
+                const foundDoc = byUsername.docs[0] || byEmail.docs[0] || byContact.docs[0];
+                if (foundDoc && foundDoc.exists()) {
+                    targetCustomer = { username: foundDoc.id, ...foundDoc.data() } as Customer;
+                }
+            }
+
+            if (!targetCustomer) {
+                return { success: false, message: `Customer "${audience.customerId}" was not found in the database.`, sentCount: 0 };
+            }
+
+            if (!targetCustomer.email || targetCustomer.email.trim() === '') {
+                return { success: false, message: `Customer "${targetCustomer.name || audience.customerId}" does not have a registered email address.`, sentCount: 0 };
+            }
+
+            recipients = [{ email: targetCustomer.email, name: targetCustomer.name }];
         }
         
         else if (audience.type === 'all') {
@@ -111,12 +183,14 @@ const sendCampaignEmailFlow = ai.defineFlow(
             ]);
         
             const vendorRecipients = vendorSnapshot.docs
-              .map(doc => doc.data() as Vendor)
-              .filter(v => v.email && v.email.trim() !== "" && (v.emailPreferences?.campaigns ?? true));
+              .map(doc => ({ username: doc.id, ...doc.data() } as Vendor))
+              .filter(v => v.email && v.email.trim() !== "" && (v.emailPreferences?.campaigns ?? true))
+              .map(v => ({ email: v.email!, name: v.shopName || v.name }));
         
             const customerRecipients = customerSnapshot.docs
-              .map(doc => doc.data() as Customer)
-              .filter(c => c.email && c.email.trim() !== "" && (c.emailPreferences?.campaigns ?? true));
+              .map(doc => ({ username: doc.id, ...doc.data() } as Customer))
+              .filter(c => c.email && c.email.trim() !== "" && (c.emailPreferences?.campaigns ?? true))
+              .map(c => ({ email: c.email!, name: c.name }));
         
             const allRecipients = [...vendorRecipients, ...customerRecipients];
             
@@ -130,14 +204,14 @@ const sendCampaignEmailFlow = ai.defineFlow(
                 return false;
             });
         }
-    } catch (error) {
-        console.error("Error fetching recipients:", error);
-        return { success: false, message: 'Failed to fetch recipient list.', sentCount: 0 };
+      } catch (error: any) {
+        console.error("Error fetching recipients from Firestore:", error);
+        return { success: false, message: `Failed to fetch recipient list: ${error?.message || 'Permission or connection error'}`, sentCount: 0 };
+      }
     }
 
-
     if (recipients.length === 0) {
-        return { success: true, message: 'No recipients with email addresses found to send to.', sentCount: 0 };
+        return { success: false, message: 'No recipients with registered email addresses found.', sentCount: 0 };
     }
 
     const transporter = nodemailer.createTransport({
@@ -146,20 +220,17 @@ const sendCampaignEmailFlow = ai.defineFlow(
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_APP_PASSWORD,
         },
-        pool: true, // Use a connection pool for bulk sending
+        pool: true,
     });
 
     let sentCount = 0;
     const errors: string[] = [];
 
-    // 2. Send emails in parallel
+    // Send emails in parallel
     const sendPromises = recipients.map(recipient => {
         if (!recipient.email) return Promise.resolve();
 
-        // Determine the personalized name
-        const recipientName = (recipient as Vendor).shopName || recipient.name || 'Valued Member';
-
-        // 3. Construct the email body for each recipient
+        const recipientName = recipient.name || 'Valued Member';
         const unsubscribeUrl = `https://hyperdelivery.in/unsubscribe?email=${encodeURIComponent(recipient.email)}`;
         const emailHtml = `
           <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px;">
@@ -204,7 +275,7 @@ const sendCampaignEmailFlow = ai.defineFlow(
             })
             .catch(error => {
                 console.error(`Failed to send email to ${recipient.email}:`, error);
-                errors.push(recipient.email!);
+                errors.push(recipient.email);
             });
     });
 
@@ -220,7 +291,7 @@ const sendCampaignEmailFlow = ai.defineFlow(
 
     return { 
         success: true, 
-        message: `Campaign email sent successfully to ${sentCount} recipients.`,
+        message: `Campaign email broadcasted successfully to ${sentCount} recipient${sentCount === 1 ? '' : 's'}.`,
         sentCount,
     };
   }

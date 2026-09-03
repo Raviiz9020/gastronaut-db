@@ -1316,12 +1316,17 @@ export default function MenuPageContent() {
   const topRatedItems = useMemo(() => {
     const RATING_THRESHOLD = 4.0;
     const MIN_RATING_COUNT = 2;
+    const MIN_PRICE_THRESHOLD = 80;
 
     const approvedVendorUsernames = new Set(approvedVendors.map(v => v.username));
 
     let items = menuItems.filter(item => {
       const ratingCount = item.ratingCount || 0;
       if (ratingCount < MIN_RATING_COUNT) return false;
+
+      // Filter out low-ticket items like tea/coffee (price must be greater than ₹80)
+      const effectivePrice = item.isDiscountActive && item.discountPrice && item.discountPrice > 0 ? item.discountPrice : item.price;
+      if (effectivePrice <= MIN_PRICE_THRESHOLD) return false;
 
       const avgRating = item.totalRatingSum ? item.totalRatingSum / ratingCount : 0;
       return avgRating >= RATING_THRESHOLD &&
@@ -1671,7 +1676,7 @@ export default function MenuPageContent() {
                       onClick={() => handleVendorChange('all')}
                       className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-muted/80 hover:bg-destructive/10 text-muted-foreground hover:text-destructive border border-border/80 hover:border-destructive/30 transition-all shadow-xs group cursor-pointer"
                     >
-                      <span>Clear store filter</span>
+                      <span>Clear Filter</span>
                       <span className="w-4 h-4 rounded-full bg-foreground/10 group-hover:bg-destructive/20 flex items-center justify-center transition-colors">
                         <X className="h-2.5 w-2.5" />
                       </span>
@@ -1933,7 +1938,7 @@ export default function MenuPageContent() {
                             item.customizations?.forEach(c => {
                               c.options.forEach(o => {
                                 if (o.originalPrice && o.originalPrice > o.price) {
-                                   const pct = Math.round(((o.originalPrice - o.price) / o.originalPrice) * 100);
+                                  const pct = Math.round(((o.originalPrice - o.price) / o.originalPrice) * 100);
                                   if (pct > maxPct) maxPct = pct;
                                 }
                               });
