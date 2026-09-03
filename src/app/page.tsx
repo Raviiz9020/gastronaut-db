@@ -482,8 +482,8 @@ export default function LandingPage() {
                             {(currentHeroDish as any)?.ratingType === 'dish'
                               ? 'Dish'
                               : (currentHeroDish as any)?.ratingType === 'kitchen'
-                              ? 'Kitchen'
-                              : ''}{' '}
+                                ? 'Kitchen'
+                                : ''}{' '}
                             Rating
                           </span>
                           <p className="text-[9px] text-muted-foreground">
@@ -591,9 +591,8 @@ export default function LandingPage() {
                 {[...tickerItems, ...tickerItems].map((item, i) => (
                   <span
                     key={i}
-                    className={`text-xs font-semibold ${
-                      item === '•' ? 'text-primary/40' : 'text-primary/70'
-                    }`}
+                    className={`text-xs font-semibold ${item === '•' ? 'text-primary/40' : 'text-primary/70'
+                      }`}
                   >
                     {item}
                   </span>
@@ -889,18 +888,30 @@ export default function LandingPage() {
                     </div>
                   </div>
 
-                  <div className="shrink-0 flex flex-col items-center gap-2">
-                    <Link href="/admin/login" passHref>
-                      <Button
-                        size="lg"
-                        className="rounded-2xl px-7 py-6 text-sm font-bold shadow-xl shadow-primary/25 hover:shadow-primary/40 hover:scale-105 transition-all duration-300 gap-2 w-full sm:w-auto"
-                      >
-                        <Store className="h-4 w-4" />
-                        Register Your Business ➔
-                      </Button>
-                    </Link>
-                    <p className="text-[11px] text-muted-foreground">
-                      Free setup • Instant activation
+                  <div className="shrink-0 flex flex-col items-center sm:items-end gap-3 w-full sm:w-auto">
+                    <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
+                      <Link href="/partner" passHref className="w-full sm:w-auto">
+                        <Button
+                          size="lg"
+                          className="rounded-2xl px-6 py-5 text-sm font-bold shadow-xl shadow-primary/25 hover:shadow-primary/40 hover:scale-105 transition-all duration-300 gap-2 w-full sm:w-auto"
+                        >
+                          <Store className="h-4 w-4" />
+                          Partner with Us
+                          <ArrowRight className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                      <Link href="/admin/login" passHref className="w-full sm:w-auto">
+                        <Button
+                          size="lg"
+                          variant="outline"
+                          className="rounded-2xl px-5 py-5 text-sm font-semibold border-primary/30 hover:bg-primary/10 transition-all duration-300 gap-1.5 w-full sm:w-auto"
+                        >
+                          Vendor Login
+                        </Button>
+                      </Link>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground text-center sm:text-right w-full">
+                      Same-day approval • Free setup • Zero hidden fees
                     </p>
                   </div>
                 </div>
