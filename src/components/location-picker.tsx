@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
     MapPin, Navigation, Search, Loader2, Home, Check, Map, 
-    Plus, Briefcase, Users, Building, Edit3, ChevronRight, Trash2, Star 
+    Plus, Briefcase, Users, Building, Edit3, ChevronRight, ChevronDown, Trash2, Star 
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { MapLocationPickerDialog } from '@/components/map-location-picker-dialog';
@@ -172,12 +172,13 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                 <DialogTrigger asChild>
                     <Button 
                         variant="ghost" 
-                        className={cn("flex items-center gap-1.5 text-sm font-medium hover:bg-primary/5 px-2.5 sm:px-3 py-1.5 rounded-full border border-primary/15 bg-background/50", className)}
+                        className={cn("flex items-center gap-1.5 text-sm font-medium hover:bg-primary/5 px-2.5 sm:px-3 py-1.5 rounded-full border border-primary/20 bg-background/80 shadow-2xs hover:border-primary/40 transition-all", className)}
                     >
-                        <TagIcon className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                        <span className="truncate max-w-[90px] sm:max-w-[120px] md:max-w-[160px] text-xs font-semibold md:text-sm md:font-medium">
+                        <MapPin className="h-3.5 w-3.5 text-rose-500 fill-rose-500/20 flex-shrink-0" />
+                        <span className="truncate max-w-[85px] sm:max-w-[120px] md:max-w-[160px] text-xs font-bold md:text-sm md:font-semibold text-foreground">
                             {locationLabel}
                         </span>
+                        <ChevronDown className="h-3 w-3 text-muted-foreground flex-shrink-0 -ml-0.5" />
                     </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md rounded-3xl p-5 max-h-[85vh] flex flex-col">

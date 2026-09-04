@@ -241,7 +241,7 @@ export default function Header({ pageVendor }: HeaderProps) {
             ) : null}
 
             {!isVendorOwner && (
-              <div className="relative">
+              <div className="hidden sm:block relative">
                  <Button
                     variant="outline"
                     className={cn(
