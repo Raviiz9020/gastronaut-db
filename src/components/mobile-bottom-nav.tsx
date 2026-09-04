@@ -150,23 +150,23 @@ export default function MobileBottomNav() {
               onClick={() => handleNavigate('/benefits')}
               role="button"
               tabIndex={0}
-              className="mt-1 mb-4 p-4 rounded-2xl bg-gradient-to-br from-pink-500/15 via-purple-500/10 to-amber-500/15 border border-pink-500/30 hover:border-pink-500/50 shadow-xs cursor-pointer transition-all active:scale-[0.98] group text-left"
+              className="mt-1 mb-4 p-3.5 rounded-2xl bg-gradient-to-br from-pink-500/15 via-purple-500/10 to-amber-500/15 border border-pink-500/30 hover:border-pink-500/50 shadow-xs cursor-pointer transition-all active:scale-[0.98] group text-left"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-gradient-to-tr from-pink-500 to-rose-400 text-white shadow-md shadow-pink-500/20 shrink-0">
-                    <Heart className="h-5 w-5 fill-white" />
+              <div className="flex items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <div className="p-2 rounded-xl bg-gradient-to-tr from-pink-500 to-rose-400 text-white shadow-md shadow-pink-500/20 shrink-0">
+                    <Heart className="h-4 w-4 fill-white" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <h4 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h4 className="text-[13px] sm:text-sm font-bold text-foreground group-hover:text-primary transition-colors whitespace-nowrap">
                         Why HyperDelivery?
                       </h4>
-                      <span className="text-[10px] uppercase font-extrabold tracking-wider px-1.5 py-0.5 rounded-md bg-pink-500 text-white shadow-xs">
+                      <span className="text-[9px] uppercase font-bold tracking-wide px-1.5 py-0.5 rounded-full bg-pink-500 text-white shadow-xs shrink-0 whitespace-nowrap">
                         Why Us?
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 truncate">
                       Foodies & Home Chefs benefits
                     </p>
                   </div>
@@ -178,13 +178,13 @@ export default function MobileBottomNav() {
 
               {/* Feature highlights pill row */}
               <div className="mt-3 pt-2.5 border-t border-border/40 flex flex-wrap gap-1.5">
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-background/80 px-2 py-0.5 rounded-md text-foreground shadow-2xs">
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-background/90 border border-border/50 px-2.5 py-0.5 rounded-full text-foreground shadow-2xs">
                   <Sparkles className="h-3 w-3 text-amber-500" /> Flat ₹5 Fee
                 </span>
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-background/80 px-2 py-0.5 rounded-md text-foreground shadow-2xs">
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-background/90 border border-border/50 px-2.5 py-0.5 rounded-full text-foreground shadow-2xs">
                   <Award className="h-3 w-3 text-purple-500" /> HyperPoints
                 </span>
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-background/80 px-2 py-0.5 rounded-md text-foreground shadow-2xs">
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-background/90 border border-border/50 px-2.5 py-0.5 rounded-full text-foreground shadow-2xs">
                   <Zap className="h-3 w-3 text-emerald-500" /> Early Delivery
                 </span>
               </div>

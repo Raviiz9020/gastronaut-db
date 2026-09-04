@@ -5,10 +5,10 @@ import Header from '@/components/header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Heart, 
-  ChefHat, 
-  Sparkles, 
+import {
+  Heart,
+  ChefHat,
+  Sparkles,
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
@@ -319,22 +319,22 @@ export default function BenefitsPage() {
 
         {/* Audience Switcher Tabs */}
         <div className="flex justify-center mb-10">
-          <Tabs 
-            defaultValue="customers" 
-            value={activeTab} 
+          <Tabs
+            defaultValue="customers"
+            value={activeTab}
             onValueChange={(val) => setActiveTab(val as 'customers' | 'vendors')}
             className="w-full max-w-md"
           >
             <TabsList className="grid grid-cols-2 p-1 bg-muted/60 border border-border/80 rounded-full h-12 shadow-sm">
-              <TabsTrigger 
-                value="customers" 
+              <TabsTrigger
+                value="customers"
                 className="rounded-full text-sm font-semibold gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
               >
                 <Utensils className="h-4 w-4" />
                 Foodies & Residents
               </TabsTrigger>
-              <TabsTrigger 
-                value="vendors" 
+              <TabsTrigger
+                value="vendors"
                 className="rounded-full text-sm font-semibold gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
               >
                 <ChefHat className="h-4 w-4" />
@@ -358,8 +358,8 @@ export default function BenefitsPage() {
               {residentBenefits.map((b, idx) => {
                 const IconComponent = b.icon;
                 return (
-                  <Card 
-                    key={idx} 
+                  <Card
+                    key={idx}
                     className="relative overflow-hidden bg-card/60 backdrop-blur-md border-border/70 hover:border-primary/40 hover:shadow-lg transition-all duration-300 rounded-2xl flex flex-col justify-between"
                   >
                     <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
@@ -397,8 +397,8 @@ export default function BenefitsPage() {
               {vendorBenefits.map((b, idx) => {
                 const IconComponent = b.icon;
                 return (
-                  <Card 
-                    key={idx} 
+                  <Card
+                    key={idx}
                     className="relative overflow-hidden bg-card/60 backdrop-blur-md border-border/70 hover:border-primary/40 hover:shadow-lg transition-all duration-300 rounded-2xl flex flex-col justify-between"
                   >
                     <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
