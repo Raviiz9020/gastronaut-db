@@ -372,7 +372,7 @@ export default function LandingPage() {
     <>
       <div className={cn(
         "flex flex-col min-h-screen bg-background text-foreground transition-[padding] duration-300",
-        totalItems > 0 ? "pb-28 lg:pb-0" : ""
+        totalItems > 0 ? "pb-28 lg:pb-0" : "pb-16 lg:pb-0"
       )}>
         <Header />
         <AnimatePresence>
@@ -978,30 +978,36 @@ export default function LandingPage() {
         </main>
 
         {/* ── FOOTER ───────────────────────────────────────────────── */}
-        <footer className="border-t border-primary/10 mt-8">
+        <footer className="border-t border-primary/10 mt-8 pb-10 lg:pb-6">
           <div className="container mx-auto px-4 py-6">
             <p className="text-center text-xs text-muted-foreground mb-4 font-medium">
               HyperDelivery — Taste the difference, delivered to your door.
             </p>
             <div className="flex flex-col md:flex-row justify-between items-center gap-3">
-              <div className="flex flex-wrap justify-center md:justify-start gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              <div className="flex flex-wrap justify-center md:justify-start items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
                 <Link href="/about" className="hover:text-primary">About</Link>
+                <Link href="/benefits" className="hover:text-primary font-semibold text-pink-600 dark:text-pink-400 flex items-center gap-1">
+                  <Heart className="h-3.5 w-3.5 fill-current text-pink-500" />
+                  Why Us?
+                </Link>
                 <Link href="/partner" className="hover:text-primary font-semibold text-primary">Partner with Us</Link>
                 <Link href="/contact" className="hover:text-primary">Contact</Link>
                 <Link href="/privacy-policy" className="hover:text-primary">Privacy Policy</Link>
                 <Link href="/terms-of-service" className="hover:text-primary">Terms of Service</Link>
                 <Link href="/cancellation-refund-policy" className="hover:text-primary">Cancellation & Refunds</Link>
               </div>
-              <div className="flex items-center gap-4">
-                <Link href="/benefits" passHref>
-                  <div className="text-muted-foreground hover:text-primary transition-colors">
-                    <Heart className="h-6 w-6" />
-                  </div>
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/benefits"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-pink-500/10 hover:bg-pink-500/20 text-pink-600 dark:text-pink-400 text-xs font-semibold transition-all border border-pink-500/25 shadow-xs"
+                >
+                  <Heart className="h-3.5 w-3.5 fill-pink-500 text-pink-500" />
+                  <span>Why Us?</span>
                 </Link>
-                <a href="https://www.instagram.com/lrmasalamagic/?igsh=MTM0c3ExYWo5Y3Z3bQ%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+                <a href="https://www.instagram.com/lrmasalamagic/?igsh=MTM0c3ExYWo5Y3Z3bQ%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" className="p-1.5 text-muted-foreground hover:text-primary transition-colors" aria-label="Instagram">
                   <InstagramIcon />
                 </a>
-                <a href="https://wa.me/917083609020" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+                <a href="https://wa.me/917083609020" target="_blank" rel="noopener noreferrer" className="p-1.5 text-muted-foreground hover:text-primary transition-colors" aria-label="WhatsApp">
                   <WhatsAppIcon />
                 </a>
               </div>

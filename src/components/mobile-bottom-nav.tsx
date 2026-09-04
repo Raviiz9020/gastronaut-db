@@ -17,7 +17,10 @@ import {
   User, 
   LogOut, 
   LogIn,
-  ChevronRight
+  ChevronRight,
+  Sparkles,
+  Award,
+  Zap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCustomer } from '@/context/customer-context';
@@ -120,10 +123,14 @@ export default function MobileBottomNav() {
               )}
             >
               <div className={cn(
-                "p-1 rounded-full transition-colors",
+                "p-1 rounded-full transition-colors relative",
                 (isMoreOpen || pathname === '/about' || pathname === '/benefits') && "bg-primary/10"
               )}>
                 <MenuIcon className="h-5 w-5" />
+                <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-pink-500"></span>
+                </span>
               </div>
               <span className="text-[11px] tracking-tight mt-0.5">More</span>
             </button>
@@ -137,6 +144,51 @@ export default function MobileBottomNav() {
                 Explore community kitchens, discover benefits, and access legal policies.
               </SheetDescription>
             </SheetHeader>
+
+            {/* Featured Why Us / Benefits Card */}
+            <div
+              onClick={() => handleNavigate('/benefits')}
+              role="button"
+              tabIndex={0}
+              className="mt-1 mb-4 p-4 rounded-2xl bg-gradient-to-br from-pink-500/15 via-purple-500/10 to-amber-500/15 border border-pink-500/30 hover:border-pink-500/50 shadow-xs cursor-pointer transition-all active:scale-[0.98] group text-left"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-tr from-pink-500 to-rose-400 text-white shadow-md shadow-pink-500/20 shrink-0">
+                    <Heart className="h-5 w-5 fill-white" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <h4 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                        Why HyperDelivery?
+                      </h4>
+                      <span className="text-[10px] uppercase font-extrabold tracking-wider px-1.5 py-0.5 rounded-md bg-pink-500 text-white shadow-xs">
+                        Why Us?
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Foodies & Home Chefs benefits
+                    </p>
+                  </div>
+                </div>
+                <div className="p-1 rounded-full bg-background/80 text-muted-foreground group-hover:text-primary transition-colors shrink-0">
+                  <ChevronRight className="h-4 w-4" />
+                </div>
+              </div>
+
+              {/* Feature highlights pill row */}
+              <div className="mt-3 pt-2.5 border-t border-border/40 flex flex-wrap gap-1.5">
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-background/80 px-2 py-0.5 rounded-md text-foreground shadow-2xs">
+                  <Sparkles className="h-3 w-3 text-amber-500" /> Flat ₹5 Fee
+                </span>
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-background/80 px-2 py-0.5 rounded-md text-foreground shadow-2xs">
+                  <Award className="h-3 w-3 text-purple-500" /> HyperPoints
+                </span>
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-background/80 px-2 py-0.5 rounded-md text-foreground shadow-2xs">
+                  <Zap className="h-3 w-3 text-emerald-500" /> Early Delivery
+                </span>
+              </div>
+            </div>
 
             {customer ? (
               <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-2xl mb-4 border border-border/50">
@@ -165,22 +217,6 @@ export default function MobileBottomNav() {
               <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-1">
                 Explore HyperDelivery
               </div>
-              
-              <button
-                onClick={() => handleNavigate('/benefits')}
-                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-muted/60 text-left transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-pink-500/10 text-pink-500">
-                    <Heart className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Why Us?</p>
-                    <p className="text-xs text-muted-foreground">Benefits for foodies & home chefs</p>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </button>
 
               <button
                 onClick={() => handleNavigate('/about')}

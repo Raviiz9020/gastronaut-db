@@ -51,9 +51,9 @@ const residentBenefits = [
   {
     icon: Gift,
     color: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
-    title: 'Reward Points on Every Order',
-    badge: 'HyperPoints',
-    description: 'Every order earns you HyperPoints loyalty rewards! Accumulate points automatically with every meal and easily redeem them for instant cash discounts on your future orders.'
+    title: 'Kitchen Loyalty Rewards (HyperPoints)',
+    badge: 'Per-Kitchen Points',
+    description: 'Earn loyalty points directly with each kitchen you love! Chefs configure custom reward rules (e.g. 2.5 points per ₹10 spent). Once you reach the threshold (e.g. 200 points), redeem them for instant discounts on future meals from that kitchen.'
   },
   {
     icon: Clock,
@@ -187,10 +187,10 @@ const customerComparisonPoints = [
     hyperdelivery: '✅ 1 Unified cart & checkout for all shops'
   },
   {
-    feature: 'Reward Points on Every Order',
+    feature: 'Repeat Order Loyalty Rewards',
     whatsapp: '❌ No loyalty or points',
     aggregators: '❌ Expensive paid subscription clubs',
-    hyperdelivery: '✅ HyperPoints earned on every meal'
+    hyperdelivery: '✅ Kitchen-specific HyperPoints (e.g. 2.5 pts / ₹10)'
   },
   {
     feature: 'Township doorstep delivery (No lost riders)',
@@ -331,14 +331,14 @@ export default function BenefitsPage() {
                 className="rounded-full text-sm font-semibold gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
               >
                 <Utensils className="h-4 w-4" />
-                For Foodies & Residents
+                Foodies & Residents
               </TabsTrigger>
               <TabsTrigger 
                 value="vendors" 
                 className="rounded-full text-sm font-semibold gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
               >
                 <ChefHat className="h-4 w-4" />
-                For Home Chefs & Shops
+                Home Chefs & Shops
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -498,38 +498,38 @@ export default function BenefitsPage() {
                   <Gift className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base sm:text-lg">Reward Points on Every Order</h3>
-                  <p className="text-xs text-muted-foreground">Earn HyperPoints that turn into instant cash discounts</p>
+                  <h3 className="font-bold text-base sm:text-lg">Kitchen-Specific Loyalty Rewards</h3>
+                  <p className="text-xs text-muted-foreground">Earn HyperPoints that turn into instant cash discounts with your favorite chefs</p>
                 </div>
               </div>
 
               {/* Visual Mock of HyperPoints Loyalty */}
               <div className="bg-background/80 rounded-2xl p-4 border border-border/80 space-y-3 shadow-inner">
                 <div className="flex items-center justify-between text-xs font-semibold pb-1.5 border-b border-border/60">
-                  <span className="text-muted-foreground">LOYALTY REWARDS</span>
+                  <span className="text-muted-foreground">MOM'S KITCHEN REWARDS</span>
                   <span className="text-amber-500 font-bold bg-amber-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <Sparkles className="h-3 w-3" /> Automatic on Every Order
+                    <Sparkles className="h-3 w-3" /> 2.5 HP per ₹10 Spent
                   </span>
                 </div>
 
                 <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 p-3 rounded-xl border border-amber-500/20 space-y-2">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-foreground">Order #HYPER-8492 Completed:</span>
-                    <span className="font-extrabold text-amber-600 dark:text-amber-400 text-sm">+35 HP Earned 🎉</span>
+                    <span className="font-medium text-foreground">Order Completed (₹200):</span>
+                    <span className="font-extrabold text-amber-600 dark:text-amber-400 text-sm">+50 HP Earned 🎉</span>
                   </div>
                   <div className="flex items-center justify-between text-xs pt-1 border-t border-amber-500/20">
-                    <span className="text-muted-foreground">Your HyperPoints Balance:</span>
-                    <span className="font-bold text-foreground">140 HP (= ₹35 Instant Discount)</span>
+                    <span className="text-muted-foreground">Mom's Kitchen Balance:</span>
+                    <span className="font-bold text-foreground">200 HP (= ₹50 Instant Discount)</span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
-                  <span>✅ Never expires</span>
-                  <span className="font-semibold text-foreground">Redeem on any kitchen at checkout</span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] text-muted-foreground pt-1">
+                  <span>🔒 Points are per vendor (unlocks at ~200 HP)</span>
+                  <span className="font-semibold text-foreground">Redeem on Mom's Kitchen orders</span>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-3">
-                💡 The more you order from local neighbors, the more you save.
+                💡 Each kitchen sets their own reward rules. The more you reorder from your favorite kitchen, the more discounts you unlock!
               </p>
             </Card>
 
@@ -633,7 +633,7 @@ export default function BenefitsPage() {
             <h2 className="font-headline text-2xl sm:text-3xl font-bold tracking-tight">
               HyperDelivery vs The Old Way{' '}
               <span className="text-primary">
-                {activeTab === 'customers' ? '(For Foodies & Residents)' : '(For Home Chefs & Vendors)'}
+                {activeTab === 'customers' ? '(Foodies & Residents)' : '(Home Chefs & Shops)'}
               </span>
             </h2>
             <p className="text-sm sm:text-base text-muted-foreground mt-2">
