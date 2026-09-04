@@ -32,7 +32,6 @@ const navLinks = [
   { href: '/track', label: 'Track Order', icon: Package },
   { href: '/vendor-details', label: 'Our Vendors', icon: Users },
   { href: '/benefits', label: 'Why Us?', icon: Heart },
-  { href: '/about', label: 'About Us', icon: Info },
 ];
 
 interface HeaderProps {

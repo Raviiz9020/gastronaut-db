@@ -565,14 +565,14 @@ export default function LandingPage() {
                       <Utensils className="mr-2 h-4 w-4" />
                       Browse Full Menu
                     </Button>
-                    <Link href="/admin/login" passHref>
+                    <Link href="/benefits" passHref>
                       <Button
                         size="default"
                         variant="outline"
                         className="rounded-xl px-5 font-semibold border-border/80 hover:border-primary/40 hover:bg-primary/5"
                       >
-                        <Store className="mr-2 h-4 w-4 text-primary" />
-                        Join as Vendor
+                        <Heart className="mr-2 h-4 w-4 text-pink-500 fill-pink-500/20" />
+                        Why Us?
                       </Button>
                     </Link>
                   </div>
@@ -986,10 +986,6 @@ export default function LandingPage() {
             <div className="flex flex-col md:flex-row justify-between items-center gap-3">
               <div className="flex flex-wrap justify-center md:justify-start items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
                 <Link href="/about" className="hover:text-primary">About</Link>
-                <Link href="/benefits" className="hover:text-primary font-semibold text-pink-600 dark:text-pink-400 flex items-center gap-1">
-                  <Heart className="h-3.5 w-3.5 fill-current text-pink-500" />
-                  Why Us?
-                </Link>
                 <Link href="/partner" className="hover:text-primary font-semibold text-primary">Partner with Us</Link>
                 <Link href="/contact" className="hover:text-primary">Contact</Link>
                 <Link href="/privacy-policy" className="hover:text-primary">Privacy Policy</Link>

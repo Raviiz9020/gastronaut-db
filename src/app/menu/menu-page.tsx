@@ -15,7 +15,7 @@ import { useMenu } from '@/context/menu-context';
 import { useSpecialMenu } from '@/context/special-menu-context';
 import { useOrder } from '@/context/order-context';
 import { useCart } from '@/context/cart-context';
-import { Star, Building, ShoppingCart, Loader2, Minus, Plus, Utensils, X, Sparkles, Gift, Search, Hand, Tag, ArrowLeft, Fingerprint, Leaf, Bike, Beef, ChevronDown, Flame, Percent, UtensilsCrossed } from 'lucide-react';
+import { Star, Building, ShoppingCart, Loader2, Minus, Plus, Utensils, X, Sparkles, Gift, Search, Hand, Tag, ArrowLeft, Fingerprint, Leaf, Bike, Beef, ChevronDown, ChevronLeft, ChevronRight, Flame, Percent, UtensilsCrossed } from 'lucide-react';
 import { useVendor } from '@/context/vendor-context';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -1383,6 +1383,96 @@ export default function MenuPageContent() {
     return [];
   }, [menuItems, selectedVendor, vendorsToDisplay, vendorCategoryParam, filterMode, maxPriceParam]);
 
+  const categoryItemCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const approvedVendorUsernames = new Set(vendorsToDisplay.map(v => v.username));
+    let items = menuItems.filter(item => approvedVendorUsernames.has(item.vendorUsername));
+
+    if (filterMode === 'veg') {
+      items = items.filter(item => item.isVeg);
+    } else if (filterMode === 'non-veg') {
+      items = items.filter(item => !item.isVeg);
+    }
+
+    if (selectedVendor !== 'all') {
+      items = items.filter(item => item.vendorUsername === selectedVendor);
+    }
+
+    items.forEach(item => {
+      if (item.category) {
+        counts[item.category] = (counts[item.category] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [menuItems, vendorsToDisplay, filterMode, selectedVendor]);
+
+  const totalCategoryItemsCount = useMemo(() => {
+    return Object.values(categoryItemCounts).reduce((sum, count) => sum + count, 0);
+  }, [categoryItemCounts]);
+
+  const getCategoryThumbnail = useMemo(() => {
+    const map = new Map<string, string>();
+    // 1. Prefer globalCategories image
+    globalCategories.forEach(cat => {
+      if (cat.name && cat.imageUrl && typeof cat.imageUrl === 'string' && cat.imageUrl.length > 5) {
+        map.set(cat.name.trim().toLowerCase(), cat.imageUrl);
+      }
+    });
+    // 2. Fallback to dish image in that category
+    menuItems.forEach(item => {
+      if (item.category && item.image && typeof item.image === 'string' && item.image.length > 5) {
+        const key = item.category.trim().toLowerCase();
+        if (!map.has(key)) {
+          map.set(key, item.image);
+        }
+      }
+    });
+    return (catName: string) => map.get(catName.trim().toLowerCase());
+  }, [globalCategories, menuItems]);
+
+  const categoryScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkCategoryScroll = useCallback(() => {
+    if (categoryScrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = categoryScrollRef.current;
+      setCanScrollLeft(scrollLeft > 8);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 8);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkCategoryScroll();
+    const el = categoryScrollRef.current;
+    if (!el) return;
+
+    el.addEventListener('scroll', checkCategoryScroll);
+    window.addEventListener('resize', checkCategoryScroll);
+
+    // Support mouse wheel horizontal scrolling on desktop
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+      }
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+
+    return () => {
+      el.removeEventListener('scroll', checkCategoryScroll);
+      window.removeEventListener('resize', checkCategoryScroll);
+      el.removeEventListener('wheel', onWheel);
+    };
+  }, [checkCategoryScroll, categoriesToShow]);
+
+  const scrollCategories = (direction: 'left' | 'right') => {
+    if (categoryScrollRef.current) {
+      const scrollAmount = direction === 'left' ? -280 : 280;
+      categoryScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
   const popularPicks = useMemo(() => {
     const approvedVendorUsernames = new Set(approvedVendors.map(v => v.username));
     let items = menuItems.filter(item =>
@@ -2120,35 +2210,142 @@ export default function MenuPageContent() {
                 {menuItemsToDisplay.length > 0 ? (
                   <>
                     {categoriesToShow.length > 0 && !isSearching ? (
-                      <div className="sticky top-[65px] bg-background/90 backdrop-blur-sm z-40 py-2 -mx-2 px-2">
-                        {activeTab !== 'all' ? (
-                          <div>
-                            <TabsList className="bg-transparent p-0">
-                              <TabsTrigger value="all" className="rounded-full data-[state=active]:shadow-sm data-[state=active]:bg-background shrink-0">All</TabsTrigger>
-                              <TabsTrigger value={activeTab} className="rounded-full data-[state=active]:shadow-sm data-[state=active]:bg-background shrink-0">{activeTab}</TabsTrigger>
-                            </TabsList>
+                      <div className="sticky top-[65px] bg-background/95 backdrop-blur-md z-30 pt-2 pb-1.5 -mx-2 px-2 border-b border-border/40 mb-2">
+                        {/* Compact Header Label */}
+                        <div className="flex items-center justify-between px-1 mb-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                              Menu Categories
+                            </span>
                           </div>
-                        ) : (
-                          <div className="w-full overflow-x-auto hide-scrollbar group">
-                            <div className="flex w-max animate-scroll hover:animation-pause">
-                              <TabsList className="bg-transparent p-0">
-                                <TabsTrigger value="all" className="rounded-full data-[state=active]:shadow-sm data-[state=active]:bg-background shrink-0">All</TabsTrigger>
-                                {categoriesToShow.map((catName: string) => (
-                                  <TabsTrigger key={`${catName}-1`} value={catName} className="rounded-full data-[state=active]:shadow-sm data-[state=active]:bg-background shrink-0">
-                                    {catName}
-                                  </TabsTrigger>
-                                ))}
-                                {/* Duplicates for seamless loop */}
-                                <TabsTrigger value="all" className="rounded-full data-[state=active]:shadow-sm data-[state=active]:bg-background shrink-0" aria-hidden="true">All</TabsTrigger>
-                                {categoriesToShow.map((catName: string) => (
-                                  <TabsTrigger key={`${catName}-2`} value={catName} className="rounded-full data-[state=active]:shadow-sm data-[state=active]:bg-background shrink-0" aria-hidden="true">
-                                    {catName}
-                                  </TabsTrigger>
-                                ))}
-                              </TabsList>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-muted-foreground font-medium">
+                              {categoriesToShow.length} sections
+                            </span>
+                            {/* Desktop Quick Nav Arrows */}
+                            <div className="hidden sm:flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => scrollCategories('left')}
+                                disabled={!canScrollLeft}
+                                aria-label="Scroll categories left"
+                                className={cn(
+                                  "w-6 h-6 rounded-full border border-border/70 flex items-center justify-center text-foreground transition-all",
+                                  canScrollLeft
+                                    ? "hover:bg-muted hover:border-primary cursor-pointer opacity-100 shadow-2xs"
+                                    : "opacity-30 cursor-not-allowed"
+                                )}
+                              >
+                                <ChevronLeft className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => scrollCategories('right')}
+                                disabled={!canScrollRight}
+                                aria-label="Scroll categories right"
+                                className={cn(
+                                  "w-6 h-6 rounded-full border border-border/70 flex items-center justify-center text-foreground transition-all",
+                                  canScrollRight
+                                    ? "hover:bg-muted hover:border-primary cursor-pointer opacity-100 shadow-2xs"
+                                    : "opacity-30 cursor-not-allowed"
+                                )}
+                              >
+                                <ChevronRight className="h-3.5 w-3.5" />
+                              </button>
                             </div>
                           </div>
-                        )}
+                        </div>
+
+                        {/* Swipeable & Mouse-Wheel Scrollable Category Pills */}
+                        <div
+                          ref={categoryScrollRef}
+                          className="w-full overflow-x-auto hide-scrollbar py-2 px-0.5 scroll-smooth"
+                        >
+                          <TabsList className="bg-transparent p-0 h-auto flex items-center gap-2 w-max">
+                            {/* "All" Option */}
+                            <TabsTrigger
+                              value="all"
+                              className={cn(
+                                "rounded-full border h-10 sm:h-11 pl-1.5 pr-3.5 shrink-0 transition-all flex items-center gap-2 shadow-2xs group",
+                                activeTab === 'all'
+                                  ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                                  : "bg-card/95 border-border/80 text-foreground hover:bg-muted/80 hover:border-primary/40"
+                              )}
+                            >
+                              <div className={cn(
+                                "w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 transition-colors",
+                                activeTab === 'all'
+                                  ? "bg-white/20 text-white"
+                                  : "bg-primary/10 text-primary group-hover:bg-primary/20"
+                              )}>
+                                <Utensils className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                              </div>
+                              <span className="text-xs sm:text-sm font-bold">All</span>
+                              {totalCategoryItemsCount > 0 && (
+                                <span className={cn(
+                                  "text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-bold",
+                                  activeTab === 'all'
+                                    ? "bg-white/25 text-white"
+                                    : "bg-muted text-muted-foreground"
+                                )}>
+                                  {totalCategoryItemsCount}
+                                </span>
+                              )}
+                            </TabsTrigger>
+
+                            {/* Category Items */}
+                            {categoriesToShow.map((catName: string) => {
+                              const thumb = getCategoryThumbnail(catName);
+                              const count = categoryItemCounts[catName] || 0;
+                              const isActive = activeTab === catName;
+
+                              return (
+                                <TabsTrigger
+                                  key={catName}
+                                  value={catName}
+                                  className={cn(
+                                    "rounded-full border h-10 sm:h-11 pl-1.5 pr-3.5 shrink-0 transition-all flex items-center gap-2 shadow-2xs group",
+                                    isActive
+                                      ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                                      : "bg-card/95 border-border/80 text-foreground hover:bg-muted/80 hover:border-primary/40"
+                                  )}
+                                >
+                                  {thumb ? (
+                                    <div className="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden shrink-0 border border-border/50 shadow-xs bg-muted">
+                                      <Image
+                                        src={thumb}
+                                        alt={catName}
+                                        fill
+                                        sizes="32px"
+                                        className="object-cover"
+                                        unoptimized
+                                      />
+                                    </div>
+                                  ) : (
+                                    <div className={cn(
+                                      "w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 font-bold text-xs",
+                                      isActive ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
+                                    )}>
+                                      {catName.charAt(0)}
+                                    </div>
+                                  )}
+                                  <span className="text-xs sm:text-sm font-bold whitespace-nowrap">{catName}</span>
+                                  {count > 0 && (
+                                    <span className={cn(
+                                      "text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-bold",
+                                      isActive
+                                        ? "bg-white/25 text-white"
+                                        : "bg-muted text-muted-foreground"
+                                    )}>
+                                      {count}
+                                    </span>
+                                  )}
+                                </TabsTrigger>
+                              );
+                            })}
+                          </TabsList>
+                        </div>
                       </div>
                     ) : null}
                     {isSearching && matchingVendors.length > 0 && (
