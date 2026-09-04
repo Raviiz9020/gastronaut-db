@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { 
     CreditCard, Rocket, ShieldCheck, Home, Bike, Wallet, AlertTriangle, 
-    CheckCircle2, Loader2, Sparkles, MapPin, Edit3, Lock, Users, Briefcase, Building, Plus, Check 
+    CheckCircle2, Loader2, Sparkles, MapPin, Edit3, Lock, Users, Briefcase, Building, Plus, Check, ArrowLeft 
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -435,8 +435,13 @@ export default function CheckoutPage() {
                         <p className="text-xs sm:text-sm text-muted-foreground">Confirm details and place your order</p>
                     </div>
                     <Link href="/menu" passHref>
-                        <Button variant="ghost" size="sm" className="text-xs font-semibold rounded-full text-muted-foreground hover:text-foreground">
-                            ← Back to Menu
+                        <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-9 w-9 rounded-full border-border/70 hover:border-primary/50 hover:bg-primary/10 transition-all shadow-xs"
+                            aria-label="Back to Menu"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
                         </Button>
                     </Link>
                 </div>

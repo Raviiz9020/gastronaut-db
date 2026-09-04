@@ -1143,7 +1143,19 @@ export default function TrackPage() {
   return (
     <>
       <Header />
-      <main className="flex-1 container mx-auto px-4 py-12">
+      <main className="flex-1 container mx-auto px-4 py-8 md:py-12">
+        <div className="max-w-4xl mx-auto mb-4">
+          <Link href="/menu" passHref>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-9 w-9 rounded-full border-border/70 hover:border-primary/50 hover:bg-primary/10 transition-all shadow-xs"
+              aria-label="Back to Menu"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
         <Card className="w-full max-w-4xl mx-auto bg-transparent border-none shadow-none">
           <CardHeader className="text-center">
             <CardTitle className="font-headline text-5xl text-primary">
@@ -1151,14 +1163,6 @@ export default function TrackPage() {
             </CardTitle>
             <CardDescription>Track your active orders and view your order history.</CardDescription>
           </CardHeader>
-          <div className="my-4 flex justify-center">
-              <Link href="/menu" passHref>
-                  <Button variant="outline">
-                      <ArrowLeft className="mr-2 h-4 w-4"/>
-                      Back to Menu
-                  </Button>
-              </Link>
-          </div>
           <CardContent>
             {(allActiveOrders.length === 0 && allCompletedOrders.length === 0) ? (
                  <div className="text-center py-16 flex flex-col items-center gap-4 bg-card/50 rounded-lg">

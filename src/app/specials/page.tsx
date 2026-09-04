@@ -606,10 +606,9 @@ function SpecialsPageContent() {
               Daily Curated Menus
             </span>
 
-            <Button asChild variant="outline" size="sm" className="rounded-full h-8 text-xs font-semibold gap-1.5 border-border/80 hover:border-primary/50">
+            <Button asChild variant="outline" size="icon" className="h-9 w-9 rounded-full border-border/70 hover:border-primary/50 hover:bg-primary/10 transition-all shadow-xs" aria-label="Back to Menu">
               <Link href="/menu">
-                <ArrowLeft className="h-3.5 w-3.5" />
-                Back to All Menu
+                <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
           </div>

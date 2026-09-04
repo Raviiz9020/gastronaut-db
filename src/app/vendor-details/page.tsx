@@ -41,9 +41,13 @@ export default function VendorDetailsPage() {
       <main className="flex-1 container mx-auto px-4 py-8 md:py-12">
         <div className="mb-4">
           <Link href="/" passHref>
-            <Button variant="outline" size="sm" className="rounded-full gap-2 border-primary/20 hover:bg-primary/10">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-9 w-9 rounded-full border-border/70 hover:border-primary/50 hover:bg-primary/10 transition-all shadow-xs"
+              aria-label="Back to Home"
+            >
               <ArrowLeft className="h-4 w-4" />
-              Back to Home
             </Button>
           </Link>
         </div>
