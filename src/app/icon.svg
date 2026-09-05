@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="hdBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e40af" />
+      <stop offset="50%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#3b82f6" />
+    </linearGradient>
+    <linearGradient id="stemGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#f1f5f9" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fb923c" />
+      <stop offset="100%" stop-color="#f97316" />
+    </linearGradient>
+    <filter id="shadowFilter" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#0f172a" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Squircle Base with smooth curvature and subtle inset border -->
+  <rect x="36" y="36" width="440" height="440" rx="114" fill="url(#hdBgGrad)" filter="url(#shadowFilter)" />
+  <rect x="36" y="36" width="440" height="440" rx="114" fill="none" stroke="#ffffff" stroke-width="5" stroke-opacity="0.2" />
+
+  <!-- Monogram 'H' (Unified seamless path) -->
+  <path d="
+    M 144 154
+    A 18 18 0 0 1 162 136
+    L 190 136
+    A 18 18 0 0 1 208 154
+    L 208 226
+    L 304 226
+    L 304 154
+    A 18 18 0 0 1 322 136
+    L 350 136
+    A 18 18 0 0 1 368 154
+    L 368 358
+    A 18 18 0 0 1 350 376
+    L 322 376
+    A 18 18 0 0 1 304 358
+    L 304 286
+    L 208 286
+    L 208 358
+    A 18 18 0 0 1 190 376
+    L 162 376
+    A 18 18 0 0 1 144 358
+    Z
+  " fill="url(#stemGrad)" />
+
+  <!-- Hyper Orange Delivery Accent Dot -->
+  <circle cx="360" cy="146" r="18" fill="url(#accentGrad)" />
+</svg>
