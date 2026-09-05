@@ -387,12 +387,12 @@ export default function LandingPage() {
           <div className="container mx-auto px-4">
 
             {/* ── HERO ──────────────────────────────────────────────── */}
-            <section className="py-10 md:py-16">
+            <section className="py-4 md:py-16">
               <div className="grid md:grid-cols-2 gap-8 items-center w-full">
 
-                {/* ─── FOOD SHOWCASE HERO GRAPHIC ─ right side */}
+                {/* ─── FOOD SHOWCASE HERO GRAPHIC ─ right side (desktop only to preserve mobile screen real estate) */}
                 <motion.div
-                  className="flex justify-center order-last md:order-last"
+                  className="hidden md:flex justify-center md:order-last"
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.8, ease: 'easeOut' }}
@@ -520,43 +520,45 @@ export default function LandingPage() {
                 {/* Text side */}
                 <motion.div
                   className="text-center md:text-left"
-                  initial={{ opacity: 0, y: 24 }}
+                  initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, ease: 'easeOut', delay: 0.1 }}
+                  transition={{ duration: 0.5, ease: 'easeOut', delay: 0.1 }}
                 >
                   {/* Eyebrow label */}
-                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary uppercase tracking-widest mb-3">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold text-primary uppercase tracking-widest mb-1.5 sm:mb-3">
                     <Zap className="h-3 w-3" />
                     Hyperlocal Food Discovery
                   </span>
 
-                  <h1 className="font-headline text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-extrabold leading-tight">
+                  <h1 className="font-headline text-2xl sm:text-4xl md:text-5xl lg:text-5xl font-extrabold leading-tight">
                     Craving Delicious Food?{' '}
                     <span className="text-primary block sm:inline">Delivered Hot & Fresh.</span>
                   </h1>
 
-                  <p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-md mx-auto md:mx-0 leading-relaxed">
+                  <p className="mt-1.5 sm:mt-3 text-xs sm:text-base text-muted-foreground max-w-md mx-auto md:mx-0 leading-relaxed">
                     Order authentic meals, daily tiffins, and snacks from verified home chefs & local kitchens in your society.
                   </p>
 
                   {/* Trust pills */}
-                  <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20">
-                      <BadgeCheck className="h-3.5 w-3.5" /> 100% Fresh & Hygienic
+                  <div className="mt-3 sm:mt-4 flex flex-wrap gap-1.5 sm:gap-2 justify-center md:justify-start">
+                    <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-medium bg-primary/10 text-primary px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full border border-primary/20">
+                      <BadgeCheck className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> 100% Fresh & Hygienic
                     </span>
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20">
-                      <Clock className="h-3.5 w-3.5" /> 20-30 Min Delivery
+                    <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-medium bg-primary/10 text-primary px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full border border-primary/20">
+                      <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> 20-30 Min Delivery
                     </span>
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20">
-                      <MapPin className="h-3.5 w-3.5" /> {userLocation?.addressName || 'Local Kitchens Only'}
-                    </span>
+                    {userLocation?.addressName && (
+                      <span className="hidden sm:inline-flex items-center gap-1 text-[11px] sm:text-xs font-medium bg-primary/10 text-primary px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full border border-primary/20">
+                        <MapPin className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {userLocation.addressName}
+                      </span>
+                    )}
                   </div>
 
                   {/* Live Hero Search Bar with Rotating Placeholders */}
-                  <HeroSearchBar className="mt-5" />
+                  <HeroSearchBar className="mt-3.5 sm:mt-5" />
 
-                  {/* Secondary Quick Action Buttons */}
-                  <div className="mt-4 flex flex-wrap items-center gap-3 justify-center md:justify-start">
+                  {/* Secondary Quick Action Buttons (Desktop only - mobile uses bottom nav) */}
+                  <div className="mt-4 hidden md:flex items-center gap-3 justify-start">
                     <Button
                       size="default"
                       onClick={handleOrderNow}
@@ -582,7 +584,7 @@ export default function LandingPage() {
             </section>
 
             {/* ── SCROLLING TICKER ─────────────────────────────────── */}
-            <div className="overflow-hidden py-3 border-y border-primary/10 my-2">
+            <div className="hidden sm:block overflow-hidden py-3 border-y border-primary/10 my-2">
               <motion.div
                 className="flex gap-6 whitespace-nowrap"
                 animate={{ x: ['0%', '-50%'] }}

@@ -175,6 +175,53 @@ const ZoomedImageOverlay = ({ item, onClose }: { item: { id: string; image: stri
   );
 };
 
+export const getItemStartingPrice = (item: MenuItemType): number => {
+  const isCustomizable = item.customizations && item.customizations.length > 0;
+  const hasMandatoryOptions = item.customizations?.some(c => Number(c.minSelect) > 0) ?? false;
+  const hasDiscount = !!(item.isDiscountActive && item.discountPrice && item.discountPrice > 0);
+
+  if (!isCustomizable) {
+    return hasDiscount ? item.discountPrice! : (item.price || 0);
+  }
+
+  const basePrice = hasMandatoryOptions ? 0 : (hasDiscount ? item.discountPrice! : (item.price || 0));
+
+  let mandatoryCustomizationsPrice = 0;
+  item.customizations?.forEach(c => {
+    if (Number(c.minSelect) > 0) {
+      const groupMinOptionPrice = Math.min(...c.options.map(o => {
+        return item.isDiscountActive ? o.price : (o.originalPrice || o.price);
+      }));
+      if (groupMinOptionPrice !== Infinity) {
+        mandatoryCustomizationsPrice += groupMinOptionPrice;
+      }
+    }
+  });
+
+  let calculatedPrice = basePrice + mandatoryCustomizationsPrice;
+
+  if (calculatedPrice === 0) {
+    let minOptPrice = Infinity;
+    item.customizations?.forEach(group => {
+      group.options.forEach(o => {
+        const optPrice = item.isDiscountActive ? o.price : (o.originalPrice || o.price);
+        if (optPrice < minOptPrice) {
+          minOptPrice = optPrice;
+        }
+      });
+    });
+    if (minOptPrice !== Infinity) {
+      calculatedPrice = minOptPrice;
+    }
+  }
+
+  if (calculatedPrice === 0 && item.price > 0) {
+    calculatedPrice = item.price;
+  }
+
+  return calculatedPrice;
+};
+
 const PopularPickItemCard = ({
   item,
   vendor,
@@ -215,46 +262,9 @@ const PopularPickItemCard = ({
     }
   };
 
-  const hasMandatoryCustomization = item.customizations?.some(c => Number(c.minSelect) === 1) ?? false;
-
   const startingPrice = useMemo(() => {
-    if (!isCustomizable) {
-      return item.isDiscountActive && item.discountPrice ? item.discountPrice : item.price;
-    }
-
-    const basePrice = hasMandatoryCustomization ? 0 : (item.isDiscountActive && item.discountPrice ? item.discountPrice : item.price);
-
-    let mandatoryCustomizationsPrice = 0;
-    item.customizations?.forEach(c => {
-      if (Number(c.minSelect) > 0) {
-        const groupMinOptionPrice = Math.min(...c.options.map(o => {
-          return item.isDiscountActive ? o.price : (o.originalPrice || o.price);
-        }));
-        if (groupMinOptionPrice !== Infinity) {
-          mandatoryCustomizationsPrice += groupMinOptionPrice;
-        }
-      }
-    });
-
-    const calculatedPrice = basePrice + mandatoryCustomizationsPrice;
-
-    if (calculatedPrice === 0) {
-      let minOptPrice = Infinity;
-      item.customizations?.forEach(group => {
-        group.options.forEach(o => {
-          const optPrice = item.isDiscountActive ? o.price : (o.originalPrice || o.price);
-          if (optPrice < minOptPrice) {
-            minOptPrice = optPrice;
-          }
-        });
-      });
-      if (minOptPrice !== Infinity) {
-        return minOptPrice;
-      }
-    }
-
-    return calculatedPrice;
-  }, [item, isCustomizable, hasMandatoryCustomization]);
+    return getItemStartingPrice(item);
+  }, [item]);
 
   const handleAction = (
     e: React.MouseEvent,
@@ -494,43 +504,8 @@ const MenuItemCard = ({
   const hasMandatoryOptions = item.customizations?.some(c => Number(c.minSelect) > 0) ?? false;
 
   const startingPrice = useMemo(() => {
-    if (!isCustomizable) {
-      return hasDiscount ? item.discountPrice! : item.price;
-    }
-
-    const basePrice = hasMandatoryOptions ? 0 : (hasDiscount ? item.discountPrice! : item.price);
-
-    let mandatoryCustomizationsPrice = 0;
-    item.customizations?.forEach(c => {
-      if (Number(c.minSelect) > 0) {
-        const groupMinOptionPrice = Math.min(...c.options.map(o => {
-          return item.isDiscountActive ? o.price : (o.originalPrice || o.price);
-        }));
-        if (groupMinOptionPrice !== Infinity) {
-          mandatoryCustomizationsPrice += groupMinOptionPrice;
-        }
-      }
-    });
-
-    const calculatedPrice = basePrice + mandatoryCustomizationsPrice;
-
-    if (calculatedPrice === 0) {
-      let minOptPrice = Infinity;
-      item.customizations?.forEach(group => {
-        group.options.forEach(o => {
-          const optPrice = item.isDiscountActive ? o.price : (o.originalPrice || o.price);
-          if (optPrice < minOptPrice) {
-            minOptPrice = optPrice;
-          }
-        });
-      });
-      if (minOptPrice !== Infinity) {
-        return minOptPrice;
-      }
-    }
-
-    return calculatedPrice;
-  }, [item, isCustomizable, hasMandatoryOptions, hasDiscount]);
+    return getItemStartingPrice(item);
+  }, [item]);
 
   return (
     <motion.div
@@ -1246,7 +1221,7 @@ export default function MenuPageContent() {
       const price = parseFloat(maxPriceParam);
       if (!isNaN(price)) {
         baseItems = baseItems.filter(item => {
-          const itemPrice = item.isDiscountActive && item.discountPrice ? item.discountPrice : item.price;
+          const itemPrice = getItemStartingPrice(item);
           return itemPrice <= price;
         });
       }
@@ -1373,7 +1348,7 @@ export default function MenuPageContent() {
       const price = parseFloat(maxPriceParam);
       if (!isNaN(price)) {
         const pricedItems = itemsForCategories.filter(item => {
-          const itemPrice = item.isDiscountActive && item.discountPrice ? item.discountPrice : item.price;
+          const itemPrice = getItemStartingPrice(item);
           return itemPrice <= price;
         });
         return Array.from(new Set(pricedItems.map(item => item.category)));
@@ -1658,29 +1633,14 @@ export default function MenuPageContent() {
         )}
       </AnimatePresence>
 
-      {/* ── MENU HERO BANNER ────────────────────────────────────────────── */}
-      <section className="bg-gradient-to-b from-primary/10 via-primary/5 to-transparent py-8 sm:py-10 border-b border-border/40 relative overflow-hidden">
-        <div className="container mx-auto px-4 text-center max-w-3xl relative z-10">
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-primary uppercase tracking-widest bg-primary/10 px-3 py-1 rounded-full mb-3 border border-primary/20">
-            <Sparkles className="h-3.5 w-3.5" /> Direct Local Delivery
-          </span>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold font-headline text-foreground tracking-tight">
-            Explore <span className="text-primary">Menus & Dishes</span>
-          </h1>
-          <p className="mt-2 text-xs sm:text-sm text-muted-foreground max-w-lg mx-auto leading-relaxed">
-            Order fresh meals, snacks, and daily essentials from trusted local vendors near you.
-          </p>
-        </div>
-      </section>
-
       <div className={cn(
-        "container mx-auto px-4 pt-6 transition-[padding] duration-300",
+        "container mx-auto px-4 pt-3 sm:pt-6 transition-[padding] duration-300",
         totalItems > 0 ? "pb-36 sm:pb-28" : "pb-12"
       )}>
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <div className="space-y-6 mb-6">
-            {/* ── STICKY GLASSMORPHIC SEARCH & FILTER BAR ───────────────────────────── */}
-            <div className="sticky top-16 z-30 bg-card/85 backdrop-blur-xl border border-border/80 rounded-3xl p-3 sm:p-4 shadow-lg space-y-3">
+            {/* ── SEARCH & FILTER BAR ────────────────────────────────────────────── */}
+            <div className="bg-card/85 backdrop-blur-xl border border-border/80 rounded-3xl p-3 sm:p-4 shadow-sm space-y-3">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
                 {/* Menu Item Search Bar */}
                 <div className="relative w-full flex-1">
@@ -1945,48 +1905,26 @@ export default function MenuPageContent() {
                   {isFetchingItems ? (
                     <div className="text-center py-8"><Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /></div>
                   ) : (
-                    <div className="w-full overflow-x-auto hide-scrollbar group pb-4">
-                      <div className="flex w-max animate-scroll hover:animation-pause">
+                    <div className="w-full overflow-x-auto hide-scrollbar pb-3 pt-1">
+                      <div className="flex gap-3 min-w-max px-1">
                         {filteredGlobalCategories.map((category, index) => (
                           <Link
                             key={`${category.id}-${index}`}
                             href={`/menu?category=${encodeURIComponent(category.name)}`}
-                            className="flex flex-col items-center gap-2 group/item flex-shrink-0 w-24 mx-2"
+                            className="flex flex-col items-center gap-2 group/item flex-shrink-0 w-20 sm:w-24 text-center cursor-pointer select-none"
                           >
-                            <div className="relative w-24 h-24 rounded-2xl overflow-hidden shadow-md border-2 border-primary/20 group-hover/item:scale-105 transition-transform duration-300">
+                            <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden shadow-sm border-2 border-primary/20 group-hover/item:border-primary group-hover/item:scale-105 group-hover/item:shadow-md transition-all duration-300 bg-muted">
                               <Image
                                 src={category.imageUrl || 'https://placehold.co/100x100.png'}
                                 alt={category.name}
                                 layout="fill"
-                                className="object-cover"
+                                className="object-cover group-hover/item:scale-110 transition-transform duration-500"
                                 placeholder={category.blurDataUrl ? 'blur' : 'empty'}
                                 blurDataURL={category.blurDataUrl}
                                 unoptimized={typeof category.imageUrl === 'string' && category.imageUrl.startsWith('data:')}
                               />
                             </div>
-                            <p className="text-xs text-center font-semibold">{category.name}</p>
-                          </Link>
-                        ))}
-                        {/* Duplicate for seamless loop */}
-                        {filteredGlobalCategories.map((category, index) => (
-                          <Link
-                            key={`${category.id}-clone-${index}`}
-                            href={`/menu?category=${encodeURIComponent(category.name)}`}
-                            className="flex flex-col items-center gap-2 group/item flex-shrink-0 w-24 mx-2"
-                            aria-hidden="true"
-                          >
-                            <div className="relative w-24 h-24 rounded-2xl overflow-hidden shadow-md border-2 border-primary/20 group-hover/item:scale-105 transition-transform duration-300">
-                              <Image
-                                src={category.imageUrl || 'https://placehold.co/100x100.png'}
-                                alt={category.name}
-                                layout="fill"
-                                className="object-cover"
-                                placeholder={category.blurDataUrl ? 'blur' : 'empty'}
-                                blurDataURL={category.blurDataUrl}
-                                unoptimized={typeof category.imageUrl === 'string' && category.imageUrl.startsWith('data:')}
-                              />
-                            </div>
-                            <p className="text-xs text-center font-semibold">{category.name}</p>
+                            <p className="text-xs text-center font-semibold text-foreground group-hover/item:text-primary transition-colors line-clamp-1">{category.name}</p>
                           </Link>
                         ))}
                       </div>
@@ -2210,7 +2148,7 @@ export default function MenuPageContent() {
                 {menuItemsToDisplay.length > 0 ? (
                   <>
                     {categoriesToShow.length > 0 && !isSearching ? (
-                      <div className="sticky top-[65px] bg-background/95 backdrop-blur-md z-30 pt-2 pb-1.5 -mx-2 px-2 border-b border-border/40 mb-2">
+                      <div className="sticky top-16 bg-background/95 backdrop-blur-md z-30 pt-2 pb-1.5 -mx-2 px-2 border-b border-border/40 mb-2">
                         {/* Compact Header Label */}
                         <div className="flex items-center justify-between px-1 mb-1">
                           <div className="flex items-center gap-1.5">
