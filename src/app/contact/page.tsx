@@ -52,12 +52,22 @@ export default function ContactUsPage() {
               <div>
                 <h3 className="font-headline text-2xl mt-8">For Customers</h3>
                 <p>
-                  Have a question about your order, delivery, or need quick support?
+                  Have a question about your order, delivery, or need quick assistance?
                   <br />
-                  👉 Reach out to us anytime at{' '}
-                  <Link href="https://hyperdelivery.in/vendor-details" target="_blank" className="text-blue-400 hover:underline">
-                    hyperdelivery.in/vendor-details
+                  👉 Visit our dedicated Help Center:{' '}
+                  <Link href="/support" className="text-blue-400 hover:underline font-semibold">
+                    Customer Help & Support Center
                   </Link>
+                  <br />
+                  👉 WhatsApp Support:{' '}
+                  <a href="https://wa.me/917083609020" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
+                    +91 70836 09020
+                  </a>
+                  <br />
+                  👉 Support Email:{' '}
+                  <a href="mailto:hyperlabsupport@gmail.com" className="text-blue-400 hover:underline">
+                    hyperlabsupport@gmail.com
+                  </a>
                 </p>
               </div>
 

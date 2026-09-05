@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import Header from '@/components/header';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle, Cpu, Home, Loader2, Rocket, Utensils, PackageSearch, Package, History, Bike, Star, Building, MessageSquareReply, Calendar as CalendarIcon, Phone, XCircle, ArrowLeft, QrCode, ClipboardCheck, ShoppingCart, MessageSquare, Award, Download, Minus, Plus, Sparkles, Navigation, MapPin, ExternalLink } from 'lucide-react';
+import { CheckCircle, Cpu, Home, Loader2, Rocket, Utensils, PackageSearch, Package, History, Bike, Star, Building, MessageSquareReply, Calendar as CalendarIcon, Phone, XCircle, ArrowLeft, QrCode, ClipboardCheck, ShoppingCart, MessageSquare, Award, Download, Minus, Plus, Sparkles, Navigation, MapPin, ExternalLink, HelpCircle, MessageCircle, Mail, Clock, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -273,6 +273,8 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
     return null;
   }, [vendor?.googleMapsUrl, vendor?.latitude, vendor?.longitude]);
 
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+
   const generatePdfReceipt = () => {
     if (!vendor) return;
 
@@ -513,6 +515,7 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
   };
 
   return (
+    <>
       <Card className="rounded-3xl bg-card/80 backdrop-blur-sm border-primary/10">
           <CardHeader className="flex flex-col">
               <div className="flex justify-between items-start">
@@ -827,6 +830,15 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
                 </div>
           </CardContent>
           <CardFooter className="flex flex-col sm:flex-row justify-end items-center gap-2">
+             <Button 
+                size="sm" 
+                variant="outline" 
+                className="h-auto px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 rounded-xl"
+                onClick={() => setIsHelpOpen(true)}
+             >
+                 <HelpCircle className="h-3 w-3 mr-1 text-primary" />
+                 Need Help?
+             </Button>
              {isOrderCompleted && (
                 <>
                   <Button size="sm" variant="ghost" className="h-auto px-2 py-1 text-xs" onClick={() => onOrderAgain(order)}>
@@ -846,7 +858,113 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
             )}
         </CardFooter>
       </Card>
-  )
+
+      {/* In-Track Order Support Dialog */}
+      <Dialog open={isHelpOpen} onOpenChange={setIsHelpOpen}>
+        <DialogContent className="rounded-3xl max-w-md w-[92vw] p-5">
+          <DialogHeader className="text-left space-y-1">
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <HelpCircle className="h-5 w-5 text-primary" />
+              Order Help & Support
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Order #{order.displayId || order.orderId} • {vendor?.shopName || vendor?.name || 'Kitchen'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 pt-2">
+            {/* 1-Tap WhatsApp Support with pre-filled order context */}
+            <a 
+              href={`https://wa.me/917083609020?text=${encodeURIComponent(`Hi HyperDelivery Support, I need help regarding my Order #${order.displayId || order.orderId} (${vendor?.shopName || vendor?.name || 'Kitchen'}).`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between p-3 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/30 transition-all active:scale-[0.98]"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-500 text-white shrink-0 shadow-xs">
+                  <MessageCircle className="h-4 w-4" />
+                </div>
+                <div className="text-left">
+                  <div className="text-xs font-bold text-foreground">Chat with Support on WhatsApp</div>
+                  <div className="text-[11px] text-muted-foreground">Pre-filled with this Order ID</div>
+                </div>
+              </div>
+              <ExternalLink className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            </a>
+
+            {/* Direct Call Options */}
+            <div className="grid grid-cols-2 gap-2">
+              <a 
+                href="tel:+917083609020"
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/30 transition-all text-left"
+              >
+                <Phone className="h-4 w-4 text-blue-500 shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-[11px] font-bold text-foreground">Call Helpline</div>
+                  <div className="text-[10px] text-muted-foreground truncate">+91 70836 09020</div>
+                </div>
+              </a>
+
+              {vendor?.contact ? (
+                <a 
+                  href={`tel:${vendor.contact}`}
+                  className="flex items-center gap-2 p-2.5 rounded-xl bg-muted/60 hover:bg-muted border border-border/60 transition-all text-left"
+                >
+                  <Building className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-bold text-foreground truncate">Call Kitchen</div>
+                    <div className="text-[10px] text-muted-foreground truncate">{vendor.contact.replace('+91','')}</div>
+                  </div>
+                </a>
+              ) : (
+                <a 
+                  href="mailto:hyperlabsupport@gmail.com"
+                  className="flex items-center gap-2 p-2.5 rounded-xl bg-muted/60 hover:bg-muted border border-border/60 transition-all text-left"
+                >
+                  <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-bold text-foreground">Email Support</div>
+                    <div className="text-[10px] text-muted-foreground truncate">hyperlabsupport</div>
+                  </div>
+                </a>
+              )}
+            </div>
+
+            {/* Helpful Quick Notes */}
+            <div className="p-3 rounded-2xl bg-muted/30 border border-border/50 space-y-1.5 text-left">
+              <div className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5 text-primary" />
+                Helpful Notes
+              </div>
+              <ul className="text-[11px] text-muted-foreground space-y-1 list-disc pl-4 leading-relaxed">
+                <li><strong>Delays:</strong> Fresh cooking during rush hours can add 10–15 mins.</li>
+                <li><strong>Missing / Damaged:</strong> WhatsApp photo & Order ID within 2 hours.</li>
+                <li><strong>Refunds:</strong> Approved refunds credit back in <strong>5 to 7 working days</strong>.</li>
+              </ul>
+            </div>
+
+            <div className="pt-1 flex items-center justify-between">
+              <Link 
+                href="/support" 
+                onClick={() => setIsHelpOpen(false)} 
+                className="text-xs text-primary font-semibold hover:underline flex items-center gap-1"
+              >
+                View Support Guide <ChevronRight className="h-3 w-3" />
+              </Link>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setIsHelpOpen(false)} 
+                className="text-xs h-7 px-2"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }
 
 const PortionSelectDialog = ({
@@ -1139,7 +1257,7 @@ export default function TrackPage() {
     <>
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8 md:py-12">
-        <div className="max-w-4xl mx-auto mb-4">
+        <div className="max-w-4xl mx-auto mb-4 flex items-center justify-between">
           <Link href="/menu" passHref>
             <Button 
               variant="outline" 
@@ -1148,6 +1266,16 @@ export default function TrackPage() {
               aria-label="Back to Menu"
             >
               <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <Link href="/support" passHref>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full text-xs font-semibold h-8 px-3 border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary gap-1.5 shadow-2xs"
+            >
+              <HelpCircle className="h-3.5 w-3.5" />
+              Help & Support
             </Button>
           </Link>
         </div>

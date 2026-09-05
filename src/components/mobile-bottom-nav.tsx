@@ -20,7 +20,8 @@ import {
   ChevronRight,
   Sparkles,
   Award,
-  Zap
+  Zap,
+  HelpCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCustomer } from '@/context/customer-context';
@@ -117,14 +118,14 @@ export default function MobileBottomNav() {
               type="button"
               className={cn(
                 "flex flex-col items-center justify-center flex-1 py-1 transition-all duration-200",
-                isMoreOpen || pathname === '/about' || pathname === '/benefits' || pathname === '/cancellation-refund-policy'
+                isMoreOpen || pathname === '/about' || pathname === '/benefits' || pathname === '/cancellation-refund-policy' || pathname === '/support'
                   ? "text-primary font-bold scale-105" 
                   : "text-muted-foreground hover:text-foreground font-medium"
               )}
             >
               <div className={cn(
                 "p-1 rounded-full transition-colors relative",
-                (isMoreOpen || pathname === '/about' || pathname === '/benefits') && "bg-primary/10"
+                (isMoreOpen || pathname === '/about' || pathname === '/benefits' || pathname === '/support') && "bg-primary/10"
               )}>
                 <MenuIcon className="h-5 w-5" />
                 <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
@@ -257,6 +258,24 @@ export default function MobileBottomNav() {
               <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider px-3 py-1">
                 Policies & Support
               </div>
+
+              <button
+                onClick={() => handleNavigate('/support')}
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-muted/60 text-left transition-colors bg-primary/5 border border-primary/15"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/15 text-primary">
+                    <HelpCircle className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-semibold text-foreground">Help & Support</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Order issues, live tracking & WhatsApp</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </button>
 
               <button
                 onClick={() => handleNavigate('/cancellation-refund-policy')}
