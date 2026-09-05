@@ -19,7 +19,6 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
 import Logo from './logo';
 import type { Vendor } from '@/types';
 import { useVendor } from '@/context/vendor-context';
@@ -89,12 +88,6 @@ export default function Header({ pageVendor }: HeaderProps) {
   
   const isVendorOwner = pageVendor && loggedInVendor && pageVendor.username === loggedInVendor.username;
   const showVendorLogin = pageVendor && !isVendorOwner;
-
-  const titleColors = [
-    "text-red-500", "text-orange-500", "text-yellow-500", "text-green-500",
-    "text-blue-500", "text-indigo-500", "text-purple-500", "text-pink-500",
-    "text-red-400", "text-orange-400", "text-yellow-400", "text-green-400", "text-blue-400"
-  ];
   
   const { availablePoints, pointsExpiryDate, vendorPointsBreakdown } = useMemo(() => {
     if (!customer) return { availablePoints: 0, pointsExpiryDate: null, vendorPointsBreakdown: [] };
@@ -149,29 +142,13 @@ export default function Header({ pageVendor }: HeaderProps) {
       )}
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-4 sm:gap-6">
-            <Link href="/" className="flex items-center gap-2">
-             <motion.div
-              animate={{ rotateY: 360 }}
-              transition={{
-                duration: 4,
-                ease: "linear",
-                repeat: Infinity,
-              }}
-              className="h-10 w-10 rounded-full"
-            >
-              <Logo className="h-full w-full text-primary" />
-            </motion.div>
-            <div className="font-headline text-2xl font-bold hidden sm:flex overflow-hidden">
-                {"Hyper Delivery".split("").map((char, index) => (
-                    <span
-                        key={`${char}-${index}`}
-                        className={cn(titleColors[index % titleColors.length])}
-                        style={{ whiteSpace: 'pre' }}
-                    >
-                        {char}
-                    </span>
-                ))}
-            </div>
+            <Link href="/" className="flex items-center gap-2.5 group">
+              <div className="h-10 w-10 rounded-full transition-transform duration-200 group-hover:scale-105">
+                <Logo className="h-full w-full text-primary" />
+              </div>
+              <span className="font-headline text-xl sm:text-2xl font-black tracking-tight text-foreground hidden sm:inline-block">
+                Hyper<span className="text-primary">Delivery</span>
+              </span>
             </Link>
             {!isAdminRoute && !pathname.startsWith('/rider') && (
                 <LocationPicker variant="full" className="flex max-w-[130px] sm:max-w-[150px] md:max-w-none" />
@@ -205,7 +182,7 @@ export default function Header({ pageVendor }: HeaderProps) {
                     </Link>
                   )}
                  <Link href="/admin/dashboard/orders/live" passHref>
-                    <Button className="text-white bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 bg-[length:200%_auto] animate-gradient-move">
+                    <Button className="font-semibold shadow-xs">
                         Live Orders
                     </Button>
                 </Link>
@@ -244,13 +221,10 @@ export default function Header({ pageVendor }: HeaderProps) {
               <div className="hidden sm:block relative">
                  <Button
                     variant="outline"
-                    className={cn(
-                        "border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white flex items-center gap-2 px-4",
-                        totalItems > 0 && "animate-bounce"
-                    )}
+                    className="border-primary/20 text-foreground hover:bg-primary/5 hover:text-primary flex items-center gap-2 px-4 font-semibold transition-colors shadow-xs"
                     onClick={() => setIsCartOpen(true)}
                 >
-                    <ShoppingCart className="h-5 w-5" />
+                    <ShoppingCart className="h-4 w-4 text-primary" />
                     <span>
                       {totalPrice > 0 ? `₹${totalPrice.toFixed(2)}` : 'Cart'}
                     </span>

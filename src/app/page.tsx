@@ -683,7 +683,7 @@ export default function LandingPage() {
                   <Button
                     size="lg"
                     onClick={handlePriceFilterClick}
-                    className="sm:self-end text-white bg-gradient-to-r from-green-400 via-teal-500 to-blue-500 bg-[length:200%_auto] animate-gradient-move"
+                    className="sm:self-end font-semibold shadow-xs"
                   >
                     <Search className="mr-2 h-5 w-5" />
                     Find

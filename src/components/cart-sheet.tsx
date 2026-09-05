@@ -304,16 +304,16 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
                              <div className="flex items-center justify-center gap-2">
                                 {showRedemptionOption && (
                                      <div
-                                        className="text-white font-bold px-2 py-1 rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 bg-[length:200%_auto] animate-gradient-move"
+                                        className="text-primary-foreground font-semibold px-2.5 py-0.5 rounded-full bg-primary shadow-xs"
                                     >
-                                        <div className="flex items-center gap-1">
+                                        <div className="flex items-center gap-1.5">
                                             <Checkbox
                                                 id="apply-points"
                                                 checked={applyPoints}
                                                 onCheckedChange={(checked) => setApplyPoints(!!checked)}
-                                                className="rounded-full h-3 w-3 border-white"
+                                                className="rounded-full h-3 w-3 border-primary-foreground data-[state=checked]:bg-primary-foreground data-[state=checked]:text-primary"
                                             />
-                                            <label htmlFor="apply-points" className="cursor-pointer text-white text-[10px]">
+                                            <label htmlFor="apply-points" className="cursor-pointer text-primary-foreground text-[11px] font-medium">
                                                 Apply {redemptionDetails.pointsToRedeem} points
                                             </label>
                                         </div>

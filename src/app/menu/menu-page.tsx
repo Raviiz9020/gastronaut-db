@@ -1879,7 +1879,7 @@ export default function MenuPageContent() {
                 <Button
                   variant="outline"
                   onClick={handleClearFilters}
-                  className="rounded-full text-white bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 bg-[length:200%_auto] animate-gradient-move"
+                  className="rounded-full font-medium shadow-xs border-primary/30 text-foreground hover:bg-primary/5 hover:text-primary transition-colors"
                 >
                   <ArrowLeft className="h-4 w-4 mr-1" />
                   Back to All Menu
