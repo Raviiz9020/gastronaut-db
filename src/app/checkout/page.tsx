@@ -587,7 +587,7 @@ export default function CheckoutPage() {
                                                 {vc.deliveryOption === 'Home Delivery' && vc.isOutOfRange && (
                                                     <div className="flex items-center gap-1.5 p-1.5 bg-destructive/10 text-destructive rounded-lg text-[10px] font-semibold border border-destructive/20">
                                                         <AlertTriangle className="h-3 w-3 flex-shrink-0" />
-                                                        <span>Out of delivery range ({vc.deliveryDistanceKm} km away). Switch to Pickup or select nearby address.</span>
+                                                        <span>Out of delivery range. Switch to Pickup or select nearby address.</span>
                                                     </div>
                                                 )}
 
@@ -595,7 +595,7 @@ export default function CheckoutPage() {
                                                     <div className="flex items-center justify-between p-1.5 bg-muted/40 rounded-lg text-[10px] border border-border/40">
                                                         <span className="text-muted-foreground flex items-center gap-1">
                                                             <MapPin className="h-3 w-3 text-primary" />
-                                                            {vc.deliveryDistanceKm !== undefined ? `${vc.deliveryDistanceKm} km away` : 'Calculating distance...'}
+                                                            Home Delivery
                                                         </span>
                                                         <span className="font-semibold text-foreground">
                                                             {vc.deliveryCharge ? `₹${vc.deliveryCharge.toFixed(2)} delivery` : 'Free delivery'}

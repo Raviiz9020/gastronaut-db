@@ -194,7 +194,7 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
                         {vc.deliveryOption === 'Home Delivery' && (
                             <div className="flex flex-col gap-1 px-1 py-1 bg-muted/30 rounded-xl my-1">
                                 <div className="flex justify-between items-center text-[10px] text-muted-foreground px-2">
-                                    <span>Distance: {vc.deliveryDistanceKm ? `${vc.deliveryDistanceKm.toFixed(2)} km` : '0.00 km'}</span>
+                                    <span>Home Delivery</span>
                                     {vc.isFreeDelivery ? (
                                         <span className="font-bold text-green-600 dark:text-green-400">
                                             FREE Delivery
@@ -205,13 +205,13 @@ export default function CartSheet({ open, onOpenChange }: CartSheetProps) {
                                 </div>
                                 {vc.isFreeDelivery && (
                                     <div className="text-[10px] text-green-600 dark:text-green-400 font-semibold px-2 flex items-center gap-1">
-                                        <span>🎉 Free delivery applied (within {vc.vendor.freeDeliveryDistanceKm} km)</span>
+                                        <span>🎉 Free delivery applied</span>
                                     </div>
                                 )}
                                 {vc.isOutOfRange && (
                                     <div className="text-center text-[10px] p-1.5 rounded-lg flex items-center justify-center gap-1 text-destructive bg-destructive/10 font-semibold mx-1">
                                         <Info className="h-3.5 w-3.5 flex-shrink-0" />
-                                        <span>Out of Delivery Range ({vc.deliveryDistanceKm?.toFixed(1)} km)</span>
+                                        <span>Out of Delivery Range</span>
                                     </div>
                                 )}
                             </div>

@@ -692,11 +692,6 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
                                 <>
                                     <Bike className="h-4 w-4 text-purple-500" />
                                     <span>Home Delivery</span>
-                                    {order.deliveryDistanceKm !== undefined && order.deliveryDistanceKm > 0 && (
-                                        <span className="text-muted-foreground font-normal">
-                                            ({order.deliveryDistanceKm.toFixed(2)} km)
-                                        </span>
-                                    )}
                                 </>
                             ) : (
                                 <div className="flex items-center gap-2 flex-wrap">
