@@ -569,19 +569,25 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
                         </span>
                     )}
                   </div>
-                   {order.assignedDeliveryBoyName && (order.status === 'Out for Delivery' || order.status === 'Delivered') && (
-                        <div className="text-xs text-muted-foreground pt-1 flex items-center gap-4 flex-wrap">
-                            <div className="flex items-center gap-2">
-                                <Bike className="h-4 w-4"/>
-                                <span>Delivery by: <span className="text-foreground">{order.assignedDeliveryBoyName}</span></span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Phone className="h-3 w-3"/>
-                                <a href={`tel:${order.assignedDeliveryBoyContact}`} className="text-xs text-muted-foreground hover:underline">{order.assignedDeliveryBoyContact?.replace('+91','')}</a>
-                            </div>
-                        </div>
-                    )}
-               </CardDescription>
+                  {order.assignedDeliveryBoyName && order.status !== 'Cancelled' && (
+                      <div className="text-xs text-muted-foreground pt-1.5 flex items-center gap-2">
+                          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-medium text-xs shadow-xs">
+                              <Bike className="h-3.5 w-3.5 shrink-0"/>
+                              <span>Rider Assigned: <strong className="text-foreground font-bold">{order.assignedDeliveryBoyName}</strong></span>
+                              {order.assignedDeliveryBoyContact && (
+                                  <a
+                                      href={`tel:${order.assignedDeliveryBoyContact}`}
+                                      className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-transform active:scale-90 ml-0.5"
+                                      title={`Call ${order.assignedDeliveryBoyName}`}
+                                      aria-label={`Call ${order.assignedDeliveryBoyName}`}
+                                  >
+                                      <Phone className="h-2.5 w-2.5 fill-current" />
+                                  </a>
+                              )}
+                          </div>
+                      </div>
+                  )}
+                </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
               {isOrderActive && (
@@ -686,10 +692,17 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
                         <span className="text-[10px] text-muted-foreground uppercase tracking-wider block font-bold">Delivery Details</span>
                         <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                             {order.deliveryOption === 'Home Delivery' ? (
-                                <>
-                                    <Bike className="h-4 w-4 text-purple-500" />
-                                    <span>Home Delivery</span>
-                                </>
+                                <div className="space-y-0.5">
+                                    <div className="flex items-center gap-1.5">
+                                        <Bike className="h-4 w-4 text-purple-500" />
+                                        <span>Home Delivery</span>
+                                    </div>
+                                    {order.assignedDeliveryBoyName && (
+                                        <div className="text-[11px] text-muted-foreground font-normal flex items-center gap-1.5 pt-0.5">
+                                            <span>Rider: <span className="font-semibold text-foreground">{order.assignedDeliveryBoyName}</span></span>
+                                        </div>
+                                    )}
+                                </div>
                             ) : (
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <div className="flex items-center gap-1">
@@ -862,6 +875,29 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
           </DialogHeader>
 
           <div className="space-y-3 pt-2">
+            {/* Direct Rider Call Option if assigned */}
+            {order.assignedDeliveryBoyContact && (
+              <a 
+                href={`tel:${order.assignedDeliveryBoyContact}`}
+                className="flex items-center justify-between p-3 rounded-2xl bg-primary/10 hover:bg-primary/15 border border-primary/30 transition-all active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-primary text-white shrink-0 shadow-xs">
+                    <Bike className="h-4 w-4" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-xs font-bold text-foreground">
+                      Call Delivery Partner ({order.assignedDeliveryBoyName || 'Rider'})
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {order.assignedDeliveryBoyContact.replace('+91','')}
+                    </div>
+                  </div>
+                </div>
+                <Phone className="h-3.5 w-3.5 text-primary shrink-0" />
+              </a>
+            )}
+
             {/* 1-Tap WhatsApp Support with pre-filled order context */}
             <a 
               href={`https://wa.me/917083609020?text=${encodeURIComponent(`Hi HyperDelivery Support, I need help regarding my Order #${order.displayId || order.orderId} (${vendor?.shopName || vendor?.name || 'Kitchen'}).`)}`}
