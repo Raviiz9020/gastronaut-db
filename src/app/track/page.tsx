@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import Header from '@/components/header';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle, Cpu, Home, Loader2, Rocket, Utensils, PackageSearch, Package, History, Bike, Star, Building, MessageSquareReply, Calendar as CalendarIcon, Phone, XCircle, ArrowLeft, QrCode, ClipboardCheck, ShoppingCart, MessageSquare, Award, Download, Minus, Plus, Sparkles, Navigation, MapPin, ExternalLink, HelpCircle, MessageCircle, Mail, Clock, ChevronRight } from 'lucide-react';
+import { CheckCircle, Cpu, Home, Loader2, Rocket, Utensils, PackageSearch, Package, History, Bike, Star, Building, MessageSquareReply, Calendar as CalendarIcon, Phone, XCircle, ArrowLeft, ClipboardCheck, ShoppingCart, MessageSquare, Award, Download, Minus, Plus, Sparkles, Navigation, MapPin, ExternalLink, HelpCircle, MessageCircle, Mail, Clock, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -256,12 +256,6 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
   const progress = currentStatusIndex !== -1 ? ((currentStatusIndex + 1) / progressStatuses.length) * 100 : 0;
   const isOrderActive = activeStatuses.includes(order.status);
   const isOrderCompleted = completedStatuses.includes(order.status) && order.status !== 'Cancelled';
-  
-  const showQrCodeButton = useMemo(() => {
-    if (!vendor?.upiId) return false;
-    const qrCodeStatuses: OrderStatus[] = ['Accepted', 'Processing', 'Out for Delivery', 'Order Ready'];
-    return qrCodeStatuses.includes(order.status);
-  }, [order.status, vendor?.upiId]);
 
   const directionsUrl = useMemo(() => {
     if (vendor?.googleMapsUrl && vendor.googleMapsUrl.trim() !== '') {
@@ -850,11 +844,6 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
                       Bill
                   </Button>
                 </>
-            )}
-            {showQrCodeButton && (
-                <Button variant="outline" size="sm" className="w-full sm:w-auto h-8 px-3 text-xs" onClick={() => onPayClick(order)}>
-                    <QrCode className="h-4 w-4 mr-2"/> Scan to Pay
-                </Button>
             )}
         </CardFooter>
       </Card>
