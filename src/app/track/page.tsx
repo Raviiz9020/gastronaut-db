@@ -267,6 +267,48 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
     return null;
   }, [vendor?.googleMapsUrl, vendor?.latitude, vendor?.longitude]);
 
+  const whatsappSupportUrl = useMemo(() => {
+    const displayId = order.displayId || order.orderId;
+    const restaurantName = vendor?.shopName || vendor?.name || 'Kitchen';
+    const restaurantPhone = vendor?.contact ? ` (${vendor.contact.replace('+91', '')})` : '';
+
+    const method = order.paymentMethod === 'Pay at Counter' 
+      ? 'Pay at Counter' 
+      : (order.paymentMethod === 'Pay Now' || order.paymentMethod === 'UPI' || order.paymentGateway === 'Razorpay')
+      ? 'Pay Now'
+      : 'COD';
+      
+    const status = (order.paymentStatus === 'PAID' || order.paymentStatus === 'CONFIRMED BY VENDOR' || order.paymentStatus === 'CONFIRMED BY RIDER')
+      ? 'Paid'
+      : order.paymentStatus === 'AWAITING_CONFIRMATION'
+      ? 'Awaiting Verification'
+      : method === 'COD'
+      ? 'Pay on Delivery'
+      : 'Pending';
+
+    const paymentInfo = `${method} - ${status}`;
+    const itemsList = order.items.map(i => `${i.quantity}x ${i.name}`).join(', ');
+    const riderInfo = order.assignedDeliveryBoyName 
+      ? `\n• *Rider:* ${order.assignedDeliveryBoyName}${order.assignedDeliveryBoyContact ? ` (${order.assignedDeliveryBoyContact.replace('+91', '')})` : ''}`
+      : '';
+
+    const message = [
+      `Hi HyperDelivery Support, I need help regarding my order:`,
+      ``,
+      `📦 *Order Details:*`,
+      `• *Order ID:* #${displayId}`,
+      `• *Restaurant:* ${restaurantName}${restaurantPhone}`,
+      `• *Status:* ${order.status}`,
+      `• *Total:* ₹${(order.amountPaid || order.totalPrice).toFixed(0)} (${paymentInfo})`,
+      `• *Items:* ${itemsList}${riderInfo}`,
+      ``,
+      `💬 *My Issue / Query:*`,
+      ``
+    ].join('\n');
+
+    return `https://wa.me/917083609020?text=${encodeURIComponent(message)}`;
+  }, [order, vendor]);
+
   const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const generatePdfReceipt = () => {
@@ -900,7 +942,7 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
 
             {/* 1-Tap WhatsApp Support with pre-filled order context */}
             <a 
-              href={`https://wa.me/917083609020?text=${encodeURIComponent(`Hi HyperDelivery Support, I need help regarding my Order #${order.displayId || order.orderId} (${vendor?.shopName || vendor?.name || 'Kitchen'}).`)}`}
+              href={whatsappSupportUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-between p-3 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/30 transition-all active:scale-[0.98]"
@@ -911,7 +953,7 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
                 </div>
                 <div className="text-left">
                   <div className="text-xs font-bold text-foreground">Chat with Support on WhatsApp</div>
-                  <div className="text-[11px] text-muted-foreground">Pre-filled with this Order ID</div>
+                  <div className="text-[11px] text-muted-foreground">Pre-filled with order & rider details</div>
                 </div>
               </div>
               <ExternalLink className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
