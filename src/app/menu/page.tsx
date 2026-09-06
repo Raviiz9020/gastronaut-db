@@ -9,8 +9,8 @@ import { Loader2 } from 'lucide-react';
 import Header from '@/components/header';
 
 type Props = {
-    params: { [key: string]: string };
-    searchParams: { [key: string]: string | string[] | undefined };
+    params: Promise<{ [key: string]: string }>;
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 const SITE_URL = 'https://hyperdelivery.in';
@@ -21,7 +21,7 @@ export async function generateMetadata(
     props: Props,
     parent: ResolvingMetadata
 ): Promise<Metadata> {
-    const { searchParams } = props;
+    const searchParams = await props.searchParams;
     const rawItemParam = searchParams?.item;
     const itemParam = Array.isArray(rawItemParam) ? rawItemParam[0] : (rawItemParam as string | undefined);
 

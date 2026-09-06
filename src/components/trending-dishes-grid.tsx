@@ -412,10 +412,14 @@ export default function TrendingDishesGrid() {
                       <Link
                         href={`/menu?vendor=${vendorIdentifier}`}
                         className="text-[10px] font-medium text-muted-foreground hover:text-primary transition-colors truncate block mb-0.5"
+                        title={vendor.shopName || undefined}
                       >
                         {vendor.shopName}
                       </Link>
-                      <h3 className="font-bold text-xs text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+                      <h3
+                        className="font-bold text-xs text-foreground line-clamp-2 min-h-[2rem] leading-snug group-hover:text-primary transition-colors"
+                        title={item.name}
+                      >
                         {item.name}
                       </h3>
                     </div>

@@ -50,34 +50,80 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setIsLoading(false);
     }, []);
 
-    // When a logged-in customer is resolved with saved addresses, sync active location
+    // When a logged-in customer is resolved, ensure active location is synced without overwriting user's chosen location
     useEffect(() => {
-        if (!isAuthLoading && customer) {
-            const hasSessionOverride = typeof window !== 'undefined' && sessionStorage.getItem(SESSION_OVERRIDE_KEY) === 'true';
+        if (isAuthLoading || !customer) return;
 
-            // Find default address or primary address
-            const defaultSaved = customer.savedAddresses?.find(a => a.isDefault || a.id === customer.defaultAddressId) 
-                              || customer.savedAddresses?.[0];
-
-            const targetLat = defaultSaved?.latitude || customer.latitude;
-            const targetLng = defaultSaved?.longitude || customer.longitude;
-            const targetAddress = defaultSaved?.address || customer.address || '';
-            const targetName = defaultSaved?.label || defaultSaved?.tag || 'Home';
-            const isHome = defaultSaved?.tag === 'Home' || targetName === 'Home';
-
-            if (!hasSessionOverride && targetLat && targetLng) {
-                const targetLoc: UserLocation = {
-                    latitude: targetLat,
-                    longitude: targetLng,
-                    addressName: targetName,
-                    fullAddress: targetAddress,
-                    isHome,
-                    tag: defaultSaved?.tag || 'Home',
-                    addressId: defaultSaved?.id,
-                };
-                setUserLocation(targetLoc);
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(targetLoc));
+        // Check if user already has an active location from localStorage
+        const savedLocationRaw = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
+        let storedLoc: UserLocation | null = null;
+        if (savedLocationRaw) {
+            try {
+                storedLoc = JSON.parse(savedLocationRaw);
+            } catch {
+                storedLoc = null;
             }
+        }
+
+        // If user already has a location selected:
+        if (storedLoc) {
+            // Check if it corresponds to one of the customer's saved addresses
+            if (customer.savedAddresses && customer.savedAddresses.length > 0) {
+                const matchedSaved = customer.savedAddresses.find(a =>
+                    (storedLoc?.addressId && a.id === storedLoc.addressId) ||
+                    (Math.abs(storedLoc!.latitude - a.latitude) < 0.0005 && Math.abs(storedLoc!.longitude - a.longitude) < 0.0005)
+                );
+
+                if (matchedSaved) {
+                    const isNameSame = storedLoc.addressName === (matchedSaved.label || matchedSaved.tag);
+                    const isAddrSame = storedLoc.fullAddress === matchedSaved.address;
+                    const isIdSame = storedLoc.addressId === matchedSaved.id;
+                    const isHomeSame = storedLoc.isHome === (matchedSaved.tag === 'Home' || matchedSaved.label === 'Home');
+
+                    // ONLY update if there is an actual difference to avoid re-render cycles
+                    if (!isNameSame || !isAddrSame || !isIdSame || !isHomeSame) {
+                        const syncedLoc: UserLocation = {
+                            ...storedLoc,
+                            latitude: matchedSaved.latitude,
+                            longitude: matchedSaved.longitude,
+                            addressName: matchedSaved.label || matchedSaved.tag,
+                            fullAddress: matchedSaved.address,
+                            isHome: matchedSaved.tag === 'Home' || matchedSaved.label === 'Home',
+                            tag: matchedSaved.tag,
+                            addressId: matchedSaved.id,
+                        };
+                        setUserLocation(syncedLoc);
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(syncedLoc));
+                    }
+                    return;
+                }
+            }
+            // If it's a custom pin or GPS location, preserve it as-is
+            return;
+        }
+
+        // ONLY if there is NO location set yet, initialize to customer's default address
+        const defaultSaved = customer.savedAddresses?.find(a => a.isDefault || a.id === customer.defaultAddressId) 
+                          || customer.savedAddresses?.[0];
+
+        const targetLat = defaultSaved?.latitude || customer.latitude;
+        const targetLng = defaultSaved?.longitude || customer.longitude;
+        const targetAddress = defaultSaved?.address || customer.address || '';
+        const targetName = defaultSaved?.label || defaultSaved?.tag || 'Home';
+        const isHome = defaultSaved?.tag === 'Home' || targetName === 'Home';
+
+        if (targetLat && targetLng) {
+            const targetLoc: UserLocation = {
+                latitude: targetLat,
+                longitude: targetLng,
+                addressName: targetName,
+                fullAddress: targetAddress,
+                isHome,
+                tag: defaultSaved?.tag || 'Home',
+                addressId: defaultSaved?.id,
+            };
+            setUserLocation(targetLoc);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(targetLoc));
         }
     }, [customer, isAuthLoading]);
 
@@ -131,15 +177,12 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }, [customer]);
 
     const selectSavedAddress = useCallback((addr: SavedAddress) => {
-        if (typeof window !== 'undefined') {
-            sessionStorage.removeItem(SESSION_OVERRIDE_KEY);
-        }
         const loc: UserLocation = {
             latitude: addr.latitude,
             longitude: addr.longitude,
             addressName: addr.label || addr.tag,
             fullAddress: addr.address,
-            isHome: addr.tag === 'Home',
+            isHome: addr.tag === 'Home' || addr.label === 'Home',
             tag: addr.tag,
             addressId: addr.id
         };

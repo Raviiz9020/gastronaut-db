@@ -437,6 +437,7 @@ const MenuItemCard = ({
   onAdd,
   onCustomize,
   onImageClick,
+  isHighlighted = false,
 }: {
   item: MenuItemType;
   averageRating: number;
@@ -445,6 +446,7 @@ const MenuItemCard = ({
   onAdd: (item: MenuItemType) => void;
   onCustomize: (item: MenuItemType) => void;
   onImageClick: (item: { id: string, image: string, name: string }) => void;
+  isHighlighted?: boolean;
 }) => {
   const { getCartItemCount, updateCartItemQuantity, cartItems } = useCart();
 
@@ -478,28 +480,25 @@ const MenuItemCard = ({
 
   const isShopOpen = !shopStatus || shopStatus.status === VendorStatus.OPEN;
   const isItemEffectivelyAvailable = isEffectivelyInStock && isShopOpen;
-  const hasDiscount = !!(item.isDiscountActive && item.discountPrice && item.discountPrice > 0);
+
   const discountPercentage = useMemo(() => {
     if (!item.isDiscountActive) return 0;
-
     let maxPct = 0;
-    if (item.discountPrice && item.discountPrice > 0 && item.price > 0) {
-      maxPct = Math.round(((item.price - item.discountPrice!) / item.price) * 100);
+    if (item.discountPrice && item.price > 0 && item.discountPrice < item.price) {
+      maxPct = Math.round(((item.price - item.discountPrice) / item.price) * 100);
     }
-
-    // Also check customizations for higher discounts
     item.customizations?.forEach(c => {
       c.options.forEach(o => {
-        if (o.originalPrice && o.originalPrice > o.price) {
+        if (o.originalPrice && o.price && o.originalPrice > o.price) {
           const pct = Math.round(((o.originalPrice - o.price) / o.originalPrice) * 100);
           if (pct > maxPct) maxPct = pct;
         }
       });
     });
-
     return maxPct;
   }, [item]);
 
+  const hasDiscount = !!(item.isDiscountActive && item.discountPrice && item.discountPrice > 0);
   const isCustomizable = item.customizations && item.customizations.length > 0;
   const hasMandatoryOptions = item.customizations?.some(c => Number(c.minSelect) > 0) ?? false;
 
@@ -509,14 +508,17 @@ const MenuItemCard = ({
 
   return (
     <motion.div
+      id={`menu-item-${item.id}`}
+      data-item-ids={item.id}
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="h-full"
+      className="h-full scroll-mt-24"
     >
       <Card className={cn(
         "w-full h-full flex flex-col overflow-hidden border-border/60 hover:border-primary/40 shadow-sm hover:shadow-md transition-all duration-300 rounded-3xl bg-card relative group",
-        !isItemEffectivelyAvailable && "border-border/40 bg-card/60 shadow-none hover:border-border/40"
+        !isItemEffectivelyAvailable && "border-border/40 bg-card/60 shadow-none hover:border-border/40",
+        isHighlighted && "ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg shadow-primary/20 border-primary"
       )}>
         <CardContent className="p-4 sm:p-5 relative flex-1 flex flex-col">
           <div className="flex flex-row items-stretch justify-between gap-4 flex-1">
@@ -524,6 +526,11 @@ const MenuItemCard = ({
             <div className="flex-1 flex flex-col justify-between">
               <div>
                 <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                  {isHighlighted && (
+                    <span className="bg-primary text-primary-foreground rounded-full px-2.5 py-0.5 text-[10px] font-extrabold shadow-sm flex items-center gap-1 animate-pulse">
+                      <Sparkles className="h-2.5 w-2.5 fill-current" /> Selected Pick
+                    </span>
+                  )}
                   <span className={cn(
                     "w-4 h-4 border rounded-[4px] p-[2px] flex items-center justify-center flex-shrink-0",
                     item.isVeg ? "border-green-600" : "border-red-600"
@@ -717,7 +724,8 @@ const CombinedMenuItemCard = ({
   ratingCount,
   vendor,
   onAddClick,
-  onImageClick
+  onImageClick,
+  isHighlighted = false,
 }: {
   items: MenuItemType[];
   averageRating: number;
@@ -725,6 +733,7 @@ const CombinedMenuItemCard = ({
   vendor?: Vendor;
   onAddClick: (items: MenuItemType[]) => void;
   onImageClick: (item: { id: string, image: string, name: string }) => void;
+  isHighlighted?: boolean;
 }) => {
   const primaryItem = items[0];
   const baseName = primaryItem.name.replace(/\s+(full|half)$/i, '').trim();
@@ -750,14 +759,17 @@ const CombinedMenuItemCard = ({
 
   return (
     <motion.div
+      id={`menu-item-${items[0].id}`}
+      data-item-ids={items.map(i => i.id).join(' ')}
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="h-full"
+      className="h-full scroll-mt-24"
     >
       <Card className={cn(
         "w-full h-full flex flex-col overflow-hidden border-border/60 hover:border-primary/40 shadow-sm hover:shadow-md transition-all duration-300 rounded-3xl bg-card relative group",
-        !isEffectivelyAvailable && "bg-muted/40 border-muted-foreground/10 hover:border-muted-foreground/10 shadow-none"
+        !isEffectivelyAvailable && "bg-muted/40 border-muted-foreground/10 hover:border-muted-foreground/10 shadow-none",
+        isHighlighted && "ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg shadow-primary/20 border-primary"
       )}>
         <CardContent className="p-4 sm:p-5 relative flex-1 flex flex-col">
           {!isEffectivelyAvailable && (
@@ -772,6 +784,11 @@ const CombinedMenuItemCard = ({
             <div className="flex-1 flex flex-col justify-between">
               <div>
                 <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                  {isHighlighted && (
+                    <span className="bg-primary text-primary-foreground rounded-full px-2.5 py-0.5 text-[10px] font-extrabold shadow-sm flex items-center gap-1 animate-pulse">
+                      <Sparkles className="h-2.5 w-2.5 fill-current" /> Selected Pick
+                    </span>
+                  )}
                   <span className={cn(
                     "w-4 h-4 border rounded-[4px] p-[2px] flex items-center justify-center flex-shrink-0",
                     primaryItem.isVeg ? "border-green-600" : "border-red-600"
@@ -791,7 +808,7 @@ const CombinedMenuItemCard = ({
                         }
                         item.customizations?.forEach(c => {
                           c.options.forEach(o => {
-                            if (o.originalPrice && o.originalPrice > o.price) {
+                            if (o.originalPrice && o.price && o.originalPrice > o.price) {
                               const pct = Math.round(((o.originalPrice - o.price) / o.originalPrice) * 100);
                               if (pct > maxPct) maxPct = pct;
                             }
@@ -946,6 +963,9 @@ export default function MenuPageContent() {
 
   const [portionSelectItems, setPortionSelectItems] = useState<MenuItemType[] | null>(null);
   const [deliveryChoiceForPortionSelect, setDeliveryChoiceForPortionSelect] = useState<'yes' | 'no' | null>(null);
+
+  const menuResultsRef = useRef<HTMLDivElement>(null);
+
 
   // Sync URL search and veg filter parameters to local state
   useEffect(() => {
@@ -1255,6 +1275,45 @@ export default function MenuPageContent() {
     });
   }, [menuItems, vendorsToDisplay, selectedVendor, activeTab, categoryParam, itemParam, itemSearchQuery, isFilterActive, maxPriceParam, filterMode, offersOnlyParam, offers]);
 
+  // Auto-scroll / focus into opened results when itemParam, categoryParam, or vendorCategoryParam changes
+  useEffect(() => {
+    if (!categoryParam && !itemParam && !vendorCategoryParam) return;
+    if (isFetchingItems) return;
+
+    let attempts = 0;
+    let timeoutId: NodeJS.Timeout;
+
+    const performScroll = () => {
+      attempts++;
+
+      if (itemParam) {
+        const itemEl =
+          document.getElementById(`menu-item-${itemParam}`) ||
+          document.querySelector(`[data-item-ids*="${itemParam}"]`);
+        if (itemEl) {
+          itemEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+      }
+
+      if (menuResultsRef.current) {
+        menuResultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      // If neither element is ready in DOM yet, retry up to 6 times (600ms total)
+      if (attempts < 6) {
+        timeoutId = setTimeout(performScroll, 100);
+      }
+    };
+
+    timeoutId = setTimeout(performScroll, 150);
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [categoryParam, itemParam, vendorCategoryParam, isFetchingItems, selectedVendor, menuItemsToDisplay.length]);
+
   const discountedItems = useMemo(() => {
     const approvedVendorUsernames = new Set(approvedVendors.map(v => v.username));
 
@@ -1467,6 +1526,12 @@ export default function MenuPageContent() {
 
   const handleTabChange = (tabValue: string) => {
     setActiveTab(tabValue);
+    if (menuResultsRef.current) {
+      const rect = menuResultsRef.current.getBoundingClientRect();
+      if (rect.top > 140 || rect.top < 0) {
+        menuResultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
   };
 
   const handleVendorChange = (vendorUsername: string) => {
@@ -1557,6 +1622,7 @@ export default function MenuPageContent() {
                 vendor={vendor}
                 onAddClick={() => handleCombinedItemRowClick(group)}
                 onImageClick={handleImageClick}
+                isHighlighted={Boolean(itemParam && group.some(i => i.id === itemParam))}
               />
             );
           }
@@ -1576,6 +1642,7 @@ export default function MenuPageContent() {
               onAdd={handleAddToCartWithDialogCheck}
               onCustomize={handleOpenCustomization}
               onImageClick={handleImageClick}
+              isHighlighted={Boolean(itemParam && item.id === itemParam)}
             />
           )
         })}
@@ -1740,27 +1807,33 @@ export default function MenuPageContent() {
                     type="button"
                     onClick={() => handleVendorChange('all')}
                     className={cn(
-                      "flex-shrink-0 flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl border transition-all duration-200 text-left cursor-pointer",
+                      "group flex-shrink-0 flex items-center gap-2.5 p-2.5 rounded-2xl border transition-all duration-200 text-left cursor-pointer w-[200px] sm:w-[220px] h-[74px]",
                       selectedVendor === 'all'
                         ? "bg-primary text-primary-foreground border-primary shadow-md ring-2 ring-primary/20"
                         : "bg-card hover:bg-muted/60 border-border/70 text-foreground"
                     )}
                   >
                     <div className={cn(
-                      "w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0",
+                      "w-11 h-11 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0",
                       selectedVendor === 'all'
                         ? "bg-white/20 text-white"
                         : "bg-primary/10 text-primary"
                     )}>
-                      <Building className="h-4.5 w-4.5" />
+                      <Building className="h-5 w-5" />
                     </div>
-                    <div>
-                      <p className="text-xs font-bold leading-tight whitespace-nowrap">All Stores</p>
+                    <div className="min-w-0 flex-1 flex flex-col justify-center">
+                      <p className="text-xs font-bold leading-tight truncate">All Stores</p>
                       <p className={cn(
-                        "text-[10px] leading-tight mt-0.5 whitespace-nowrap",
+                        "text-[10px] leading-tight mt-0.5 truncate",
                         selectedVendor === 'all' ? "text-primary-foreground/80" : "text-muted-foreground"
                       )}>
-                        {vendorsToDisplay.length} kitchens
+                        {vendorsToDisplay.length} kitchens nearby
+                      </p>
+                      <p className={cn(
+                        "text-[9px] font-medium mt-0.5 truncate",
+                        selectedVendor === 'all' ? "text-primary-foreground/70" : "text-muted-foreground/70"
+                      )}>
+                        Browse all dishes
                       </p>
                     </div>
                   </button>
@@ -1782,7 +1855,7 @@ export default function MenuPageContent() {
                         type="button"
                         onClick={() => handleVendorChange(isSelected ? 'all' : v.username)}
                         className={cn(
-                          "group flex-shrink-0 flex items-center gap-2.5 p-2 pr-3.5 rounded-2xl border transition-all duration-200 text-left min-w-[170px] max-w-[230px] cursor-pointer",
+                          "group flex-shrink-0 flex items-center gap-2.5 p-2.5 rounded-2xl border transition-all duration-200 text-left w-[200px] sm:w-[220px] h-[74px] cursor-pointer",
                           isSelected
                             ? "bg-primary/10 border-primary ring-2 ring-primary/20 shadow-md"
                             : "bg-card hover:bg-muted/50 border-border/70 hover:border-primary/40",
@@ -1790,46 +1863,47 @@ export default function MenuPageContent() {
                         )}
                       >
                         {/* Store Avatar Thumbnail */}
-                        <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-muted flex-shrink-0 border border-border/50">
+                        <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-muted flex-shrink-0 border border-border/50">
                           <Image
                             src={v.shopImage || v.imageUrl || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=120&auto=format&fit=crop&q=80'}
                             alt={v.shopName || v.name}
                             fill
-                            sizes="40px"
+                            sizes="44px"
                             className="object-cover group-hover:scale-105 transition-transform duration-300"
                             placeholder={v.shopImageBlur ? 'blur' : 'empty'}
                             blurDataURL={v.shopImageBlur}
                           />
                           {/* Live Status indicator dot */}
                           <span className={cn(
-                            "absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full ring-1 ring-white dark:ring-zinc-900",
+                            "absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full ring-1 ring-white dark:ring-zinc-900",
                             isShopOpen ? "bg-emerald-500" : "bg-zinc-400"
                           )} />
                         </div>
 
                         {/* Store Info */}
-                        <div className="min-w-0 flex-1">
-                          <h4 className={cn(
-                            "text-xs font-bold truncate leading-tight",
-                            isSelected ? "text-primary font-extrabold" : "text-foreground group-hover:text-primary"
-                          )}>
+                        <div className="min-w-0 flex-1 flex flex-col justify-center">
+                          <h4
+                            className={cn(
+                              "text-xs font-bold leading-tight line-clamp-2",
+                              isSelected ? "text-primary font-extrabold" : "text-foreground group-hover:text-primary"
+                            )}
+                            title={v.shopName || undefined}
+                          >
                             {v.shopName}
                           </h4>
-                          <p className="text-[10px] text-muted-foreground truncate leading-tight mt-0.5">
-                            {v.category || 'Kitchen'}
-                          </p>
-                          <div className="flex items-center gap-1.5 mt-1 text-[9px] font-semibold text-muted-foreground">
+                          <div className="flex items-center gap-1 mt-0.5 text-[10px] text-muted-foreground truncate">
+                            <span className="truncate max-w-[65px]">{v.category || 'Kitchen'}</span>
                             {avgRating ? (
-                              <span className="flex items-center gap-0.5 text-amber-600 dark:text-amber-400 font-bold">
+                              <span className="flex items-center gap-0.5 text-amber-600 dark:text-amber-400 font-bold shrink-0">
                                 <Star className="h-2.5 w-2.5 fill-amber-500 text-amber-500" />
                                 {avgRating.toFixed(1)}
                               </span>
                             ) : null}
                             {distance !== null && (
-                              <span>• {distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance.toFixed(1)}km`}</span>
+                              <span className="shrink-0">• {distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance.toFixed(1)}km`}</span>
                             )}
                             {!isShopOpen && (
-                              <span className="text-red-500 font-bold">• Closed</span>
+                              <span className="text-red-500 font-bold shrink-0">• Closed</span>
                             )}
                           </div>
                         </div>
@@ -2056,6 +2130,7 @@ export default function MenuPageContent() {
                             onAdd={handleAddToCartWithDialogCheck}
                             onCustomize={handleOpenCustomization}
                             onImageClick={handleImageClick}
+                            isHighlighted={Boolean(itemParam && item.id === itemParam)}
                           />
                         );
                       })}
@@ -2066,7 +2141,7 @@ export default function MenuPageContent() {
             ) : isFetchingItems ? (
               <div className="text-center py-8"><Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /></div>
             ) : (menuItemsToDisplay.length > 0 || matchingVendors.length > 0) ? (
-              <>
+              <div ref={menuResultsRef} id="menu-results-section" className="scroll-mt-20 sm:scroll-mt-24">
                 {/* ── MATCHING KITCHENS IN SEARCH ───────────────────────────────── */}
                 {isSearching && matchingVendors.length > 0 && (
                   <div className="mb-6 p-3.5 sm:p-4 rounded-3xl bg-card border border-border/80 shadow-sm space-y-3">
@@ -2307,7 +2382,7 @@ export default function MenuPageContent() {
                     <p className="text-[11px] text-primary font-medium">Click on a kitchen above to view their full menu.</p>
                   </div>
                 ) : null}
-              </>
+              </div>
             ) : (
               <div className="text-center py-16 flex flex-col items-center gap-4 bg-card/50 rounded-lg">
                 <Utensils className="h-16 w-16 text-muted-foreground" />
