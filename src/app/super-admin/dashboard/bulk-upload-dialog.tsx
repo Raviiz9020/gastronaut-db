@@ -195,6 +195,7 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
   // Multi-step modal state
   const [step, setStep] = useState<'upload' | 'ai-confirm' | 'ai-generating'>('upload');
   const [localPendingItems, setLocalPendingItems] = useState<QueuedDishItem[]>([]);
+  const [createdCategories, setCreatedCategories] = useState<string[]>([]);
   const [selectedModel, setSelectedModel] = useState<SupportedImageModel>('gemini-2.5-flash-image');
 
   const vendorCategories = useMemo(() => {
@@ -270,6 +271,11 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
 
         const batch = writeBatch(db);
         let successfulUploads = 0;
+        const existingCategoryNames = new Set(
+          allCategories.map((c) => c.name.trim().toLowerCase())
+        );
+        const newCategoriesToCreate = new Map<string, string>(); // slug -> display name
+
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
           if (row.length === 0 || (row.length === 1 && !row[0].trim())) continue;
@@ -287,6 +293,17 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
             errors.push(`Row ${rowNum}: Missing mandatory field(s). Skipping.`);
             continue;
           }
+
+          // Track new categories to auto-register into global taxonomy
+          const trimmedCategory = categoryStr.trim();
+          const lowerCategory = trimmedCategory.toLowerCase();
+          if (!existingCategoryNames.has(lowerCategory)) {
+            const catSlug = createSlug(trimmedCategory);
+            if (!newCategoriesToCreate.has(catSlug)) {
+              newCategoriesToCreate.set(catSlug, trimmedCategory);
+            }
+          }
+
           let parsedPrice = parseFloat(priceStr);
           let parsedDiscountPrice = discountPriceStr ? parseFloat(discountPriceStr) : undefined;
           let isDiscountActive = false;
@@ -316,9 +333,29 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
           successfulUploads++;
           newItemsToQueue.push({ docId, name, category: categoryStr, description: description || '', vendorUsername: vendor.username, status: 'queued' });
         }
+
+        // Auto-persist newly discovered categories into global categories collection
+        const newlyAddedCategoriesList: string[] = [];
+        newCategoriesToCreate.forEach((displayName, catSlug) => {
+          const catDocId = `global-${catSlug}`;
+          const catRef = doc(db, 'categories', catDocId);
+          batch.set(
+            catRef,
+            {
+              name: displayName,
+              shopName: 'global',
+              vendorCategory: vendor.category || 'all',
+              aiHint: displayName,
+            },
+            { merge: true }
+          );
+          newlyAddedCategoriesList.push(displayName);
+        });
+
         if (successfulUploads > 0) await batch.commit();
         if (successfulUploads > 0) {
           setLocalPendingItems(newItemsToQueue);
+          setCreatedCategories(newlyAddedCategoriesList);
           setStep('ai-confirm');
         } else {
           toast({
@@ -349,6 +386,7 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
       setStep('upload');
       setSelectedFile(null);
       setLocalPendingItems([]);
+      setCreatedCategories([]);
       setUploadErrors([]);
     }, 300);
   };
@@ -461,6 +499,11 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
               </div>
               <DialogDescription>
                 <strong>{localPendingItems.length} items</strong> have been added to {vendor?.shopName}'s menu.
+                {createdCategories.length > 0 && (
+                  <span className="block mt-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                    ✓ Registered {createdCategories.length} new global categories: {createdCategories.join(', ')}
+                  </span>
+                )}
               </DialogDescription>
             </DialogHeader>
 
