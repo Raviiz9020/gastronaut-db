@@ -150,7 +150,7 @@ const PopularPickItemCard = ({
 
   return (
     <div className="w-40 sm:w-44 shrink-0 snap-start">
-      <Link href={getItemUrl(item)} passHref>
+      <Link href={getItemUrl(item)} prefetch={true} passHref>
         <Card className={cn(
           "flex flex-col overflow-hidden rounded-2xl border border-border/60 hover:border-primary/40 bg-card shadow-xs hover:shadow-md transition-all duration-300 h-full group relative",
           !isEffectivelyAvailable && "opacity-60 grayscale-[30%]"

@@ -287,7 +287,7 @@ const PopularPickItemCard = ({
 
   return (
     <div className="h-full select-none">
-      <Link href={getItemUrl(item)} passHref>
+      <Link href={getItemUrl(item)} prefetch={true} passHref>
         <Card className={cn(
           "rounded-2xl overflow-hidden group h-full flex flex-col text-left bg-card/70 hover:bg-card border border-border/50 shadow-xs hover:shadow-md transition-all duration-200",
           !isItemEffectivelyAvailable && "opacity-65 grayscale-[25%]"
@@ -1301,13 +1301,13 @@ export default function MenuPageContent() {
         return;
       }
 
-      // If neither element is ready in DOM yet, retry up to 6 times (600ms total)
+      // If neither element is ready in DOM yet, retry up to 6 times
       if (attempts < 6) {
-        timeoutId = setTimeout(performScroll, 100);
+        timeoutId = setTimeout(performScroll, 50);
       }
     };
 
-    timeoutId = setTimeout(performScroll, 150);
+    timeoutId = setTimeout(performScroll, 40);
 
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
@@ -1802,42 +1802,6 @@ export default function MenuPageContent() {
                 </div>
 
                 <div className="flex items-center gap-2.5 overflow-x-auto pb-2 pt-1 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
-                  {/* "All Stores" Card */}
-                  <button
-                    type="button"
-                    onClick={() => handleVendorChange('all')}
-                    className={cn(
-                      "group flex-shrink-0 flex items-center gap-2.5 p-2.5 rounded-2xl border transition-all duration-200 text-left cursor-pointer w-[200px] sm:w-[220px] h-[74px]",
-                      selectedVendor === 'all'
-                        ? "bg-primary text-primary-foreground border-primary shadow-md ring-2 ring-primary/20"
-                        : "bg-card hover:bg-muted/60 border-border/70 text-foreground"
-                    )}
-                  >
-                    <div className={cn(
-                      "w-11 h-11 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0",
-                      selectedVendor === 'all'
-                        ? "bg-white/20 text-white"
-                        : "bg-primary/10 text-primary"
-                    )}>
-                      <Building className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0 flex-1 flex flex-col justify-center">
-                      <p className="text-xs font-bold leading-tight truncate">All Stores</p>
-                      <p className={cn(
-                        "text-[10px] leading-tight mt-0.5 truncate",
-                        selectedVendor === 'all' ? "text-primary-foreground/80" : "text-muted-foreground"
-                      )}>
-                        {vendorsToDisplay.length} kitchens nearby
-                      </p>
-                      <p className={cn(
-                        "text-[9px] font-medium mt-0.5 truncate",
-                        selectedVendor === 'all' ? "text-primary-foreground/70" : "text-muted-foreground/70"
-                      )}>
-                        Browse all dishes
-                      </p>
-                    </div>
-                  </button>
-
                   {/* Individual Vendor Cards */}
                   {vendorsToDisplay.map((v) => {
                     const isSelected = selectedVendor === v.username;
@@ -1859,7 +1823,7 @@ export default function MenuPageContent() {
                           isSelected
                             ? "bg-primary/10 border-primary ring-2 ring-primary/20 shadow-md"
                             : "bg-card hover:bg-muted/50 border-border/70 hover:border-primary/40",
-                          !isShopOpen && "opacity-65 grayscale-[25%]"
+                          !isShopOpen && "opacity-60 grayscale-[25%]"
                         )}
                       >
                         {/* Store Avatar Thumbnail */}
@@ -1910,6 +1874,42 @@ export default function MenuPageContent() {
                       </button>
                     );
                   })}
+
+                  {/* "All Kitchens / Stores" Card (shown at the end) */}
+                  <button
+                    type="button"
+                    onClick={() => handleVendorChange('all')}
+                    className={cn(
+                      "group flex-shrink-0 flex items-center gap-2.5 p-2.5 rounded-2xl border transition-all duration-200 text-left cursor-pointer w-[200px] sm:w-[220px] h-[74px]",
+                      selectedVendor === 'all'
+                        ? "bg-primary text-primary-foreground border-primary shadow-md ring-2 ring-primary/20"
+                        : "bg-card hover:bg-muted/60 border-border/70 text-foreground"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-11 h-11 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0",
+                      selectedVendor === 'all'
+                        ? "bg-white/20 text-white"
+                        : "bg-primary/10 text-primary"
+                    )}>
+                      <Building className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1 flex flex-col justify-center">
+                      <p className="text-xs font-bold leading-tight truncate">All Kitchens</p>
+                      <p className={cn(
+                        "text-[10px] leading-tight mt-0.5 truncate",
+                        selectedVendor === 'all' ? "text-primary-foreground/80" : "text-muted-foreground"
+                      )}>
+                        {vendorsToDisplay.length} kitchens nearby
+                      </p>
+                      <p className={cn(
+                        "text-[9px] font-medium mt-0.5 truncate",
+                        selectedVendor === 'all' ? "text-primary-foreground/70" : "text-muted-foreground/70"
+                      )}>
+                        Browse all dishes
+                      </p>
+                    </div>
+                  </button>
                 </div>
               </div>
             )}
