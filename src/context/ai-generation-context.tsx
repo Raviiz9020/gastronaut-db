@@ -88,7 +88,7 @@ export function AiGenerationProvider({ children }: { children: React.ReactNode }
           let retries = 0;
           let success = false;
 
-          while (!success && retries < 2 && !isCancelledRef.current) {
+          while (!success && retries < 3 && !isCancelledRef.current) {
             try {
               console.log(`[AI Gen] Step 1: Requesting image for "${dish.name}" (Model: ${model})...`);
               const response = await fetch('/api/ai/generate-menu-image', {
@@ -105,12 +105,18 @@ export function AiGenerationProvider({ children }: { children: React.ReactNode }
               if (!response.ok) {
                 const errData = await response.json().catch(() => ({}));
                 const errMsg = errData?.error || `API returned status ${response.status}`;
+
                 if (response.status === 429) {
-                  console.warn(`[AI Gen] Rate limit on "${dish.name}". Backing off 6s...`);
-                  await waitMs(6000);
+                  // Rate limit: back off and retry (up to 3 times total)
+                  const backoffMs = 6000 * (retries + 1); // 6s, 12s, 18s
+                  console.warn(`[AI Gen] Rate limit on "${dish.name}". Backing off ${backoffMs / 1000}s... (attempt ${retries + 1}/3)`);
+                  await waitMs(backoffMs);
                   retries++;
                   continue;
                 }
+
+                // Non-retryable error (500, 503, 400, etc.) — fail immediately, do NOT retry
+                console.error(`[AI Gen] Non-retryable error for "${dish.name}" (${response.status}): ${errMsg}`);
                 throw new Error(errMsg);
               }
 
@@ -154,27 +160,25 @@ export function AiGenerationProvider({ children }: { children: React.ReactNode }
               console.log(`[AI Gen] ✅ Success for "${dish.name}"`);
               success = true;
             } catch (err: any) {
+              // Mark as failed immediately (no retry for non-429 errors)
               console.error(`[AI Gen Failure for "${dish.name}"]`, err);
-              retries++;
-              if (retries >= 2) {
-                const message = err?.message || 'Generation failed';
-                setQueuedItems((prev) =>
-                  prev.map((it) =>
-                    it.docId === dish.docId
-                      ? { ...it, status: 'failed', error: message }
-                      : it
-                  )
-                );
-                toast({
-                  title: `Failed: ${dish.name}`,
-                  description: message,
-                  variant: 'destructive',
-                });
-              } else {
-                await waitMs(2000);
-              }
+              const message = err?.message || 'Generation failed';
+              setQueuedItems((prev) =>
+                prev.map((it) =>
+                  it.docId === dish.docId
+                    ? { ...it, status: 'failed', error: message }
+                    : it
+                )
+              );
+              toast({
+                title: `Failed: ${dish.name}`,
+                description: message,
+                variant: 'destructive',
+              });
+              break; // Exit retry loop immediately on non-retryable error
             }
           }
+
         })
       );
 

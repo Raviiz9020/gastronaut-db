@@ -18,7 +18,6 @@ import {
   Upload,
   FileText,
   Download,
-  ListChecks,
   AlertTriangle,
   Sparkles,
   CheckCircle2,
@@ -42,7 +41,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { compressImage, uploadImageToStorage } from '@/lib/client-utils';
-import { SUPPORTED_AI_IMAGE_MODELS, SupportedImageModel } from '@/lib/ai/menu-image-prompt';
+import { SUPPORTED_AI_IMAGE_MODELS, SupportedImageModel, MODEL_COST_PER_IMAGE } from '@/lib/ai/menu-image-prompt';
 import { useAiGeneration, QueuedDishItem } from '@/context/ai-generation-context';
 
 interface BulkUploadDialogProps {
@@ -197,6 +196,8 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
   const [localPendingItems, setLocalPendingItems] = useState<QueuedDishItem[]>([]);
   const [createdCategories, setCreatedCategories] = useState<string[]>([]);
   const [selectedModel, setSelectedModel] = useState<SupportedImageModel>('gemini-2.5-flash-image');
+  const [duplicateSkipped, setDuplicateSkipped] = useState<string[]>([]);
+  const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
 
   const vendorCategories = useMemo(() => {
     if (!vendor) return [];
@@ -276,6 +277,15 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
         );
         const newCategoriesToCreate = new Map<string, string>(); // slug -> display name
 
+        // --- Duplicate detection: fetch all existing item names for this vendor (one query) ---
+        const existingItemsSnap = await getDocs(
+          query(collection(db, 'menuItems'), where('vendorUsername', '==', vendor.username))
+        );
+        const existingItemNames = new Set(
+          existingItemsSnap.docs.map((d) => (d.data().name as string)?.trim().toLowerCase())
+        );
+        const duplicates: string[] = [];
+
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
           if (row.length === 0 || (row.length === 1 && !row[0].trim())) continue;
@@ -291,6 +301,12 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
           const customizationsStr = customizationsIndex !== -1 ? row[customizationsIndex]?.trim() : '';
           if (!name || !priceStr || !categoryStr) {
             errors.push(`Row ${rowNum}: Missing mandatory field(s). Skipping.`);
+            continue;
+          }
+
+          // Skip if item with same name already exists for this vendor
+          if (existingItemNames.has(name.trim().toLowerCase())) {
+            duplicates.push(name);
             continue;
           }
 
@@ -352,11 +368,18 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
           newlyAddedCategoriesList.push(displayName);
         });
 
+        setDuplicateSkipped(duplicates);
         if (successfulUploads > 0) await batch.commit();
         if (successfulUploads > 0) {
           setLocalPendingItems(newItemsToQueue);
           setCreatedCategories(newlyAddedCategoriesList);
           setStep('ai-confirm');
+        } else if (duplicates.length > 0 && successfulUploads === 0) {
+          toast({
+            title: `All ${duplicates.length} items already exist`,
+            description: 'No new items were added. See the duplicate list below.',
+            variant: 'destructive',
+          });
         } else {
           toast({
             title: 'No Items Added',
@@ -388,6 +411,7 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
       setLocalPendingItems([]);
       setCreatedCategories([]);
       setUploadErrors([]);
+      setDuplicateSkipped([]);
     }, 300);
   };
 
@@ -403,48 +427,43 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
         {/* STEP 1: CSV FILE UPLOAD */}
         {step === 'upload' && (
           <>
-            <DialogHeader>
-              <DialogTitle>Bulk Upload Menu for {vendor?.shopName}</DialogTitle>
-              <DialogDescription>
-                Upload a CSV file with columns: `name`, `price`, `discountPrice`, `category`, `description`, `isVeg`, `stock`, `isPopular`, `customizations`.
-              </DialogDescription>
+            <DialogHeader className="pb-2">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <Upload className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base">Bulk Menu Upload</DialogTitle>
+                  <DialogDescription className="text-xs mt-0.5">
+                    {vendor?.shopName}
+                  </DialogDescription>
+                </div>
+              </div>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="p-4 border rounded-2xl space-y-3">
-                <h4 className="font-semibold text-sm flex items-center gap-2">
-                  <ListChecks className="h-4 w-4" /> Available Categories
-                </h4>
-                <p className="text-xs text-muted-foreground">
-                  Copy and paste these category names, or type new ones to auto-create them.
-                </p>
-                <ScrollArea className="h-20">
-                  <div className="flex flex-wrap gap-2">
-                    {vendorCategories.map((cat) => (
-                      <div
-                        key={cat}
-                        className="bg-muted text-muted-foreground text-xs font-mono p-1 px-2 rounded-md"
-                      >
-                        {cat}
-                      </div>
-                    ))}
+
+            {/* Step indicators */}
+            <div className="flex items-center gap-2 py-1">
+              {['Upload CSV', 'AI Photos', 'Processing'].map((label, i) => (
+                <div key={label} className="flex items-center gap-2 flex-1">
+                  <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                    i === 0 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {i + 1}
                   </div>
-                </ScrollArea>
-              </div>
+                  <span className={`text-[11px] font-medium ${
+                    i === 0 ? 'text-foreground' : 'text-muted-foreground'
+                  }`}>{label}</span>
+                  {i < 2 && <div className="flex-1 h-px bg-border" />}
+                </div>
+              ))}
+            </div>
 
-              <div className="p-3 border border-dashed rounded-2xl space-y-1 bg-muted/25">
-                <h4 className="font-semibold text-xs flex items-center gap-2 text-primary">
-                  Customizations Syntax (Optional)
-                </h4>
-                <code className="block text-[10px] bg-slate-900 text-slate-100 p-2 rounded-md font-mono whitespace-normal break-all">
-                  Portion|SINGLE|1|Half:60,Full:120;Add-ons|MULTI|0|Extra cheese:20
-                </code>
-              </div>
-
-              <Button variant="outline" size="sm" onClick={handleDownloadTemplate} className="w-full">
-                <Download className="mr-2 h-4 w-4" /> Download Template
-              </Button>
-
-              <div className="space-y-2">
+            <div className="space-y-3">
+              {/* Drop zone */}
+              <div
+                className="relative border-2 border-dashed border-border hover:border-primary/60 transition-colors rounded-2xl p-6 text-center cursor-pointer group bg-muted/20 hover:bg-primary/5"
+                onClick={() => fileInputRef.current?.click()}
+              >
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -452,39 +471,118 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
                   onChange={handleFileChange}
                   className="hidden"
                 />
-                <Button
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full"
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  {selectedFile ? selectedFile.name : 'Choose CSV File'}
-                </Button>
+                {selectedFile ? (
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                      <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-foreground">{selectedFile.name}</p>
+                      <p className="text-xs text-muted-foreground">{(selectedFile.size / 1024).toFixed(1)} KB · Click to change</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="h-12 w-12 rounded-2xl bg-muted mx-auto flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                      <FileText className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Drop your CSV file here</p>
+                      <p className="text-xs text-muted-foreground mt-1">or click to browse · Columns: name, price, category, description, isVeg, stock, isPopular, customizations</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
+              {/* Download template link */}
+              <button
+                onClick={handleDownloadTemplate}
+                className="w-full flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors py-1"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Download sample CSV template
+              </button>
+
+              {/* Upload errors */}
               {uploadErrors.length > 0 && (
-                <div className="p-3 border border-destructive/50 bg-destructive/10 rounded-2xl space-y-2 max-h-32 overflow-y-auto">
-                  <h4 className="font-semibold text-xs text-destructive">
-                    <AlertTriangle className="h-4 w-4" /> Upload Warnings
-                  </h4>
-                  <ul className="list-disc pl-5 space-y-1 text-xs text-destructive/90">
-                    {uploadErrors.map((error, index) => (
-                      <li key={index}>{error}</li>
+                <div className="p-3 border border-destructive/40 bg-destructive/8 rounded-xl space-y-1.5">
+                  <p className="text-xs font-semibold text-destructive flex items-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5" /> {uploadErrors.length} row warning{uploadErrors.length > 1 ? 's' : ''}
+                  </p>
+                  <ul className="space-y-0.5 max-h-20 overflow-y-auto">
+                    {uploadErrors.map((error, i) => (
+                      <li key={i} className="text-[11px] text-destructive/80">{error}</li>
                     ))}
                   </ul>
                 </div>
               )}
+
+              {/* Duplicate banner — triggers modal */}
+              {duplicateSkipped.length > 0 && (
+                <button
+                  onClick={() => setIsDuplicateModalOpen(true)}
+                  className="w-full flex items-center justify-between p-3 rounded-xl border border-amber-500/40 bg-amber-500/8 hover:bg-amber-500/15 transition-colors group text-left"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-8 w-8 rounded-lg bg-amber-500/15 flex items-center justify-center shrink-0">
+                      <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                        {duplicateSkipped.length} item{duplicateSkipped.length > 1 ? 's' : ''} skipped — already in menu
+                      </p>
+                      <p className="text-[11px] text-amber-600/80 dark:text-amber-500/80">Tap to see which items were skipped</p>
+                    </div>
+                  </div>
+                  <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium group-hover:underline shrink-0">View →</span>
+                </button>
+              )}
             </div>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button variant="outline" onClick={handleDialogClose}>
-                Close
+
+            <DialogFooter className="gap-2 pt-2">
+              <Button variant="ghost" onClick={handleDialogClose} className="text-muted-foreground">
+                Cancel
               </Button>
-              <Button onClick={handleUpload} disabled={!selectedFile || isUploading}>
-                {isUploading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Upload className="mr-2 h-4 w-4" />}
-                {isUploading ? 'Uploading...' : `Upload Menu`}
+              <Button onClick={handleUpload} disabled={!selectedFile || isUploading} className="gap-2">
+                {isUploading ? <Loader2 className="animate-spin h-4 w-4" /> : <Upload className="h-4 w-4" />}
+                {isUploading ? 'Uploading...' : 'Upload Menu'}
               </Button>
             </DialogFooter>
           </>
+        )}
+
+        {/* DUPLICATE ITEMS MODAL */}
+        {isDuplicateModalOpen && (
+          <Dialog open={isDuplicateModalOpen} onOpenChange={setIsDuplicateModalOpen}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="h-5 w-5 text-amber-500" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-base">Duplicate Items Skipped</DialogTitle>
+                    <DialogDescription className="text-xs mt-0.5">
+                      {duplicateSkipped.length} item{duplicateSkipped.length > 1 ? 's' : ''} already exist in this vendor's menu and were not added again.
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+              <ScrollArea className="max-h-64 pr-2">
+                <div className="space-y-1.5 py-1">
+                  {duplicateSkipped.map((name, i) => (
+                    <div key={i} className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/50 border">
+                      <div className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+                      <span className="text-sm font-medium text-foreground">{name}</span>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+              <DialogFooter>
+                <Button onClick={() => setIsDuplicateModalOpen(false)} className="w-full">Got it</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         )}
 
         {/* STEP 2: AI CONFIRMATION PROMPT */}
@@ -531,7 +629,10 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
                     <SelectContent>
                       {SUPPORTED_AI_IMAGE_MODELS.map((m) => (
                         <SelectItem key={m.id} value={m.id}>
-                          {m.name}
+                          <span className="flex items-center justify-between w-full gap-4">
+                            <span>{m.name}</span>
+                            <span className="text-xs font-mono text-muted-foreground ml-auto shrink-0">{m.cost}</span>
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -546,13 +647,23 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
                 </div>
                 <div className="p-3 bg-muted/40 rounded-xl border">
                   <span className="text-muted-foreground block">Estimated Total Cost</span>
-                  <span className="font-bold text-sm text-emerald-600 dark:text-emerald-400">
-                    ~₹{(localPendingItems.length * (selectedModel.includes('flash') ? 1.2 : 2.5)).toFixed(1)}
+                  <span className="font-bold text-sm text-amber-600 dark:text-amber-400">
+                    ~₹{(localPendingItems.length * MODEL_COST_PER_IMAGE[selectedModel]).toFixed(0)}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    ({MODEL_COST_PER_IMAGE[selectedModel].toFixed(1)} × {localPendingItems.length} items)
                   </span>
                 </div>
               </div>
             </div>
 
+            <div className="px-1 py-2 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>
+                <strong>Cost Warning:</strong> Generating images for {localPendingItems.length} dishes will cost approximately{' '}
+                <strong>₹{(localPendingItems.length * MODEL_COST_PER_IMAGE[selectedModel]).toFixed(0)}</strong> at current Google API pricing ({MODEL_COST_PER_IMAGE[selectedModel].toFixed(1)}/image). This cannot be undone.
+              </span>
+            </div>
             <DialogFooter className="flex flex-col sm:flex-row gap-2">
               <Button variant="ghost" onClick={handleDialogClose} className="text-muted-foreground">
                 Skip for Now

@@ -19,10 +19,20 @@ export function buildDishImagePrompt(dishName: string, category?: string, descri
   );
 }
 
+// Actual Google API pricing per image (updated Sep 2026).
+// gemini-2.5-flash-image / gemini-3.1-flash-image → $0.039/image ≈ ₹3.30–₹3.50
+// gemini-3-pro-image (Pro tier) → ~$0.075/image ≈ ₹6.00–₹7.00
 export const SUPPORTED_AI_IMAGE_MODELS = [
-  { id: 'gemini-2.5-flash-image', name: 'Gemini 2.5 Flash Image (Fast & Economical)', cost: '~₹1.20' },
-  { id: 'gemini-3.1-flash-image', name: 'Gemini 3.1 Flash Image (Latest)', cost: '~₹1.65' },
-  { id: 'gemini-3-pro-image', name: 'Gemini 3 Pro Image (Ultra HD Studio)', cost: '~₹2.50' },
+  { id: 'gemini-2.5-flash-image', name: 'Gemini 2.5 Flash Image (Fast & Economical)', cost: '~₹3.50/image' },
+  { id: 'gemini-3.1-flash-image', name: 'Gemini 3.1 Flash Image (Latest)', cost: '~₹3.50/image' },
+  { id: 'gemini-3-pro-image', name: 'Gemini 3 Pro Image (Ultra HD Studio)', cost: '~₹6.50/image' },
 ] as const;
 
 export type SupportedImageModel = typeof SUPPORTED_AI_IMAGE_MODELS[number]['id'];
+
+/** Per-image cost in INR (₹) based on actual Google API pricing. Use for cost estimation in UI. */
+export const MODEL_COST_PER_IMAGE: Record<SupportedImageModel, number> = {
+  'gemini-2.5-flash-image': 3.5,
+  'gemini-3.1-flash-image': 3.5,
+  'gemini-3-pro-image': 6.5,
+};
