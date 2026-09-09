@@ -16,7 +16,7 @@ import { useCart } from '@/context/cart-context';
 import { useOrder } from '@/context/order-context';
 import { useCustomer } from '@/context/customer-context';
 import { useLocation } from '@/context/location-context';
-import { useAppContext } from '@/app/layout';
+import { useAppContext } from '@/context/app-context';
 import { useState, useMemo, useEffect } from 'react';
 import type { DeliveryOption, Vendor, SavedAddress, Customer } from '@/types';
 import { cn, createSlug } from '@/lib/utils';

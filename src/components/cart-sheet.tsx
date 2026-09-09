@@ -19,7 +19,7 @@ import { Trash2, Rocket, Plus, Minus, Info, Building, Bike, Home, MessageSquare,
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useCustomer } from '@/context/customer-context';
-import { useAppContext } from '@/app/layout';
+import { useAppContext } from '@/context/app-context';
 import { useMemo, useState, useEffect, useTransition } from 'react';
 import { cn } from '@/lib/utils';
 import { calculateFeeSavings } from '@/lib/savings-utils';

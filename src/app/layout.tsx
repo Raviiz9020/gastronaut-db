@@ -1,97 +1,29 @@
-
-'use client';
-
 import type { Metadata } from 'next';
 import Script from 'next/script';
-import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
-import { CartProvider } from '@/context/cart-context';
-import { OrderProvider } from '@/context/order-context';
-import { cn } from '@/lib/utils';
-import { usePathname } from 'next/navigation';
-import { CustomerProvider, useCustomer } from '@/context/customer-context';
-import { MenuProvider } from '@/context/menu-context';
-import { DeliveryProvider } from '@/context/delivery-context';
-import { VendorProvider, useVendor } from '@/context/vendor-context';
-import { SuperAdminProvider } from '@/context/super-admin-context';
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import OrderPlacedDialog from '@/components/order-placed-dialog';
-import { VendorCategoryProvider } from '@/context/vendor-category-context';
-import { OfferProvider } from '@/context/offer-context';
-import { RiderProvider, useRider } from '@/context/rider-context';
-import { SiteReviewProvider } from '@/context/site-review-context';
-import { SpecialMenuProvider } from '@/context/special-menu-context';
-import { SiteSettingsProvider } from '@/context/site-settings-context';
-import { ExpenseProvider } from '@/context/expense-context';
-import { ExpenseCategoryProvider } from '@/context/expense-category-context';
-import { RiderManagementProvider } from '@/context/rider-management-context';
-import { Loader2 } from 'lucide-react';
-import type { Customer } from '@/types';
-import { LocationProvider } from '@/context/location-context';
-import MobileBottomNav from '@/components/mobile-bottom-nav';
-
-// Create a context for the dialog
-interface AppContextType {
-  isOrderPlacedDialogOpen: boolean;
-  showOrderPlacedDialog: () => void;
-  closeOrderPlacedDialog: () => void;
-}
-
-const AppContext = createContext<AppContextType | undefined>(undefined);
-
-export const useAppContext = () => {
-  const context = useContext(AppContext);
-  if (!context) {
-    throw new Error('useAppContext must be used within an AppProvider');
-  }
-  return context;
-};
-
+import ClientLayout from './client-layout';
 
 const GA_MEASUREMENT_ID =
   process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ||
   process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID ||
   'G-TWDTCQ04E5';
 
-// We need to wrap the layout content in a client component to use usePathname
-function LayoutContent({ children }: { children: React.ReactNode }) {
-  const [isOrderPlacedDialogOpen, setIsOrderPlacedDialogOpen] = useState(false);
-  const { setCurrentCustomer } = useCustomer();
-  const pathname = usePathname();
-
-  useEffect(() => {
-    if (pathname && typeof window !== 'undefined' && (window as any).gtag && GA_MEASUREMENT_ID) {
-      (window as any).gtag('config', GA_MEASUREMENT_ID, {
-        page_path: pathname,
-      });
-    }
-  }, [pathname]);
-
-  const showOrderPlacedDialog = () => setIsOrderPlacedDialogOpen(true);
-  const closeOrderPlacedDialog = () => setIsOrderPlacedDialogOpen(false);
-
-  return (
-     <AppContext.Provider value={{ isOrderPlacedDialogOpen, showOrderPlacedDialog, closeOrderPlacedDialog }}>
-        <OrderProvider setCurrentCustomer={setCurrentCustomer}>
-            <div className="flex-1 flex flex-col pb-16 lg:pb-0">
-                <main className={cn("flex-1 flex flex-col")}>
-                {children}
-                </main>
-            </div>
-            <MobileBottomNav />
-            <OrderPlacedDialog isOpen={isOrderPlacedDialogOpen} onOpenChange={setIsOrderPlacedDialogOpen} />
-        </OrderProvider>
-    </AppContext.Provider>
-  );
-}
-
+export const metadata: Metadata = {
+  title: {
+    template: '%s | HyperDelivery',
+    default: 'HyperDelivery – Order Food Online',
+  },
+  description: 'Order food from your favourite local restaurants on HyperDelivery.',
+  icons: {
+    icon: '/icon.svg',
+  },
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
   return (
     <html lang="en">
       <head>
@@ -122,6 +54,7 @@ export default function RootLayout({
                   gtag('js', new Date());
                   gtag('config', '${GA_MEASUREMENT_ID}', {
                     page_path: window.location.pathname,
+                    page_title: 'HyperDelivery – Order Food Online',
                   });
                 `,
               }}
@@ -130,40 +63,7 @@ export default function RootLayout({
         )}
       </head>
       <body className="font-body antialiased">
-        <SuperAdminProvider>
-          <CustomerProvider>
-            <LocationProvider>
-                <VendorProvider>
-                    <RiderProvider>
-                    <RiderManagementProvider>
-                    <SiteSettingsProvider>
-                    <VendorCategoryProvider>
-                    <ExpenseCategoryProvider>
-                    <OfferProvider>
-                    <SiteReviewProvider>
-                    <SpecialMenuProvider>
-                    <MenuProvider>
-                        <DeliveryProvider>
-                        <ExpenseProvider>
-                        <CartProvider>
-                            <LayoutContent>{children}</LayoutContent>
-                            <Toaster />
-                        </CartProvider>
-                        </ExpenseProvider>
-                        </DeliveryProvider>
-                    </MenuProvider>
-                    </SpecialMenuProvider>
-                    </SiteReviewProvider>
-                    </OfferProvider>
-                    </ExpenseCategoryProvider>
-                    </VendorCategoryProvider>
-                    </SiteSettingsProvider>
-                    </RiderManagementProvider>
-                    </RiderProvider>
-                </VendorProvider>
-            </LocationProvider>
-          </CustomerProvider>
-        </SuperAdminProvider>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );
