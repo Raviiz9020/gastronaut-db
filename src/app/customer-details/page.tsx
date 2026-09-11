@@ -27,216 +27,217 @@ import { cn } from '@/lib/utils';
 
 
 const GoogleIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="h-5 w-5">
-        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
-        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
-        <path fill="none" d="M0 0h48v48H0z"></path>
-    </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="h-5 w-5">
+    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
+    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+    <path fill="none" d="M0 0h48v48H0z"></path>
+  </svg>
 );
 
 const TermsDialog = ({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChange: (open: boolean) => void }) => {
-    return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-3xl rounded-2xl">
-                <Tabs defaultValue="terms" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 rounded-full">
-                        <TabsTrigger value="terms" className="rounded-full">Terms of Service</TabsTrigger>
-                        <TabsTrigger value="privacy" className="rounded-full">Privacy Policy</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="terms">
-                        <DialogHeader>
-                            <DialogTitle className="text-2xl">Terms of Service</DialogTitle>
-                            <DialogDescription>Effective Date: March 11, 2026</DialogDescription>
-                        </DialogHeader>
-                        <ScrollArea className="h-[50vh] pr-4 mt-4">
-                            <div className="prose prose-sm dark:prose-invert">
-                                <p>Welcome to HyperDelivery. These Terms of Service govern your use of the HyperDelivery platform, including our mobile application and website.</p>
-                                <p>By accessing or using the HyperDelivery platform, you agree to comply with these Terms. If you do not agree with any part of these Terms, you should not use the platform.</p>
-                                
-                                <h3>1. Our Role</h3>
-                                <p>HyperDelivery is a technology platform that connects customers with local home chefs and vendors (“Vendors”). Our platform allows Vendors to list their products and enables customers to place orders with them.</p>
-                                <p>HyperDelivery acts solely as a technology facilitator and does not manufacture, prepare, store, or deliver the products listed by Vendors.</p>
-                                <p>Any transaction for the purchase of products is directly between the customer and the Vendor.</p>
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl rounded-2xl">
+        <Tabs defaultValue="terms" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 rounded-full">
+            <TabsTrigger value="terms" className="rounded-full">Terms of Service</TabsTrigger>
+            <TabsTrigger value="privacy" className="rounded-full">Privacy Policy</TabsTrigger>
+          </TabsList>
+          <TabsContent value="terms">
+            <DialogHeader>
+              <DialogTitle className="text-2xl">Terms of Service</DialogTitle>
+              <DialogDescription>Effective Date: March 11, 2026</DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="h-[50vh] pr-4 mt-4">
+              <div className="prose prose-sm dark:prose-invert">
+                <p>Welcome to HyperDelivery. These Terms of Service govern your use of the HyperDelivery platform, including our mobile application and website.</p>
+                <p>By accessing or using the HyperDelivery platform, you agree to comply with these Terms. If you do not agree with any part of these Terms, you should not use the platform.</p>
 
-                                <h3>2. User Accounts</h3>
-                                <p>To use certain features of the platform, users may be required to create an account.</p>
-                                <p>Users are responsible for:</p>
-                                <ul>
-                                    <li>Maintaining the confidentiality of their account credentials</li>
-                                    <li>Ensuring the accuracy of information provided</li>
-                                    <li>All activities conducted under their account</li>
-                                </ul>
-                                <p>HyperDelivery reserves the right to suspend or terminate accounts that violate these Terms or misuse the platform.</p>
+                <h3>1. Our Role</h3>
+                <p>HyperDelivery is a technology platform that connects customers with local home chefs and vendors (“Vendors”). Our platform allows Vendors to list their products and enables customers to place orders with them.</p>
+                <p>HyperDelivery acts solely as a technology facilitator and does not manufacture, prepare, store, or deliver the products listed by Vendors.</p>
+                <p>Any transaction for the purchase of products is directly between the customer and the Vendor.</p>
 
-                                <h3>3. Vendor Responsibilities</h3>
-                                <p>Vendors using the HyperDelivery platform are responsible for:</p>
-                                <p><strong>Product Quality:</strong> Vendors are solely responsible for the quality, safety, and legality of the products they offer.</p>
-                                <p><strong>Delivery:</strong> Vendors are responsible for the preparation and delivery of the goods ordered through the platform. HyperDelivery does not manage the physical delivery of items.</p>
-                                <p><strong>Product Information:</strong> Vendors must provide accurate information regarding product descriptions, pricing, and availability.</p>
-                                <p><strong>Product Images:</strong> Images displayed on the platform are for illustrative purposes only. While Vendors strive to provide accurate representations, the actual product received may vary slightly in appearance. The product description should be considered the primary reference.</p>
+                <h3>2. User Accounts</h3>
+                <p>To use certain features of the platform, users may be required to create an account.</p>
+                <p>Users are responsible for:</p>
+                <ul>
+                  <li>Maintaining the confidentiality of their account credentials</li>
+                  <li>Ensuring the accuracy of information provided</li>
+                  <li>All activities conducted under their account</li>
+                </ul>
+                <p>HyperDelivery reserves the right to suspend or terminate accounts that violate these Terms or misuse the platform.</p>
 
-                                <h3>4. Orders and Cancellations</h3>
-                                <p>Orders placed through the platform are requests to purchase products from Vendors.</p>
-                                <p>Vendors may accept or reject orders based on availability or operational constraints.</p>
-                                <p>In cases where an order cannot be fulfilled, the Vendor may cancel the order and inform the customer accordingly.</p>
-                                <p>Customers are expected to place orders responsibly and avoid misuse of the platform.</p>
+                <h3>3. Vendor Responsibilities</h3>
+                <p>Vendors using the HyperDelivery platform are responsible for:</p>
+                <p><strong>Product Quality:</strong> Vendors are solely responsible for the quality, safety, and legality of the products they offer.</p>
+                <p><strong>Delivery:</strong> Vendors are responsible for the preparation and delivery of the goods ordered through the platform. HyperDelivery does not manage the physical delivery of items.</p>
+                <p><strong>Delivery Distance & Routing:</strong> The distance displayed on vendor cards and storefront listings represents straight-line (radial/aerial) distance for general proximity reference. However, when an order is fulfilled for delivery, delivery charges, serviceability boundaries, and rider transit are determined based on navigable road distance, which may vary from straight-line distance due to actual road layout, traffic navigation, and routing.</p>
+                <p><strong>Product Information:</strong> Vendors must provide accurate information regarding product descriptions, pricing, and availability.</p>
+                <p><strong>Product Images:</strong> Images displayed on the platform are for illustrative purposes only. While Vendors strive to provide accurate representations, the actual product received may vary slightly in appearance. The product description should be considered the primary reference.</p>
 
-                                <h3>5. Payments</h3>
-                                <p>HyperDelivery provides QR code generation to simplify payment between customers and Vendors.</p>
-                                <p>HyperDelivery does not process payments and is not responsible for payment processing, transaction failures, or disputes arising from UPI or bank transactions.</p>
-                                <p>In the event of payment issues, customers and Vendors should first attempt to resolve the issue directly. If necessary, users should contact their respective bank or UPI service provider.</p>
+                <h3>4. Orders and Cancellations</h3>
+                <p>Orders placed through the platform are requests to purchase products from Vendors.</p>
+                <p>Vendors may accept or reject orders based on availability or operational constraints.</p>
+                <p>In cases where an order cannot be fulfilled, the Vendor may cancel the order and inform the customer accordingly.</p>
+                <p>Customers are expected to place orders responsibly and avoid misuse of the platform.</p>
 
-                                <h3>6. Platform Availability</h3>
-                                <p>While we strive to provide uninterrupted service, HyperDelivery does not guarantee that the platform will always be available without interruption.</p>
-                                <p>The service may occasionally be unavailable due to:</p>
-                                <ul>
-                                    <li>system maintenance</li>
-                                    <li>technical issues</li>
-                                    <li>updates or improvements</li>
-                                </ul>
+                <h3>5. Payments</h3>
+                <p>HyperDelivery provides QR code generation to simplify payment between customers and Vendors.</p>
+                <p>HyperDelivery does not process payments and is not responsible for payment processing, transaction failures, or disputes arising from UPI or bank transactions.</p>
+                <p>In the event of payment issues, customers and Vendors should first attempt to resolve the issue directly. If necessary, users should contact their respective bank or UPI service provider.</p>
 
-                                <h3>7. Prohibited Use</h3>
-                                <p>Users agree not to misuse the platform. This includes but is not limited to:</p>
-                                <ul>
-                                    <li>placing fraudulent or fake orders</li>
-                                    <li>abusing or harassing Vendors or other users</li>
-                                    <li>attempting to interfere with platform functionality</li>
-                                    <li>using the platform for unlawful activities</li>
-                                </ul>
-                                <p>HyperDelivery reserves the right to suspend or restrict access to users who violate these rules.</p>
+                <h3>6. Platform Availability</h3>
+                <p>While we strive to provide uninterrupted service, HyperDelivery does not guarantee that the platform will always be available without interruption.</p>
+                <p>The service may occasionally be unavailable due to:</p>
+                <ul>
+                  <li>system maintenance</li>
+                  <li>technical issues</li>
+                  <li>updates or improvements</li>
+                </ul>
 
-                                <h3>8. Limitation of Liability</h3>
-                                <p>HyperDelivery is provided on an “as is” and “as available” basis.</p>
-                                <p>We do not make any warranties regarding:</p>
-                                <ul>
-                                    <li>product quality provided by Vendors</li>
-                                    <li>delivery timelines</li>
-                                    <li>availability of products</li>
-                                </ul>
-                                <p>HyperDelivery shall not be liable for any direct or indirect damages arising from the use of the platform.</p>
+                <h3>7. Prohibited Use</h3>
+                <p>Users agree not to misuse the platform. This includes but is not limited to:</p>
+                <ul>
+                  <li>placing fraudulent or fake orders</li>
+                  <li>abusing or harassing Vendors or other users</li>
+                  <li>attempting to interfere with platform functionality</li>
+                  <li>using the platform for unlawful activities</li>
+                </ul>
+                <p>HyperDelivery reserves the right to suspend or restrict access to users who violate these rules.</p>
 
-                                <h3>9. Changes to These Terms</h3>
-                                <p>HyperDelivery reserves the right to update or modify these Terms at any time.</p>
-                                <p>Any updates will be posted on this page. Continued use of the platform after changes indicates acceptance of the revised Terms.</p>
+                <h3>8. Limitation of Liability</h3>
+                <p>HyperDelivery is provided on an “as is” and “as available” basis.</p>
+                <p>We do not make any warranties regarding:</p>
+                <ul>
+                  <li>product quality provided by Vendors</li>
+                  <li>delivery timelines</li>
+                  <li>availability of products</li>
+                </ul>
+                <p>HyperDelivery shall not be liable for any direct or indirect damages arising from the use of the platform.</p>
 
-                                <h3>10. Contact Us</h3>
-                                <p>If you have questions about these Terms of Service, please contact us:</p>
-                                <p>Email: <strong>rvp.officework@gmail.com</strong></p>
-                            </div>
-                        </ScrollArea>
-                    </TabsContent>
-                    <TabsContent value="privacy">
-                         <DialogHeader>
-                            <DialogTitle className="text-2xl">Privacy Policy</DialogTitle>
-                            <DialogDescription>Effective Date: March 11, 2026</DialogDescription>
-                        </DialogHeader>
-                         <ScrollArea className="h-[50vh] pr-4 mt-4">
-                             <div className="prose prose-sm dark:prose-invert">
-                                <p>Welcome to HyperDelivery. Your privacy is important to us, and we are committed to protecting your personal information and being transparent about how we collect and use it. This Privacy Policy explains how HyperDelivery collects, uses, and safeguards your information when you use our mobile application and services.</p>
-                                
-                                <h3>1. Information We Collect</h3>
-                                <p>To provide and improve our services, we may collect the following types of information:</p>
-                                <p><strong>Personal Information</strong></p>
-                                <p>When you create an account or use our services, we may collect:</p>
-                                <ul>
-                                    <li>Name or username</li>
-                                    <li>Email address (when using Google Sign-In)</li>
-                                    <li>Phone number</li>
-                                    <li>Delivery address entered by you</li>
-                                </ul>
-                                <p>This information is necessary to create and manage your account and facilitate order delivery.</p>
+                <h3>9. Changes to These Terms</h3>
+                <p>HyperDelivery reserves the right to update or modify these Terms at any time.</p>
+                <p>Any updates will be posted on this page. Continued use of the platform after changes indicates acceptance of the revised Terms.</p>
 
-                                <p><strong>Order Information</strong></p>
-                                <p>When you place an order through the platform, we collect:</p>
-                                <ul>
-                                    <li>Products ordered</li>
-                                    <li>Order history</li>
-                                    <li>Order status and transaction details</li>
-                                </ul>
-                                <p>This helps us manage orders and improve service quality.</p>
+                <h3>10. Contact Us</h3>
+                <p>If you have questions about these Terms of Service, please contact us:</p>
+                <p>Email: <strong>hyperlabsupport@gmail.com</strong></p>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+          <TabsContent value="privacy">
+            <DialogHeader>
+              <DialogTitle className="text-2xl">Privacy Policy</DialogTitle>
+              <DialogDescription>Effective Date: March 11, 2026</DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="h-[50vh] pr-4 mt-4">
+              <div className="prose prose-sm dark:prose-invert">
+                <p>Welcome to HyperDelivery. Your privacy is important to us, and we are committed to protecting your personal information and being transparent about how we collect and use it. This Privacy Policy explains how HyperDelivery collects, uses, and safeguards your information when you use our mobile application and services.</p>
 
-                                <p><strong>Feedback and Reviews</strong></p>
-                                <p>We may collect ratings, reviews, or feedback you provide regarding vendors, products, or our services.</p>
+                <h3>1. Information We Collect</h3>
+                <p>To provide and improve our services, we may collect the following types of information:</p>
+                <p><strong>Personal Information</strong></p>
+                <p>When you create an account or use our services, we may collect:</p>
+                <ul>
+                  <li>Name or username</li>
+                  <li>Email address (when using Google Sign-In)</li>
+                  <li>Phone number</li>
+                  <li>Delivery address entered by you</li>
+                </ul>
+                <p>This information is necessary to create and manage your account and facilitate order delivery.</p>
 
-                                <h3>2. Automatically Collected Information</h3>
-                                <p>When you use the HyperDelivery application, certain technical information may be automatically collected to ensure the app functions properly.</p>
-                                <p>This may include:</p>
-                                <ul>
-                                    <li>Device type</li>
-                                    <li>Operating system version</li>
-                                    <li>App diagnostics such as crash reports</li>
-                                </ul>
-                                <p>This information is used only to improve app stability, performance, and reliability.</p>
-                                <p>We do not collect precise location data or track user activity outside the app.</p>
+                <p><strong>Order Information</strong></p>
+                <p>When you place an order through the platform, we collect:</p>
+                <ul>
+                  <li>Products ordered</li>
+                  <li>Order history</li>
+                  <li>Order status and transaction details</li>
+                </ul>
+                <p>This helps us manage orders and improve service quality.</p>
 
-                                <h3>3. How We Use Your Information</h3>
-                                <p>We use the information collected for the following purposes:</p>
-                                <ul>
-                                    <li>To process and manage orders placed through the platform</li>
-                                    <li>To facilitate delivery between customers, vendors, and delivery personnel</li>
-                                    <li>To manage your account and provide customer support</li>
-                                    <li>To send important notifications related to orders and service updates</li>
-                                    <li>To improve our platform based on user feedback and order history</li>
-                                    <li>For internal record keeping and operational purposes within the HyperDelivery community</li>
-                                </ul>
+                <p><strong>Feedback and Reviews</strong></p>
+                <p>We may collect ratings, reviews, or feedback you provide regarding vendors, products, or our services.</p>
 
-                                <h3>4. Data Sharing</h3>
-                                <p>We value your privacy and handle your information responsibly.</p>
-                                <p>Your personal information is not sold or shared with third-party companies for marketing purposes.</p>
-                                <p>However, certain information may be shared in the following situations:</p>
+                <h3>2. Automatically Collected Information</h3>
+                <p>When you use the HyperDelivery application, certain technical information may be automatically collected to ensure the app functions properly.</p>
+                <p>This may include:</p>
+                <ul>
+                  <li>Device type</li>
+                  <li>Operating system version</li>
+                  <li>App diagnostics such as crash reports</li>
+                </ul>
+                <p>This information is used only to improve app stability, performance, and reliability.</p>
+                <p>We do not collect precise location data or track user activity outside the app.</p>
 
-                                <p><strong>Vendors and Delivery Personnel</strong></p>
-                                <p>Your delivery address, name, and phone number may be shared with the specific vendor and delivery personnel responsible for fulfilling your order. This is necessary to complete the delivery process.</p>
+                <h3>3. How We Use Your Information</h3>
+                <p>We use the information collected for the following purposes:</p>
+                <ul>
+                  <li>To process and manage orders placed through the platform</li>
+                  <li>To facilitate delivery between customers, vendors, and delivery personnel</li>
+                  <li>To manage your account and provide customer support</li>
+                  <li>To send important notifications related to orders and service updates</li>
+                  <li>To improve our platform based on user feedback and order history</li>
+                  <li>For internal record keeping and operational purposes within the HyperDelivery community</li>
+                </ul>
 
-                                <p><strong>Service Providers</strong></p>
-                                <p>We may use trusted third-party services that help operate the application, such as:</p>
-                                <ul>
-                                    <li>Google Sign-In for secure authentication</li>
-                                    <li>Firebase Cloud Messaging for sending order notifications</li>
-                                    <li>Google Play Services for application functionality</li>
-                                </ul>
-                                <p>These services operate under their own privacy policies.</p>
+                <h3>4. Data Sharing</h3>
+                <p>We value your privacy and handle your information responsibly.</p>
+                <p>Your personal information is not sold or shared with third-party companies for marketing purposes.</p>
+                <p>However, certain information may be shared in the following situations:</p>
 
-                                <h3>5. Data Security</h3>
-                                <p>We are committed to ensuring that your information is secure. We implement appropriate technical and organizational measures to protect your personal information from unauthorized access, misuse, or disclosure.</p>
+                <p><strong>Vendors and Delivery Personnel</strong></p>
+                <p>Your delivery address, name, and phone number may be shared with the specific vendor and delivery personnel responsible for fulfilling your order. This is necessary to complete the delivery process.</p>
 
-                                <h3>6. Data Retention</h3>
-                                <p>We retain personal information only for as long as necessary to provide our services, maintain order records, and comply with legal or operational requirements.</p>
-                                <p>Users may request deletion of their account and associated personal data by contacting us.</p>
+                <p><strong>Service Providers</strong></p>
+                <p>We may use trusted third-party services that help operate the application, such as:</p>
+                <ul>
+                  <li>Google Sign-In for secure authentication</li>
+                  <li>Firebase Cloud Messaging for sending order notifications</li>
+                  <li>Google Play Services for application functionality</li>
+                </ul>
+                <p>These services operate under their own privacy policies.</p>
 
-                                <h3>7. Your Rights</h3>
-                                <p>You have the right to:</p>
-                                <ul>
-                                    <li>Access your personal information</li>
-                                    <li>Update or correct your information</li>
-                                    <li>Request deletion of your account and associated data</li>
-                                </ul>
-                                <p>You can manage some of this information directly through your account settings or contact us for assistance.</p>
+                <h3>5. Data Security</h3>
+                <p>We are committed to ensuring that your information is secure. We implement appropriate technical and organizational measures to protect your personal information from unauthorized access, misuse, or disclosure.</p>
 
-                                <h3>8. Children’s Privacy</h3>
-                                <p>HyperDelivery is not intended for use by individuals under the age of 13. We do not knowingly collect personal information from children. If we become aware that such information has been collected, we will take appropriate steps to remove it.</p>
+                <h3>6. Data Retention</h3>
+                <p>We retain personal information only for as long as necessary to provide our services, maintain order records, and comply with legal or operational requirements.</p>
+                <p>Users may request deletion of their account and associated personal data by contacting us.</p>
 
-                                <h3>9. Changes to This Privacy Policy</h3>
-                                <p>We may update this Privacy Policy from time to time to reflect changes in our services or legal requirements. Any updates will be posted on this page with the revised effective date.</p>
-                                <p>We encourage users to review this policy periodically.</p>
+                <h3>7. Your Rights</h3>
+                <p>You have the right to:</p>
+                <ul>
+                  <li>Access your personal information</li>
+                  <li>Update or correct your information</li>
+                  <li>Request deletion of your account and associated data</li>
+                </ul>
+                <p>You can manage some of this information directly through your account settings or contact us for assistance.</p>
 
-                                <h3>10. Contact Us</h3>
-                                <p>If you have any questions or concerns about this Privacy Policy or how your information is handled, please contact us:</p>
-                                <p>Email: <strong>rvp.officework@gmail.com</strong></p>
-                            </div>
-                        </ScrollArea>
-                    </TabsContent>
-                </Tabs>
-                 <DialogFooter className="mt-4">
-                    <DialogClose asChild>
-                        <Button type="button">Close</Button>
-                    </DialogClose>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
+                <h3>8. Children’s Privacy</h3>
+                <p>HyperDelivery is not intended for use by individuals under the age of 13. We do not knowingly collect personal information from children. If we become aware that such information has been collected, we will take appropriate steps to remove it.</p>
+
+                <h3>9. Changes to This Privacy Policy</h3>
+                <p>We may update this Privacy Policy from time to time to reflect changes in our services or legal requirements. Any updates will be posted on this page with the revised effective date.</p>
+                <p>We encourage users to review this policy periodically.</p>
+
+                <h3>10. Contact Us</h3>
+                <p>If you have any questions or concerns about this Privacy Policy or how your information is handled, please contact us:</p>
+                <p>Email: <strong>hyperlabsupport@gmail.com</strong></p>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
+        <DialogFooter className="mt-4">
+          <DialogClose asChild>
+            <Button type="button">Close</Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
 const formSchema = z.object({
@@ -244,435 +245,435 @@ const formSchema = z.object({
   contact: z.string().length(10, { message: "Please enter a valid 10-digit number." }),
   termsAccepted: z.boolean().refine(val => val === true, { message: "You must accept the terms and conditions." }),
   emailPreferences: z.object({
-      campaigns: z.boolean(),
+    campaigns: z.boolean(),
   }),
 });
 
 
 function CustomerDetailsContent() {
-    const { toast } = useToast();
-    const router = useRouter();
-    const searchParams = useSearchParams();
-    const redirectUrl = searchParams.get('redirect');
-    const { customer, updateDetails, loginWithGoogle, setDefaultAddress, deleteSavedAddress } = useCustomer();
-    const { userLocation, selectSavedAddress } = useLocation();
-    const [isTermsDialogOpen, setIsTermsDialogOpen] = useState(false);
-    const [isMapDialogOpen, setIsMapDialogOpen] = useState(false);
-    const [editingAddress, setEditingAddress] = useState<SavedAddress | null>(null);
-    const [isLoading, startTransition] = useTransition();
+  const { toast } = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get('redirect');
+  const { customer, updateDetails, loginWithGoogle, setDefaultAddress, deleteSavedAddress } = useCustomer();
+  const { userLocation, selectSavedAddress } = useLocation();
+  const [isTermsDialogOpen, setIsTermsDialogOpen] = useState(false);
+  const [isMapDialogOpen, setIsMapDialogOpen] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<SavedAddress | null>(null);
+  const [isLoading, startTransition] = useTransition();
 
-    const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
-        defaultValues: {
-            name: '',
-            contact: '',
-            termsAccepted: false,
-            emailPreferences: {
-                campaigns: true,
-            },
-        }
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: '',
+      contact: '',
+      termsAccepted: false,
+      emailPreferences: {
+        campaigns: true,
+      },
+    }
+  });
+
+  const campaignsEnabled = form.watch('emailPreferences.campaigns');
+
+  useEffect(() => {
+    if (!customer) {
+      router.replace('/customer-login');
+      return;
+    }
+
+    form.reset({
+      name: customer.name || '',
+      contact: (customer.contact || '').replace('+91', ''),
+      termsAccepted: customer.termsAccepted || false,
+      emailPreferences: {
+        campaigns: customer.emailPreferences?.campaigns ?? true,
+      },
     });
-    
-    const campaignsEnabled = form.watch('emailPreferences.campaigns');
 
-    useEffect(() => {
-        if (!customer) {
-            router.replace('/customer-login');
-            return;
-        }
+  }, [customer, router, form]);
 
-        form.reset({
-            name: customer.name || '',
-            contact: (customer.contact || '').replace('+91', ''),
-            termsAccepted: customer.termsAccepted || false,
-            emailPreferences: {
-                campaigns: customer.emailPreferences?.campaigns ?? true,
-            },
+  const onSubmit = (values: z.infer<typeof formSchema>) => {
+    startTransition(async () => {
+      try {
+        const contactChanged = values.contact !== (customer?.contact || '').replace('+91', '');
+
+        await updateDetails({
+          name: values.name.trim(),
+          contact: values.contact.trim(),
+          termsAccepted: values.termsAccepted,
+          emailPreferences: values.emailPreferences,
         });
 
-    }, [customer, router, form]);
+        toast({ title: "Profile Saved!", description: "Your details have been updated." });
 
-    const onSubmit = (values: z.infer<typeof formSchema>) => {
-        startTransition(async () => {
-            try {
-                const contactChanged = values.contact !== (customer?.contact || '').replace('+91', '');
-                
-                await updateDetails({ 
-                    name: values.name.trim(), 
-                    contact: values.contact.trim(), 
-                    termsAccepted: values.termsAccepted,
-                    emailPreferences: values.emailPreferences,
-                });
-
-                toast({ title: "Profile Saved!", description: "Your details have been updated." });
-
-                // Skip phone verification redirect for demo customers
-                if (!customer?.isDemoCustomer && values.contact && (contactChanged || !customer?.phoneVerified)) {
-                    router.push(redirectUrl ? `/verify-phone?redirect=${encodeURIComponent(redirectUrl)}` : '/verify-phone');
-                } else if (redirectUrl) {
-                    router.push(redirectUrl);
-                }
-            } catch (error: any) {
-                toast({ title: "Error", description: error.message, variant: "destructive" });
-            }
-        });
-    }
-    
-    const handleLinkGoogle = async () => {
-        try {
-            await loginWithGoogle();
-        } catch(error) {
-            // Error toast is handled in the context
+        // Skip phone verification redirect for demo customers
+        if (!customer?.isDemoCustomer && values.contact && (contactChanged || !customer?.phoneVerified)) {
+          router.push(redirectUrl ? `/verify-phone?redirect=${encodeURIComponent(redirectUrl)}` : '/verify-phone');
+        } else if (redirectUrl) {
+          router.push(redirectUrl);
         }
-    }
+      } catch (error: any) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      }
+    });
+  }
 
-    const isSaveDisabled = isLoading;
-    const savedAddresses = customer?.savedAddresses || [];
+  const handleLinkGoogle = async () => {
+    try {
+      await loginWithGoogle();
+    } catch (error) {
+      // Error toast is handled in the context
+    }
+  }
+
+  const isSaveDisabled = isLoading;
+  const savedAddresses = customer?.savedAddresses || [];
 
   return (
     <>
-    <div className="flex flex-col flex-1 items-center justify-center p-4 max-w-2xl mx-auto w-full">
-      <motion.div
+      <div className="flex flex-col flex-1 items-center justify-center p-4 max-w-2xl mx-auto w-full">
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className="w-full"
-      >
-        {customer && !customer.email && (
-             <Alert variant="destructive" className="mb-6">
-                <Mail className="h-4 w-4" />
-                <AlertTitle>Email Address Recommended</AlertTitle>
-                <AlertDescription>
-                   For better account security and notifications, please link a Google account to add an email address.
-                    <Button onClick={handleLinkGoogle} size="sm" className="mt-2 ml-auto flex gap-2">
-                        <GoogleIcon /> Link Google Account
-                    </Button>
-                </AlertDescription>
+        >
+          {customer && !customer.email && (
+            <Alert variant="destructive" className="mb-6">
+              <Mail className="h-4 w-4" />
+              <AlertTitle>Email Address Recommended</AlertTitle>
+              <AlertDescription>
+                For better account security and notifications, please link a Google account to add an email address.
+                <Button onClick={handleLinkGoogle} size="sm" className="mt-2 ml-auto flex gap-2">
+                  <GoogleIcon /> Link Google Account
+                </Button>
+              </AlertDescription>
             </Alert>
-        )}
-        {customer && customer.contact && !customer.phoneVerified && !customer.isDemoCustomer && (
+          )}
+          {customer && customer.contact && !customer.phoneVerified && !customer.isDemoCustomer && (
             <Alert className="mb-6">
-                <Phone className="h-4 w-4 text-primary" />
-                <AlertTitle>Action Required</AlertTitle>
-                <AlertDescription>
-                   Please verify your phone number to continue. You will be redirected after saving your details.
-                </AlertDescription>
+              <Phone className="h-4 w-4 text-primary" />
+              <AlertTitle>Action Required</AlertTitle>
+              <AlertDescription>
+                Please verify your phone number to continue. You will be redirected after saving your details.
+              </AlertDescription>
             </Alert>
-        )}
+          )}
 
-      {/* 1. Personal Profile Card */}
-      <Card className="w-full bg-card/80 backdrop-blur-sm border-purple-500/20 box-glow-accent rounded-3xl">
-          <Form {...form}>
-          <form id="customer-profile-form" onSubmit={form.handleSubmit(onSubmit)}>
-        <CardHeader>
-          <div className="flex items-center justify-center gap-3 mb-2">
-              <User className="h-8 w-8 text-purple-500"/>
-              <CardTitle className="font-headline text-3xl sm:text-4xl text-center text-purple-500">Your Details</CardTitle>
-          </div>
-          <CardDescription className="text-center">Please provide your contact information and preferences.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-            <FormField control={form.control} name="name" render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Full Name</FormLabel>
-                    <FormControl><Input placeholder="e.g. John Doe" {...field} /></FormControl>
-                    <FormMessage />
-                </FormItem>
-            )}/>
-            <FormItem>
-                <FormLabel>Email Address</FormLabel>
-                <FormControl><Input type="email" value={customer?.email || 'Not available'} readOnly className="bg-muted/50 cursor-not-allowed" /></FormControl>
-            </FormItem>
-             <FormField control={form.control} name="contact" render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Contact Number (10 digits)</FormLabel>
-                    <FormControl>
+          {/* 1. Personal Profile Card */}
+          <Card className="w-full bg-card/80 backdrop-blur-sm border-purple-500/20 box-glow-accent rounded-3xl">
+            <Form {...form}>
+              <form id="customer-profile-form" onSubmit={form.handleSubmit(onSubmit)}>
+                <CardHeader>
+                  <div className="flex items-center justify-center gap-3 mb-2">
+                    <User className="h-8 w-8 text-purple-500" />
+                    <CardTitle className="font-headline text-3xl sm:text-4xl text-center text-purple-500">Your Details</CardTitle>
+                  </div>
+                  <CardDescription className="text-center">Please provide your contact information and preferences.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  <FormField control={form.control} name="name" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Full Name</FormLabel>
+                      <FormControl><Input placeholder="e.g. John Doe" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormItem>
+                    <FormLabel>Email Address</FormLabel>
+                    <FormControl><Input type="email" value={customer?.email || 'Not available'} readOnly className="bg-muted/50 cursor-not-allowed" /></FormControl>
+                  </FormItem>
+                  <FormField control={form.control} name="contact" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Number (10 digits)</FormLabel>
+                      <FormControl>
                         <div className="flex items-center border rounded-full px-3">
-                             <Phone className="h-5 w-5 text-muted-foreground"/>
-                             <span className="pl-2 pr-1 text-sm">+91</span>
-                            <Input {...field} type="tel" maxLength={10} className="border-none focus-visible:ring-0 focus-visible:ring-offset-0"/>
-                            <ShieldCheck className={cn("h-5 w-5 ml-2", (customer?.phoneVerified || customer?.isDemoCustomer) ? "text-green-500" : "text-muted-foreground")} />
+                          <Phone className="h-5 w-5 text-muted-foreground" />
+                          <span className="pl-2 pr-1 text-sm">+91</span>
+                          <Input {...field} type="tel" maxLength={10} className="border-none focus-visible:ring-0 focus-visible:ring-offset-0" />
+                          <ShieldCheck className={cn("h-5 w-5 ml-2", (customer?.phoneVerified || customer?.isDemoCustomer) ? "text-green-500" : "text-muted-foreground")} />
                         </div>
-                    </FormControl>
-                    {!customer?.isDemoCustomer && <FormDescription>You will need to verify this number via OTP after saving.</FormDescription>}
-                    <FormMessage />
-                </FormItem>
-            )}/>
+                      </FormControl>
+                      {!customer?.isDemoCustomer && <FormDescription>You will need to verify this number via OTP after saving.</FormDescription>}
+                      <FormMessage />
+                    </FormItem>
+                  )} />
 
-              <div className="space-y-2 pt-2 border-t border-primary/10">
-                <FormField
-                    control={form.control}
-                    name="emailPreferences.campaigns"
-                    render={({ field }) => (
+                  <div className="space-y-2 pt-2 border-t border-primary/10">
+                    <FormField
+                      control={form.control}
+                      name="emailPreferences.campaigns"
+                      render={({ field }) => (
                         <FormItem className="flex flex-col space-y-3 rounded-2xl border p-4 shadow-sm">
-                            <div className="flex flex-row items-center justify-between">
-                                <div className="space-y-0.5">
-                                    <FormLabel>Email Preferences</FormLabel>
-                                    <FormDescription>
-                                        Receive marketing campaigns and special offers via email.
-                                    </FormDescription>
-                                </div>
-                                <FormControl>
-                                    <Checkbox
-                                        checked={field.value}
-                                        onCheckedChange={field.onChange}
-                                    />
-                                </FormControl>
+                          <div className="flex flex-row items-center justify-between">
+                            <div className="space-y-0.5">
+                              <FormLabel>Email Preferences</FormLabel>
+                              <FormDescription>
+                                Receive marketing campaigns and special offers via email.
+                              </FormDescription>
                             </div>
-                            {!campaignsEnabled && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -5 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="text-xs text-destructive flex items-center gap-2 pt-2 border-t border-destructive/20"
-                                >
-                                    <AlertCircle className="h-4 w-4"/>
-                                    You might miss out on important offers and updates!
-                                </motion.div>
-                            )}
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </div>
+                          {!campaignsEnabled && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -5 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="text-xs text-destructive flex items-center gap-2 pt-2 border-t border-destructive/20"
+                            >
+                              <AlertCircle className="h-4 w-4" />
+                              You might miss out on important offers and updates!
+                            </motion.div>
+                          )}
                         </FormItem>
-                    )}
-                />
-              </div>
+                      )}
+                    />
+                  </div>
 
-             <FormField control={form.control} name="termsAccepted" render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 pt-2">
-                     <FormControl>
+                  <FormField control={form.control} name="termsAccepted" render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 pt-2">
+                      <FormControl>
                         <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
-                    <div className="grid gap-1.5 leading-none">
+                      </FormControl>
+                      <div className="grid gap-1.5 leading-none">
                         <FormLabel>Accept terms and conditions</FormLabel>
                         <FormDescription>
-                            You agree to our{' '}
-                            <Button type="button" variant="link" className="p-0 h-auto text-sm" onClick={() => setIsTermsDialogOpen(true)}>
-                                Terms and Policies
-                            </Button>
-                            .
+                          You agree to our{' '}
+                          <Button type="button" variant="link" className="p-0 h-auto text-sm" onClick={() => setIsTermsDialogOpen(true)}>
+                            Terms and Policies
+                          </Button>
+                          .
                         </FormDescription>
                         <FormMessage />
-                    </div>
-                </FormItem>
-            )}/>
-        </CardContent>
-        </form>
-        </Form>
-      </Card>
-      </motion.div>
-
-      {/* 2. Saved Addresses Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.15 }}
-        className="w-full mt-6"
-      >
-        <Card className="w-full bg-card/80 backdrop-blur-sm border-purple-500/20 box-glow-accent rounded-3xl">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <MapPin className="h-6 w-6 text-purple-500" />
-                <CardTitle className="font-headline text-2xl text-purple-500">Saved Addresses</CardTitle>
-              </div>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => { setEditingAddress(null); setIsMapDialogOpen(true); }}
-                className="gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-xs font-semibold shadow-xs"
-              >
-                <Plus className="h-3.5 w-3.5" /> Add New
-              </Button>
-            </div>
-            <CardDescription>Manage delivery locations, door numbers, and default destination.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {savedAddresses.length > 0 ? (
-              savedAddresses.map((addr) => {
-                const getTagIcon = (tag?: string) => {
-                  switch (tag) {
-                    case 'Home': return Home;
-                    case 'Parents': return Users;
-                    case 'Work': return Briefcase;
-                    default: return Building;
-                  }
-                };
-                const ItemIcon = getTagIcon(addr.tag);
-                const isActive = userLocation &&
-                  Math.abs(userLocation.latitude - addr.latitude) < 0.0005 &&
-                  Math.abs(userLocation.longitude - addr.longitude) < 0.0005;
-                const canDelete = savedAddresses.length > 1;
-
-                return (
-                  <div key={addr.id} className="space-y-0">
-                    {/* Address Card */}
-                    <div className={cn(
-                      "p-3.5 rounded-t-2xl border border-b-0 transition-all text-left space-y-1.5",
-                      isActive
-                        ? "bg-primary/10 border-primary/40"
-                        : "bg-card border-border"
-                    )}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <div className={cn(
-                            "w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0",
-                            isActive ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
-                          )}>
-                            <ItemIcon className="h-4 w-4" />
-                          </div>
-                          <span className="font-bold text-sm text-foreground">
-                            {addr.label || addr.tag}
-                          </span>
-                          {addr.isDefault && (
-                            <span className="text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 border border-amber-200 dark:border-amber-700">
-                              <Star className="h-2.5 w-2.5 fill-current" /> DEFAULT
-                            </span>
-                          )}
-                          {isActive && (
-                            <span className="text-[10px] font-bold text-green-600 dark:text-green-400 flex items-center gap-1 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
-                              <Check className="h-3 w-3" /> ACTIVE
-                            </span>
-                          )}
-                        </div>
                       </div>
+                    </FormItem>
+                  )} />
+                </CardContent>
+              </form>
+            </Form>
+          </Card>
+        </motion.div>
 
-                      <p className="text-xs text-foreground/80 font-medium line-clamp-2 leading-relaxed pl-[34px]">
-                        {addr.address}
-                      </p>
-
-                      {(addr.recipientName || addr.recipientContact) && (
-                        <div className="pl-[34px]">
-                          <span className="text-[10px] text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                            👤 {addr.recipientName || 'N/A'} {addr.recipientContact ? `(${addr.recipientContact})` : ''}
-                          </span>
-                        </div>
-                      )}
-
-                      {!addr.hasCompletedOrder && (
-                        <div className="pl-[34px]">
-                          <span className="text-[10px] text-orange-600 dark:text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full inline-flex items-center gap-1 border border-orange-500/20">
-                            🔒 COD locked — first online order required
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Actions Bar */}
-                    <div className={cn(
-                      "flex items-center justify-between px-3.5 py-2 rounded-b-2xl border transition-colors",
-                      isActive
-                        ? "bg-primary/5 border-primary/40"
-                        : "bg-muted/30 border-border"
-                    )}>
-                      <div>
-                        {addr.isDefault ? (
-                          <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                            <Star className="h-3 w-3 fill-current" /> Default Delivery Address
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={async () => { try { await setDefaultAddress(addr.id); } catch {} }}
-                            className="text-[11px] font-semibold text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400 flex items-center gap-1 transition-colors"
-                          >
-                            <Star className="h-3 w-3" /> Set as Default
-                          </button>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => { setEditingAddress(addr); setIsMapDialogOpen(true); }}
-                          className="h-7 px-3 rounded-full border border-border/70 bg-background hover:bg-muted text-[11px] font-medium text-muted-foreground hover:text-foreground flex items-center gap-1 transition-all shadow-2xs"
-                        >
-                          <Edit3 className="h-3 w-3" /> Edit
-                        </button>
-                        {canDelete && (
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              if (confirm(`Delete "${addr.label || addr.tag}" address?`)) {
-                                try { await deleteSavedAddress(addr.id); } catch {}
-                              }
-                            }}
-                            className="h-7 px-3 rounded-full border border-border/70 bg-background hover:bg-destructive/10 hover:border-destructive/30 text-[11px] font-medium text-muted-foreground hover:text-destructive flex items-center gap-1 transition-all shadow-2xs"
-                          >
-                            <Trash2 className="h-3 w-3" /> Delete
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="text-center py-6 border border-dashed rounded-2xl p-4 bg-muted/20 space-y-3">
-                <Map className="h-8 w-8 text-muted-foreground mx-auto" />
-                <div>
-                  <p className="text-sm font-semibold text-foreground">No saved addresses found</p>
-                  <p className="text-xs text-muted-foreground">Add your home or office address to start ordering.</p>
+        {/* 2. Saved Addresses Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="w-full mt-6"
+        >
+          <Card className="w-full bg-card/80 backdrop-blur-sm border-purple-500/20 box-glow-accent rounded-3xl">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-6 w-6 text-purple-500" />
+                  <CardTitle className="font-headline text-2xl text-purple-500">Saved Addresses</CardTitle>
                 </div>
                 <Button
                   type="button"
+                  size="sm"
                   onClick={() => { setEditingAddress(null); setIsMapDialogOpen(true); }}
-                  className="rounded-xl gap-2 font-semibold text-xs bg-gradient-to-r from-purple-600 to-pink-600 text-white"
+                  className="gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-xs font-semibold shadow-xs"
                 >
-                  <Plus className="h-4 w-4" /> Add Delivery Address on Map 🗺️
+                  <Plus className="h-3.5 w-3.5" /> Add New
                 </Button>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
+              <CardDescription>Manage delivery locations, door numbers, and default destination.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {savedAddresses.length > 0 ? (
+                savedAddresses.map((addr) => {
+                  const getTagIcon = (tag?: string) => {
+                    switch (tag) {
+                      case 'Home': return Home;
+                      case 'Parents': return Users;
+                      case 'Work': return Briefcase;
+                      default: return Building;
+                    }
+                  };
+                  const ItemIcon = getTagIcon(addr.tag);
+                  const isActive = userLocation &&
+                    Math.abs(userLocation.latitude - addr.latitude) < 0.0005 &&
+                    Math.abs(userLocation.longitude - addr.longitude) < 0.0005;
+                  const canDelete = savedAddresses.length > 1;
 
-      {/* 3. Page Bottom Action Buttons */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-        className="w-full mt-6 space-y-3"
-      >
-        <Button
-          type="submit"
-          form="customer-profile-form"
-          size="lg"
-          className="w-full text-base sm:text-lg border-neutral-700 font-semibold shadow-md"
-          variant="outline"
-          disabled={isSaveDisabled}
+                  return (
+                    <div key={addr.id} className="space-y-0">
+                      {/* Address Card */}
+                      <div className={cn(
+                        "p-3.5 rounded-t-2xl border border-b-0 transition-all text-left space-y-1.5",
+                        isActive
+                          ? "bg-primary/10 border-primary/40"
+                          : "bg-card border-border"
+                      )}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <div className={cn(
+                              "w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0",
+                              isActive ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                            )}>
+                              <ItemIcon className="h-4 w-4" />
+                            </div>
+                            <span className="font-bold text-sm text-foreground">
+                              {addr.label || addr.tag}
+                            </span>
+                            {addr.isDefault && (
+                              <span className="text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 border border-amber-200 dark:border-amber-700">
+                                <Star className="h-2.5 w-2.5 fill-current" /> DEFAULT
+                              </span>
+                            )}
+                            {isActive && (
+                              <span className="text-[10px] font-bold text-green-600 dark:text-green-400 flex items-center gap-1 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
+                                <Check className="h-3 w-3" /> ACTIVE
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-foreground/80 font-medium line-clamp-2 leading-relaxed pl-[34px]">
+                          {addr.address}
+                        </p>
+
+                        {(addr.recipientName || addr.recipientContact) && (
+                          <div className="pl-[34px]">
+                            <span className="text-[10px] text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                              👤 {addr.recipientName || 'N/A'} {addr.recipientContact ? `(${addr.recipientContact})` : ''}
+                            </span>
+                          </div>
+                        )}
+
+                        {!addr.hasCompletedOrder && (
+                          <div className="pl-[34px]">
+                            <span className="text-[10px] text-orange-600 dark:text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full inline-flex items-center gap-1 border border-orange-500/20">
+                              🔒 COD locked — first online order required
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Actions Bar */}
+                      <div className={cn(
+                        "flex items-center justify-between px-3.5 py-2 rounded-b-2xl border transition-colors",
+                        isActive
+                          ? "bg-primary/5 border-primary/40"
+                          : "bg-muted/30 border-border"
+                      )}>
+                        <div>
+                          {addr.isDefault ? (
+                            <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                              <Star className="h-3 w-3 fill-current" /> Default Delivery Address
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={async () => { try { await setDefaultAddress(addr.id); } catch { } }}
+                              className="text-[11px] font-semibold text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400 flex items-center gap-1 transition-colors"
+                            >
+                              <Star className="h-3 w-3" /> Set as Default
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => { setEditingAddress(addr); setIsMapDialogOpen(true); }}
+                            className="h-7 px-3 rounded-full border border-border/70 bg-background hover:bg-muted text-[11px] font-medium text-muted-foreground hover:text-foreground flex items-center gap-1 transition-all shadow-2xs"
+                          >
+                            <Edit3 className="h-3 w-3" /> Edit
+                          </button>
+                          {canDelete && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (confirm(`Delete "${addr.label || addr.tag}" address?`)) {
+                                  try { await deleteSavedAddress(addr.id); } catch { }
+                                }
+                              }}
+                              className="h-7 px-3 rounded-full border border-border/70 bg-background hover:bg-destructive/10 hover:border-destructive/30 text-[11px] font-medium text-muted-foreground hover:text-destructive flex items-center gap-1 transition-all shadow-2xs"
+                            >
+                              <Trash2 className="h-3 w-3" /> Delete
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-6 border border-dashed rounded-2xl p-4 bg-muted/20 space-y-3">
+                  <Map className="h-8 w-8 text-muted-foreground mx-auto" />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">No saved addresses found</p>
+                    <p className="text-xs text-muted-foreground">Add your home or office address to start ordering.</p>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => { setEditingAddress(null); setIsMapDialogOpen(true); }}
+                    className="rounded-xl gap-2 font-semibold text-xs bg-gradient-to-r from-purple-600 to-pink-600 text-white"
+                  >
+                    <Plus className="h-4 w-4" /> Add Delivery Address on Map 🗺️
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* 3. Page Bottom Action Buttons */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="w-full mt-6 space-y-3"
         >
-          {isLoading ? <Loader2 className="animate-spin" /> : 'Save Details'}
-        </Button>
+          <Button
+            type="submit"
+            form="customer-profile-form"
+            size="lg"
+            className="w-full text-base sm:text-lg border-neutral-700 font-semibold shadow-md"
+            variant="outline"
+            disabled={isSaveDisabled}
+          >
+            {isLoading ? <Loader2 className="animate-spin" /> : 'Save Details'}
+          </Button>
 
-        {customer?.termsAccepted && customer?.name && (
-          <Link href={redirectUrl || "/menu"} passHref className="w-full block">
-            <Button variant="ghost" size="lg" className="w-full text-base border-neutral-700" type="button">
-              <Utensils className="mr-2 h-5 w-5"/>
-              {redirectUrl === '/checkout' ? 'Back to Checkout' : 'Back to Menu'}
-            </Button>
-          </Link>
-        )}
-      </motion.div>
-    </div>
+          {customer?.termsAccepted && customer?.name && (
+            <Link href={redirectUrl || "/menu"} passHref className="w-full block">
+              <Button variant="ghost" size="lg" className="w-full text-base border-neutral-700" type="button">
+                <Utensils className="mr-2 h-5 w-5" />
+                {redirectUrl === '/checkout' ? 'Back to Checkout' : 'Back to Menu'}
+              </Button>
+            </Link>
+          )}
+        </motion.div>
+      </div>
 
-    {/* Map Picker Dialog for Add/Edit from profile */}
-    <MapLocationPickerDialog
-      open={isMapDialogOpen}
-      onOpenChange={setIsMapDialogOpen}
-      editingAddress={editingAddress}
-      onAddressSaved={(saved) => {
-        selectSavedAddress(saved);
-      }}
-    />
-    <TermsDialog isOpen={isTermsDialogOpen} onOpenChange={setIsTermsDialogOpen} />
+      {/* Map Picker Dialog for Add/Edit from profile */}
+      <MapLocationPickerDialog
+        open={isMapDialogOpen}
+        onOpenChange={setIsMapDialogOpen}
+        editingAddress={editingAddress}
+        onAddressSaved={(saved) => {
+          selectSavedAddress(saved);
+        }}
+      />
+      <TermsDialog isOpen={isTermsDialogOpen} onOpenChange={setIsTermsDialogOpen} />
     </>
   );
 }
 
 export default function CustomerDetailsPage() {
-    return (
-        <Suspense fallback={
-            <div className="flex h-[60vh] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-        }>
-            <CustomerDetailsContent />
-        </Suspense>
-    );
+  return (
+    <Suspense fallback={
+      <div className="flex h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <CustomerDetailsContent />
+    </Suspense>
+  );
 }

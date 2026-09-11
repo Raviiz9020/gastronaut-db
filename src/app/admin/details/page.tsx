@@ -26,370 +26,371 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 const GoogleIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="h-5 w-5">
-        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
-        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
-        <path fill="none" d="M0 0h48v48H0z"></path>
-    </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="h-5 w-5">
+    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
+    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+    <path fill="none" d="M0 0h48v48H0z"></path>
+  </svg>
 );
 
 
 const TermsDialog = ({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChange: (open: boolean) => void }) => {
-    return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-3xl rounded-2xl">
-                <Tabs defaultValue="terms" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 rounded-full">
-                        <TabsTrigger value="terms" className="rounded-full">Terms of Service</TabsTrigger>
-                        <TabsTrigger value="privacy" className="rounded-full">Privacy Policy</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="terms">
-                        <DialogHeader>
-                            <DialogTitle className="text-2xl">Terms of Service</DialogTitle>
-                            <DialogDescription>Effective Date: March 11, 2026</DialogDescription>
-                        </DialogHeader>
-                        <ScrollArea className="h-[50vh] pr-4 mt-4">
-                            <div className="prose prose-sm dark:prose-invert">
-                                <p>Welcome to HyperDelivery. These Terms of Service govern your use of the HyperDelivery platform, including our mobile application and website.</p>
-                                <p>By accessing or using the HyperDelivery platform, you agree to comply with these Terms. If you do not agree with any part of these Terms, you should not use the platform.</p>
-                                
-                                <h3>1. Our Role</h3>
-                                <p>HyperDelivery is a technology platform that connects customers with local home chefs and vendors (“Vendors”). Our platform allows Vendors to list their products and enables customers to place orders with them.</p>
-                                <p>HyperDelivery acts solely as a technology facilitator and does not manufacture, prepare, store, or deliver the products listed by Vendors.</p>
-                                <p>Any transaction for the purchase of products is directly between the customer and the Vendor.</p>
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl rounded-2xl">
+        <Tabs defaultValue="terms" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 rounded-full">
+            <TabsTrigger value="terms" className="rounded-full">Terms of Service</TabsTrigger>
+            <TabsTrigger value="privacy" className="rounded-full">Privacy Policy</TabsTrigger>
+          </TabsList>
+          <TabsContent value="terms">
+            <DialogHeader>
+              <DialogTitle className="text-2xl">Terms of Service</DialogTitle>
+              <DialogDescription>Effective Date: March 11, 2026</DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="h-[50vh] pr-4 mt-4">
+              <div className="prose prose-sm dark:prose-invert">
+                <p>Welcome to HyperDelivery. These Terms of Service govern your use of the HyperDelivery platform, including our mobile application and website.</p>
+                <p>By accessing or using the HyperDelivery platform, you agree to comply with these Terms. If you do not agree with any part of these Terms, you should not use the platform.</p>
 
-                                <h3>2. User Accounts</h3>
-                                <p>To use certain features of the platform, users may be required to create an account.</p>
-                                <p>Users are responsible for:</p>
-                                <ul>
-                                    <li>Maintaining the confidentiality of their account credentials</li>
-                                    <li>Ensuring the accuracy of information provided</li>
-                                    <li>All activities conducted under their account</li>
-                                </ul>
-                                <p>HyperDelivery reserves the right to suspend or terminate accounts that violate these Terms or misuse the platform.</p>
+                <h3>1. Our Role</h3>
+                <p>HyperDelivery is a technology platform that connects customers with local home chefs and vendors (“Vendors”). Our platform allows Vendors to list their products and enables customers to place orders with them.</p>
+                <p>HyperDelivery acts solely as a technology facilitator and does not manufacture, prepare, store, or deliver the products listed by Vendors.</p>
+                <p>Any transaction for the purchase of products is directly between the customer and the Vendor.</p>
 
-                                <h3>3. Vendor Responsibilities</h3>
-                                <p>Vendors using the HyperDelivery platform are responsible for:</p>
-                                <p><strong>Product Quality:</strong> Vendors are solely responsible for the quality, safety, and legality of the products they offer.</p>
-                                <p><strong>Delivery:</strong> Vendors are responsible for the preparation and delivery of the goods ordered through the platform. HyperDelivery does not manage the physical delivery of items.</p>
-                                <p><strong>Product Information:</strong> Vendors must provide accurate information regarding product descriptions, pricing, and availability.</p>
-                                <p><strong>Product Images:</strong> Images displayed on the platform are for illustrative purposes only. While Vendors strive to provide accurate representations, the actual product received may vary slightly in appearance. The product description should be considered the primary reference.</p>
+                <h3>2. User Accounts</h3>
+                <p>To use certain features of the platform, users may be required to create an account.</p>
+                <p>Users are responsible for:</p>
+                <ul>
+                  <li>Maintaining the confidentiality of their account credentials</li>
+                  <li>Ensuring the accuracy of information provided</li>
+                  <li>All activities conducted under their account</li>
+                </ul>
+                <p>HyperDelivery reserves the right to suspend or terminate accounts that violate these Terms or misuse the platform.</p>
 
-                                <h3>4. Orders and Cancellations</h3>
-                                <p>Orders placed through the platform are requests to purchase products from Vendors.</p>
-                                <p>Vendors may accept or reject orders based on availability or operational constraints.</p>
-                                <p>In cases where an order cannot be fulfilled, the Vendor may cancel the order and inform the customer accordingly.</p>
-                                <p>Customers are expected to place orders responsibly and avoid misuse of the platform.</p>
+                <h3>3. Vendor Responsibilities</h3>
+                <p>Vendors using the HyperDelivery platform are responsible for:</p>
+                <p><strong>Product Quality:</strong> Vendors are solely responsible for the quality, safety, and legality of the products they offer.</p>
+                <p><strong>Delivery:</strong> Vendors are responsible for the preparation and delivery of the goods ordered through the platform. HyperDelivery does not manage the physical delivery of items.</p>
+                <p><strong>Delivery Distance & Routing:</strong> The distance displayed on vendor cards and storefront listings represents straight-line (radial/aerial) distance for general proximity reference. However, when an order is fulfilled for delivery, delivery charges, serviceability boundaries, and rider transit are determined based on navigable road distance, which may vary from straight-line distance due to actual road layout, traffic navigation, and routing.</p>
+                <p><strong>Product Information:</strong> Vendors must provide accurate information regarding product descriptions, pricing, and availability.</p>
+                <p><strong>Product Images:</strong> Images displayed on the platform are for illustrative purposes only. While Vendors strive to provide accurate representations, the actual product received may vary slightly in appearance. The product description should be considered the primary reference.</p>
 
-                                <h3>5. Payments</h3>
-                                <p>HyperDelivery provides QR code generation to simplify payment between customers and Vendors.</p>
-                                <p>HyperDelivery does not process payments and is not responsible for payment processing, transaction failures, or disputes arising from UPI or bank transactions.</p>
-                                <p>In the event of payment issues, customers and Vendors should first attempt to resolve the issue directly. If necessary, users should contact their respective bank or UPI service provider.</p>
+                <h3>4. Orders and Cancellations</h3>
+                <p>Orders placed through the platform are requests to purchase products from Vendors.</p>
+                <p>Vendors may accept or reject orders based on availability or operational constraints.</p>
+                <p>In cases where an order cannot be fulfilled, the Vendor may cancel the order and inform the customer accordingly.</p>
+                <p>Customers are expected to place orders responsibly and avoid misuse of the platform.</p>
 
-                                <h3>6. Platform Availability</h3>
-                                <p>While we strive to provide uninterrupted service, HyperDelivery does not guarantee that the platform will always be available without interruption.</p>
-                                <p>The service may occasionally be unavailable due to:</p>
-                                <ul>
-                                    <li>system maintenance</li>
-                                    <li>technical issues</li>
-                                    <li>updates or improvements</li>
-                                </ul>
+                <h3>5. Payments</h3>
+                <p>HyperDelivery provides QR code generation to simplify payment between customers and Vendors.</p>
+                <p>HyperDelivery does not process payments and is not responsible for payment processing, transaction failures, or disputes arising from UPI or bank transactions.</p>
+                <p>In the event of payment issues, customers and Vendors should first attempt to resolve the issue directly. If necessary, users should contact their respective bank or UPI service provider.</p>
 
-                                <h3>7. Prohibited Use</h3>
-                                <p>Users agree not to misuse the platform. This includes but is not limited to:</p>
-                                <ul>
-                                    <li>placing fraudulent or fake orders</li>
-                                    <li>abusing or harassing Vendors or other users</li>
-                                    <li>attempting to interfere with platform functionality</li>
-                                    <li>using the platform for unlawful activities</li>
-                                </ul>
-                                <p>HyperDelivery reserves the right to suspend or restrict access to users who violate these rules.</p>
+                <h3>6. Platform Availability</h3>
+                <p>While we strive to provide uninterrupted service, HyperDelivery does not guarantee that the platform will always be available without interruption.</p>
+                <p>The service may occasionally be unavailable due to:</p>
+                <ul>
+                  <li>system maintenance</li>
+                  <li>technical issues</li>
+                  <li>updates or improvements</li>
+                </ul>
 
-                                <h3>8. Limitation of Liability</h3>
-                                <p>HyperDelivery is provided on an “as is” and “as available” basis.</p>
-                                <p>We do not make any warranties regarding:</p>
-                                <ul>
-                                    <li>product quality provided by Vendors</li>
-                                    <li>delivery timelines</li>
-                                    <li>availability of products</li>
-                                </ul>
-                                <p>HyperDelivery shall not be liable for any direct or indirect damages arising from the use of the platform.</p>
+                <h3>7. Prohibited Use</h3>
+                <p>Users agree not to misuse the platform. This includes but is not limited to:</p>
+                <ul>
+                  <li>placing fraudulent or fake orders</li>
+                  <li>abusing or harassing Vendors or other users</li>
+                  <li>attempting to interfere with platform functionality</li>
+                  <li>using the platform for unlawful activities</li>
+                </ul>
+                <p>HyperDelivery reserves the right to suspend or restrict access to users who violate these rules.</p>
 
-                                <h3>9. Changes to These Terms</h3>
-                                <p>HyperDelivery reserves the right to update or modify these Terms at any time.</p>
-                                <p>Any updates will be posted on this page. Continued use of the platform after changes indicates acceptance of the revised Terms.</p>
+                <h3>8. Limitation of Liability</h3>
+                <p>HyperDelivery is provided on an “as is” and “as available” basis.</p>
+                <p>We do not make any warranties regarding:</p>
+                <ul>
+                  <li>product quality provided by Vendors</li>
+                  <li>delivery timelines</li>
+                  <li>availability of products</li>
+                </ul>
+                <p>HyperDelivery shall not be liable for any direct or indirect damages arising from the use of the platform.</p>
 
-                                <h3>10. Contact Us</h3>
-                                <p>If you have questions about these Terms of Service, please contact us:</p>
-                                <p>Email: <strong>rvp.officework@gmail.com</strong></p>
-                            </div>
-                        </ScrollArea>
-                    </TabsContent>
-                    <TabsContent value="privacy">
-                         <DialogHeader>
-                            <DialogTitle className="text-2xl">Privacy Policy</DialogTitle>
-                            <DialogDescription>Effective Date: March 11, 2026</DialogDescription>
-                        </DialogHeader>
-                         <ScrollArea className="h-[50vh] pr-4 mt-4">
-                             <div className="prose prose-sm dark:prose-invert">
-                                <p>Welcome to HyperDelivery. Your privacy is important to us, and we are committed to protecting your personal information and being transparent about how we collect and use it. This Privacy Policy explains how HyperDelivery collects, uses, and safeguards your information when you use our mobile application and services.</p>
-                                
-                                <h3>1. Information We Collect</h3>
-                                <p>To provide and improve our services, we may collect the following types of information:</p>
-                                <p><strong>Personal Information</strong></p>
-                                <p>When you create an account or use our services, we may collect:</p>
-                                <ul>
-                                    <li>Name or username</li>
-                                    <li>Email address (when using Google Sign-In)</li>
-                                    <li>Phone number</li>
-                                    <li>Delivery address entered by you</li>
-                                </ul>
-                                <p>This information is necessary to create and manage your account and facilitate order delivery.</p>
+                <h3>9. Changes to These Terms</h3>
+                <p>HyperDelivery reserves the right to update or modify these Terms at any time.</p>
+                <p>Any updates will be posted on this page. Continued use of the platform after changes indicates acceptance of the revised Terms.</p>
 
-                                <p><strong>Order Information</strong></p>
-                                <p>When you place an order through the platform, we collect:</p>
-                                <ul>
-                                    <li>Products ordered</li>
-                                    <li>Order history</li>
-                                    <li>Order status and transaction details</li>
-                                </ul>
-                                <p>This helps us manage orders and improve service quality.</p>
+                <h3>10. Contact Us</h3>
+                <p>If you have questions about these Terms of Service, please contact us:</p>
+                <p>Email: <strong>hyperlabsupport@gmail.com</strong></p>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+          <TabsContent value="privacy">
+            <DialogHeader>
+              <DialogTitle className="text-2xl">Privacy Policy</DialogTitle>
+              <DialogDescription>Effective Date: March 11, 2026</DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="h-[50vh] pr-4 mt-4">
+              <div className="prose prose-sm dark:prose-invert">
+                <p>Welcome to HyperDelivery. Your privacy is important to us, and we are committed to protecting your personal information and being transparent about how we collect and use it. This Privacy Policy explains how HyperDelivery collects, uses, and safeguards your information when you use our mobile application and services.</p>
 
-                                <p><strong>Feedback and Reviews</strong></p>
-                                <p>We may collect ratings, reviews, or feedback you provide regarding vendors, products, or our services.</p>
+                <h3>1. Information We Collect</h3>
+                <p>To provide and improve our services, we may collect the following types of information:</p>
+                <p><strong>Personal Information</strong></p>
+                <p>When you create an account or use our services, we may collect:</p>
+                <ul>
+                  <li>Name or username</li>
+                  <li>Email address (when using Google Sign-In)</li>
+                  <li>Phone number</li>
+                  <li>Delivery address entered by you</li>
+                </ul>
+                <p>This information is necessary to create and manage your account and facilitate order delivery.</p>
 
-                                <h3>2. Automatically Collected Information</h3>
-                                <p>When you use the HyperDelivery application, certain technical information may be automatically collected to ensure the app functions properly.</p>
-                                <p>This may include:</p>
-                                <ul>
-                                    <li>Device type</li>
-                                    <li>Operating system version</li>
-                                    <li>App diagnostics such as crash reports</li>
-                                </ul>
-                                <p>This information is used only to improve app stability, performance, and reliability.</p>
-                                <p>We do not collect precise location data or track user activity outside the app.</p>
+                <p><strong>Order Information</strong></p>
+                <p>When you place an order through the platform, we collect:</p>
+                <ul>
+                  <li>Products ordered</li>
+                  <li>Order history</li>
+                  <li>Order status and transaction details</li>
+                </ul>
+                <p>This helps us manage orders and improve service quality.</p>
 
-                                <h3>3. How We Use Your Information</h3>
-                                <p>We use the information collected for the following purposes:</p>
-                                <ul>
-                                    <li>To process and manage orders placed through the platform</li>
-                                    <li>To facilitate delivery between customers, vendors, and delivery personnel</li>
-                                    <li>To manage your account and provide customer support</li>
-                                    <li>To send important notifications related to orders and service updates</li>
-                                    <li>To improve our platform based on user feedback and order history</li>
-                                    <li>For internal record keeping and operational purposes within the HyperDelivery community</li>
-                                </ul>
+                <p><strong>Feedback and Reviews</strong></p>
+                <p>We may collect ratings, reviews, or feedback you provide regarding vendors, products, or our services.</p>
 
-                                <h3>4. Data Sharing</h3>
-                                <p>We value your privacy and handle your information responsibly.</p>
-                                <p>Your personal information is not sold or shared with third-party companies for marketing purposes.</p>
-                                <p>However, certain information may be shared in the following situations:</p>
+                <h3>2. Automatically Collected Information</h3>
+                <p>When you use the HyperDelivery application, certain technical information may be automatically collected to ensure the app functions properly.</p>
+                <p>This may include:</p>
+                <ul>
+                  <li>Device type</li>
+                  <li>Operating system version</li>
+                  <li>App diagnostics such as crash reports</li>
+                </ul>
+                <p>This information is used only to improve app stability, performance, and reliability.</p>
+                <p>We do not collect precise location data or track user activity outside the app.</p>
 
-                                <p><strong>Vendors and Delivery Personnel</strong></p>
-                                <p>Your delivery address, name, and phone number may be shared with the specific vendor and delivery personnel responsible for fulfilling your order. This is necessary to complete the delivery process.</p>
+                <h3>3. How We Use Your Information</h3>
+                <p>We use the information collected for the following purposes:</p>
+                <ul>
+                  <li>To process and manage orders placed through the platform</li>
+                  <li>To facilitate delivery between customers, vendors, and delivery personnel</li>
+                  <li>To manage your account and provide customer support</li>
+                  <li>To send important notifications related to orders and service updates</li>
+                  <li>To improve our platform based on user feedback and order history</li>
+                  <li>For internal record keeping and operational purposes within the HyperDelivery community</li>
+                </ul>
 
-                                <p><strong>Service Providers</strong></p>
-                                <p>We may use trusted third-party services that help operate the application, such as:</p>
-                                <ul>
-                                    <li>Google Sign-In for secure authentication</li>
-                                    <li>Firebase Cloud Messaging for sending order notifications</li>
-                                    <li>Google Play Services for application functionality</li>
-                                </ul>
-                                <p>These services operate under their own privacy policies.</p>
+                <h3>4. Data Sharing</h3>
+                <p>We value your privacy and handle your information responsibly.</p>
+                <p>Your personal information is not sold or shared with third-party companies for marketing purposes.</p>
+                <p>However, certain information may be shared in the following situations:</p>
 
-                                <h3>5. Data Security</h3>
-                                <p>We are committed to ensuring that your information is secure. We implement appropriate technical and organizational measures to protect your personal information from unauthorized access, misuse, or disclosure.</p>
+                <p><strong>Vendors and Delivery Personnel</strong></p>
+                <p>Your delivery address, name, and phone number may be shared with the specific vendor and delivery personnel responsible for fulfilling your order. This is necessary to complete the delivery process.</p>
 
-                                <h3>6. Data Retention</h3>
-                                <p>We retain personal information only for as long as necessary to provide our services, maintain order records, and comply with legal or operational requirements.</p>
-                                <p>Users may request deletion of their account and associated personal data by contacting us.</p>
+                <p><strong>Service Providers</strong></p>
+                <p>We may use trusted third-party services that help operate the application, such as:</p>
+                <ul>
+                  <li>Google Sign-In for secure authentication</li>
+                  <li>Firebase Cloud Messaging for sending order notifications</li>
+                  <li>Google Play Services for application functionality</li>
+                </ul>
+                <p>These services operate under their own privacy policies.</p>
 
-                                <h3>7. Your Rights</h3>
-                                <p>You have the right to:</p>
-                                <ul>
-                                    <li>Access your personal information</li>
-                                    <li>Update or correct your information</li>
-                                    <li>Request deletion of your account and associated data</li>
-                                </ul>
-                                <p>You can manage some of this information directly through your account settings or contact us for assistance.</p>
+                <h3>5. Data Security</h3>
+                <p>We are committed to ensuring that your information is secure. We implement appropriate technical and organizational measures to protect your personal information from unauthorized access, misuse, or disclosure.</p>
 
-                                <h3>8. Children’s Privacy</h3>
-                                <p>HyperDelivery is not intended for use by individuals under the age of 13. We do not knowingly collect personal information from children. If we become aware that such information has been collected, we will take appropriate steps to remove it.</p>
+                <h3>6. Data Retention</h3>
+                <p>We retain personal information only for as long as necessary to provide our services, maintain order records, and comply with legal or operational requirements.</p>
+                <p>Users may request deletion of their account and associated personal data by contacting us.</p>
 
-                                <h3>9. Changes to This Privacy Policy</h3>
-                                <p>We may update this Privacy Policy from time to time to reflect changes in our services or legal requirements. Any updates will be posted on this page with the revised effective date.</p>
-                                <p>We encourage users to review this policy periodically.</p>
+                <h3>7. Your Rights</h3>
+                <p>You have the right to:</p>
+                <ul>
+                  <li>Access your personal information</li>
+                  <li>Update or correct your information</li>
+                  <li>Request deletion of your account and associated data</li>
+                </ul>
+                <p>You can manage some of this information directly through your account settings or contact us for assistance.</p>
 
-                                <h3>10. Contact Us</h3>
-                                <p>If you have any questions or concerns about this Privacy Policy or how your information is handled, please contact us:</p>
-                                <p>Email: <strong>rvp.officework@gmail.com</strong></p>
-                            </div>
-                        </ScrollArea>
-                    </TabsContent>
-                </Tabs>
-                 <DialogFooter className="mt-4">
-                    <DialogClose asChild>
-                        <Button type="button">Close</Button>
-                    </DialogClose>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
+                <h3>8. Children’s Privacy</h3>
+                <p>HyperDelivery is not intended for use by individuals under the age of 13. We do not knowingly collect personal information from children. If we become aware that such information has been collected, we will take appropriate steps to remove it.</p>
+
+                <h3>9. Changes to This Privacy Policy</h3>
+                <p>We may update this Privacy Policy from time to time to reflect changes in our services or legal requirements. Any updates will be posted on this page with the revised effective date.</p>
+                <p>We encourage users to review this policy periodically.</p>
+
+                <h3>10. Contact Us</h3>
+                <p>If you have any questions or concerns about this Privacy Policy or how your information is handled, please contact us:</p>
+                <p>Email: <strong>hyperlabsupport@gmail.com</strong></p>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
+        <DialogFooter className="mt-4">
+          <DialogClose asChild>
+            <Button type="button">Close</Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
 
 export default function VendorDetailsPage() {
-    const { toast } = useToast();
-    const router = useRouter();
-    const { vendor, updateDetails, linkNewGoogleAccount } = useVendor();
+  const { toast } = useToast();
+  const router = useRouter();
+  const { vendor, updateDetails, linkNewGoogleAccount } = useVendor();
 
-    const [shopName, setShopName] = useState('');
-    const [contact, setContact] = useState('');
-    const [address, setAddress] = useState('');
-    const [googleMapsUrl, setGoogleMapsUrl] = useState('');
-    const [category, setCategory] = useState('');
-    const [minOrderAmount, setMinOrderAmount] = useState(0);
-    const [freeDeliveryDistanceKm, setFreeDeliveryDistanceKm] = useState(0);
-    const [about, setAbout] = useState('');
-    const [workingHours, setWorkingHours] = useState('');
-    const [tagline, setTagline] = useState('');
-    const [shopImage, setShopImage] = useState('');
-    const [upiId, setUpiId] = useState('');
-    const [telegramChatId, setTelegramChatId] = useState('');
-    const [termsAccepted, setTermsAccepted] = useState(false);
-    const [isTermsDialogOpen, setIsTermsDialogOpen] = useState(false);
-    const [deliveryType, setDeliveryType] = useState<DeliveryType>('All');
-    const [dineInTables, setDineInTables] = useState(0);
-    const [emailPreferences, setEmailPreferences] = useState<EmailPreferences>({ campaigns: true });
+  const [shopName, setShopName] = useState('');
+  const [contact, setContact] = useState('');
+  const [address, setAddress] = useState('');
+  const [googleMapsUrl, setGoogleMapsUrl] = useState('');
+  const [category, setCategory] = useState('');
+  const [minOrderAmount, setMinOrderAmount] = useState(0);
+  const [freeDeliveryDistanceKm, setFreeDeliveryDistanceKm] = useState(0);
+  const [about, setAbout] = useState('');
+  const [workingHours, setWorkingHours] = useState('');
+  const [tagline, setTagline] = useState('');
+  const [shopImage, setShopImage] = useState('');
+  const [upiId, setUpiId] = useState('');
+  const [telegramChatId, setTelegramChatId] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [isTermsDialogOpen, setIsTermsDialogOpen] = useState(false);
+  const [deliveryType, setDeliveryType] = useState<DeliveryType>('All');
+  const [dineInTables, setDineInTables] = useState(0);
+  const [emailPreferences, setEmailPreferences] = useState<EmailPreferences>({ campaigns: true });
 
-    const [isSaving, setIsSaving] = useState(false);
-    const [isLinking, setIsLinking] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLinking, setIsLinking] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-    useEffect(() => {
-        if (!vendor) {
-            router.replace('/admin/login');
-            return;
-        }
-        
-        setShopName(vendor.shopName || '');
-        setContact((vendor.contact || '').replace('+91', ''));
-        setAddress(vendor.address || '');
-        setGoogleMapsUrl(vendor.googleMapsUrl || '');
-        setCategory(vendor.category || '');
-        setMinOrderAmount(vendor.minOrderAmount || 0);
-        setFreeDeliveryDistanceKm(vendor.freeDeliveryDistanceKm || 0);
-        setAbout(vendor.about || '');
-        setWorkingHours(vendor.workingHours || '');
-        setTagline(vendor.tagline || '');
-        setShopImage(vendor.shopImage || 'https://placehold.co/400x225');
-        setUpiId(vendor.upiId || '');
-        setTelegramChatId(vendor.telegramChatId || '');
-        setTermsAccepted(vendor.termsAccepted || false);
-        setDeliveryType(vendor.deliveryType || 'All');
-        setDineInTables(vendor.dineInTables || 0);
-        setEmailPreferences(vendor.emailPreferences || { campaigns: true });
-
-    }, [vendor, router]);
-    
-     const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file && vendor) {
-          setIsSaving(true);
-          try {
-            const { compressedDataUrl } = await compressImage(URL.createObjectURL(file));
-            const imageUrl = await uploadImageToStorage(compressedDataUrl, `shop-images/${vendor.username}/${Date.now()}`);
-            setShopImage(imageUrl);
-            toast({ title: 'Image Uploaded', description: 'The image has been uploaded. Save to confirm.' });
-          } catch (err) {
-            console.error(err);
-            toast({ title: 'Image upload error', description: 'Could not process the uploaded image.', variant: 'destructive'});
-          } finally {
-            setIsSaving(false);
-          }
-        }
-    };
-
-    const handleUploadClick = () => {
-        fileInputRef.current?.click();
-    };
-
-    const handleLinkAccount = async () => {
-        setIsLinking(true);
-        try {
-            await linkNewGoogleAccount();
-            // The context handles the success toast and logout
-        } catch (e) {
-            // The context handles the error toast
-        } finally {
-            setIsLinking(false);
-        }
+  useEffect(() => {
+    if (!vendor) {
+      router.replace('/admin/login');
+      return;
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        
-        if (contact && contact.length !== 10) {
-            toast({
-                title: "Invalid Contact Number",
-                description: "Please enter a valid 10-digit mobile number.",
-                variant: "destructive",
-            });
-            return;
-        }
-        
-        if (!shopName || !contact || !address) {
-            toast({
-                title: "Incomplete Details",
-                description: "Please fill in the required fields: Shop Name, Contact, and Address.",
-                variant: "destructive",
-            });
-            return;
-        }
-        setIsSaving(true);
-        try {
-            const details = { 
-                shopName, 
-                contact, 
-                address, 
-                googleMapsUrl,
-                category, 
-                minOrderAmount, 
-                freeDeliveryDistanceKm,
-                about, 
-                workingHours, 
-                tagline, 
-                shopImage, 
-                upiId, 
-                telegramChatId,
-                termsAccepted,
-                deliveryType,
-                dineInTables,
-                emailPreferences,
-            };
-            await updateDetails(details);
-            
-            toast({
-                title: "Details Saved!",
-                description: "Your shop information has been updated.",
-            });
+    setShopName(vendor.shopName || '');
+    setContact((vendor.contact || '').replace('+91', ''));
+    setAddress(vendor.address || '');
+    setGoogleMapsUrl(vendor.googleMapsUrl || '');
+    setCategory(vendor.category || '');
+    setMinOrderAmount(vendor.minOrderAmount || 0);
+    setFreeDeliveryDistanceKm(vendor.freeDeliveryDistanceKm || 0);
+    setAbout(vendor.about || '');
+    setWorkingHours(vendor.workingHours || '');
+    setTagline(vendor.tagline || '');
+    setShopImage(vendor.shopImage || 'https://placehold.co/400x225');
+    setUpiId(vendor.upiId || '');
+    setTelegramChatId(vendor.telegramChatId || '');
+    setTermsAccepted(vendor.termsAccepted || false);
+    setDeliveryType(vendor.deliveryType || 'All');
+    setDineInTables(vendor.dineInTables || 0);
+    setEmailPreferences(vendor.emailPreferences || { campaigns: true });
 
-            router.push('/admin/dashboard/orders');
-            
-        } catch (error: any) {
-             toast({
-                title: "Error",
-                description: error.message,
-                variant: "destructive",
-            });
-        } finally {
-          setIsSaving(false);
-        }
+  }, [vendor, router]);
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && vendor) {
+      setIsSaving(true);
+      try {
+        const { compressedDataUrl } = await compressImage(URL.createObjectURL(file));
+        const imageUrl = await uploadImageToStorage(compressedDataUrl, `shop-images/${vendor.username}/${Date.now()}`);
+        setShopImage(imageUrl);
+        toast({ title: 'Image Uploaded', description: 'The image has been uploaded. Save to confirm.' });
+      } catch (err) {
+        console.error(err);
+        toast({ title: 'Image upload error', description: 'Could not process the uploaded image.', variant: 'destructive' });
+      } finally {
+        setIsSaving(false);
+      }
     }
-    
-    const isSaveDisabled = isSaving || !termsAccepted || isLinking;
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleLinkAccount = async () => {
+    setIsLinking(true);
+    try {
+      await linkNewGoogleAccount();
+      // The context handles the success toast and logout
+    } catch (e) {
+      // The context handles the error toast
+    } finally {
+      setIsLinking(false);
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (contact && contact.length !== 10) {
+      toast({
+        title: "Invalid Contact Number",
+        description: "Please enter a valid 10-digit mobile number.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!shopName || !contact || !address) {
+      toast({
+        title: "Incomplete Details",
+        description: "Please fill in the required fields: Shop Name, Contact, and Address.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const details = {
+        shopName,
+        contact,
+        address,
+        googleMapsUrl,
+        category,
+        minOrderAmount,
+        freeDeliveryDistanceKm,
+        about,
+        workingHours,
+        tagline,
+        shopImage,
+        upiId,
+        telegramChatId,
+        termsAccepted,
+        deliveryType,
+        dineInTables,
+        emailPreferences,
+      };
+      await updateDetails(details);
+
+      toast({
+        title: "Details Saved!",
+        description: "Your shop information has been updated.",
+      });
+
+      router.push('/admin/dashboard/orders');
+
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  const isSaveDisabled = isSaving || !termsAccepted || isLinking;
 
 
   return (
@@ -511,10 +512,10 @@ export default function VendorDetailsPage() {
 
                           <div className="space-y-1.5">
                             <Label htmlFor="category" className="text-xs font-bold">Shop Category</Label>
-                            <Input 
-                              id="category" 
-                              value={category || 'To be assigned by admin'} 
-                              readOnly 
+                            <Input
+                              id="category"
+                              value={category || 'To be assigned by admin'}
+                              readOnly
                               className="rounded-xl h-10 text-xs bg-muted/50 cursor-not-allowed text-muted-foreground"
                             />
                           </div>

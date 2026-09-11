@@ -91,8 +91,8 @@ export default function ContactUsPage() {
                   Thinking of creating a delivery platform like this for your own business? We can guide you on how to set up, scale, and manage a delivery system with the right technology stack.
                   <br />
                   👉 Connect with us to learn more:{' '}
-                  <a href="mailto:rvp.officework@gmail.com" className="text-blue-400 hover:underline">
-                    rvp.officework@gmail.com
+                  <a href="mailto:hyperlabsupport@gmail.com" className="text-blue-400 hover:underline">
+                    hyperlabsupport@gmail.com
                   </a>
                 </p>
               </div>

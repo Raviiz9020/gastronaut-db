@@ -24,9 +24,9 @@ export default function TermsOfServicePage() {
         >
           <div className="mb-4">
             <Link href="/" passHref>
-              <Button 
-                variant="outline" 
-                size="icon" 
+              <Button
+                variant="outline"
+                size="icon"
                 className="h-9 w-9 rounded-full border-border/70 hover:border-primary/50 hover:bg-primary/10 transition-all shadow-xs"
                 aria-label="Back to Home"
               >
@@ -37,112 +37,113 @@ export default function TermsOfServicePage() {
 
           <Card className="w-full bg-card/80 backdrop-blur-sm border-primary/20 box-glow-primary rounded-3xl">
             <CardHeader className="text-center px-4 sm:px-6">
-                <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2">
-                    <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-primary animate-pulse flex-shrink-0"/>
-                    <CardTitle className="font-headline text-2xl sm:text-4xl md:text-5xl text-primary flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-                      {words.map((word, wordIndex) => (
-                        <span key={wordIndex} className="inline-flex">
-                          {word.split("").map((char, charIndex) => (
-                            <motion.span
-                              key={`${char}-${charIndex}`}
-                              initial={{ y: 0 }}
-                              animate={{ y: [0, -6, 0] }}
-                              transition={{
-                                duration: 2,
-                                repeat: Infinity,
-                                delay: (wordIndex * 4 + charIndex) * 0.05,
-                                ease: 'easeInOut'
-                              }}
-                              style={{ whiteSpace: 'pre' }}
-                            >
-                              {char}
-                            </motion.span>
-                          ))}
-                        </span>
+              <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2">
+                <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-primary animate-pulse flex-shrink-0" />
+                <CardTitle className="font-headline text-2xl sm:text-4xl md:text-5xl text-primary flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+                  {words.map((word, wordIndex) => (
+                    <span key={wordIndex} className="inline-flex">
+                      {word.split("").map((char, charIndex) => (
+                        <motion.span
+                          key={`${char}-${charIndex}`}
+                          initial={{ y: 0 }}
+                          animate={{ y: [0, -6, 0] }}
+                          transition={{
+                            duration: 2,
+                            repeat: Infinity,
+                            delay: (wordIndex * 4 + charIndex) * 0.05,
+                            ease: 'easeInOut'
+                          }}
+                          style={{ whiteSpace: 'pre' }}
+                        >
+                          {char}
+                        </motion.span>
                       ))}
-                    </CardTitle>
-                </div>
-                 <CardDescription className="text-muted-foreground max-w-2xl mx-auto text-xs sm:text-sm">
-                    Effective Date: March 11, 2026
-                </CardDescription>
+                    </span>
+                  ))}
+                </CardTitle>
+              </div>
+              <CardDescription className="text-muted-foreground max-w-2xl mx-auto text-xs sm:text-sm">
+                Effective Date: March 11, 2026
+              </CardDescription>
             </CardHeader>
             <CardContent className="prose prose-sm prose-invert prose-p:text-sm prose-p:text-muted-foreground prose-h3:text-primary prose-strong:text-foreground prose-li:text-sm prose-li:text-muted-foreground mx-auto p-6">
-                <p>
-                    Welcome to HyperDelivery. These Terms of Service govern your use of the HyperDelivery platform, including our mobile application and website.
-                </p>
-                <p>
-                    By accessing or using the HyperDelivery platform, you agree to comply with these Terms. If you do not agree with any part of these Terms, you should not use the platform.
-                </p>
+              <p>
+                Welcome to HyperDelivery. These Terms of Service govern your use of the HyperDelivery platform, including our mobile application and website.
+              </p>
+              <p>
+                By accessing or using the HyperDelivery platform, you agree to comply with these Terms. If you do not agree with any part of these Terms, you should not use the platform.
+              </p>
 
-                <h3 className="font-headline text-xl mt-8 border-t pt-4">1. Our Role</h3>
-                <p>
-                    HyperDelivery is a technology platform that connects customers with local home chefs and vendors (“Vendors”). Our platform allows Vendors to list their products and enables customers to place orders with them.
-                </p>
-                <p>
-                    HyperDelivery acts solely as a technology facilitator and does not manufacture, prepare, store, or deliver the products listed by Vendors.
-                </p>
-                <p>
-                    Any transaction for the purchase of products is directly between the customer and the Vendor.
-                </p>
+              <h3 className="font-headline text-xl mt-8 border-t pt-4">1. Our Role</h3>
+              <p>
+                HyperDelivery is a technology platform that connects customers with local home chefs and vendors (“Vendors”). Our platform allows Vendors to list their products and enables customers to place orders with them.
+              </p>
+              <p>
+                HyperDelivery acts solely as a technology facilitator and does not manufacture, prepare, store, or deliver the products listed by Vendors.
+              </p>
+              <p>
+                Any transaction for the purchase of products is directly between the customer and the Vendor.
+              </p>
 
-                <h3 className="font-headline text-xl mt-8 border-t pt-4">2. User Accounts</h3>
-                <p>
-                    To use certain features of the platform, users may be required to create an account.
-                </p>
-                <p>Users are responsible for:</p>
-                <ul className="list-disc pl-6 space-y-1">
-                    <li>Maintaining the confidentiality of their account credentials</li>
-                    <li>Ensuring the accuracy of information provided</li>
-                    <li>All activities conducted under their account</li>
-                </ul>
-                <p>
-                    HyperDelivery reserves the right to suspend or terminate accounts that violate these Terms or misuse the platform.
-                </p>
+              <h3 className="font-headline text-xl mt-8 border-t pt-4">2. User Accounts</h3>
+              <p>
+                To use certain features of the platform, users may be required to create an account.
+              </p>
+              <p>Users are responsible for:</p>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>Maintaining the confidentiality of their account credentials</li>
+                <li>Ensuring the accuracy of information provided</li>
+                <li>All activities conducted under their account</li>
+              </ul>
+              <p>
+                HyperDelivery reserves the right to suspend or terminate accounts that violate these Terms or misuse the platform.
+              </p>
 
-                <h3 className="font-headline text-xl mt-8 border-t pt-4">3. Vendor Responsibilities</h3>
-                <p>Vendors using the HyperDelivery platform are responsible for:</p>
-                
-                <p><strong>Product Quality:</strong> Vendors are solely responsible for the quality, safety, and legality of the products they offer.</p>
-                <p><strong>Delivery:</strong> Vendors are responsible for the preparation and delivery of the goods ordered through the platform. HyperDelivery does not manage the physical delivery of items.</p>
-                <p><strong>Product Information:</strong> Vendors must provide accurate information regarding product descriptions, pricing, and availability.</p>
-                <p><strong>Product Images:</strong> Images displayed on the platform are for illustrative purposes only. While Vendors strive to provide accurate representations, the actual product received may vary slightly in appearance. The product description should be considered the primary reference.</p>
+              <h3 className="font-headline text-xl mt-8 border-t pt-4">3. Vendor Responsibilities</h3>
+              <p>Vendors using the HyperDelivery platform are responsible for:</p>
 
-                <h3 className="font-headline text-xl mt-8 border-t pt-4">4. Orders and Cancellations</h3>
-                <p>Orders placed through the platform are requests to purchase products from Vendors.</p>
-                <p>Vendors may accept or reject orders based on availability or operational constraints.</p>
-                <p>In cases where an order cannot be fulfilled, the Vendor may cancel the order and inform the customer accordingly.</p>
-                <p>Customers are expected to place orders responsibly and avoid misuse of the platform.</p>
+              <p><strong>Product Quality:</strong> Vendors are solely responsible for the quality, safety, and legality of the products they offer.</p>
+              <p><strong>Delivery:</strong> Vendors are responsible for the preparation and delivery of the goods ordered through the platform. HyperDelivery does not manage the physical delivery of items.</p>
+              <p><strong>Delivery Distance & Routing:</strong> The distance displayed on vendor cards and storefront listings represents straight-line (radial/aerial) distance for general proximity reference. However, when an order is fulfilled for delivery, delivery charges, serviceability boundaries, and rider transit are determined based on navigable road distance, which may vary from straight-line distance due to actual road layout, traffic navigation, and routing.</p>
+              <p><strong>Product Information:</strong> Vendors must provide accurate information regarding product descriptions, pricing, and availability.</p>
+              <p><strong>Product Images:</strong> Images displayed on the platform are for illustrative purposes only. While Vendors strive to provide accurate representations, the actual product received may vary slightly in appearance. The product description should be considered the primary reference.</p>
 
-                <h3 className="font-headline text-xl mt-8 border-t pt-4">5. Payments</h3>
-                <p>HyperDelivery provides QR code generation to simplify payment between customers and Vendors.</p>
-                <p>HyperDelivery does not process payments and is not responsible for payment processing, transaction failures, or disputes arising from UPI or bank transactions.</p>
-                <p>In the event of payment issues, customers and Vendors should first attempt to resolve the issue directly. If necessary, users should contact their respective bank or UPI service provider.</p>
+              <h3 className="font-headline text-xl mt-8 border-t pt-4">4. Orders and Cancellations</h3>
+              <p>Orders placed through the platform are requests to purchase products from Vendors.</p>
+              <p>Vendors may accept or reject orders based on availability or operational constraints.</p>
+              <p>In cases where an order cannot be fulfilled, the Vendor may cancel the order and inform the customer accordingly.</p>
+              <p>Customers are expected to place orders responsibly and avoid misuse of the platform.</p>
 
-                <h3 className="font-headline text-xl mt-8 border-t pt-4">6. Platform Availability</h3>
-                <p>While we strive to provide uninterrupted service, HyperDelivery does not guarantee that the platform will always be available without interruption.</p>
-                <p>The service may occasionally be unavailable due to system maintenance, technical issues, or updates.</p>
+              <h3 className="font-headline text-xl mt-8 border-t pt-4">5. Payments</h3>
+              <p>HyperDelivery provides QR code generation to simplify payment between customers and Vendors.</p>
+              <p>HyperDelivery does not process payments and is not responsible for payment processing, transaction failures, or disputes arising from UPI or bank transactions.</p>
+              <p>In the event of payment issues, customers and Vendors should first attempt to resolve the issue directly. If necessary, users should contact their respective bank or UPI service provider.</p>
 
-                <h3 className="font-headline text-xl mt-8 border-t pt-4">7. Prohibited Use</h3>
-                <p>Users agree not to misuse the platform. This includes but is not limited to:</p>
-                <ul className="list-disc pl-6 space-y-1">
-                    <li>Placing fraudulent or fake orders</li>
-                    <li>Abusing or harassing Vendors or other users</li>
-                    <li>Attempting to interfere with platform functionality</li>
-                    <li>Using the platform for unlawful activities</li>
-                </ul>
+              <h3 className="font-headline text-xl mt-8 border-t pt-4">6. Platform Availability</h3>
+              <p>While we strive to provide uninterrupted service, HyperDelivery does not guarantee that the platform will always be available without interruption.</p>
+              <p>The service may occasionally be unavailable due to system maintenance, technical issues, or updates.</p>
 
-                <h3 className="font-headline text-xl mt-8 border-t pt-4">8. Limitation of Liability</h3>
-                <p>HyperDelivery is provided on an “as is” and “as available” basis.</p>
-                <p>We do not make any warranties regarding product quality provided by Vendors, delivery timelines, or availability of products.</p>
-                <p>HyperDelivery shall not be liable for any direct or indirect damages arising from the use of the platform.</p>
+              <h3 className="font-headline text-xl mt-8 border-t pt-4">7. Prohibited Use</h3>
+              <p>Users agree not to misuse the platform. This includes but is not limited to:</p>
+              <ul className="list-disc pl-6 space-y-1">
+                <li>Placing fraudulent or fake orders</li>
+                <li>Abusing or harassing Vendors or other users</li>
+                <li>Attempting to interfere with platform functionality</li>
+                <li>Using the platform for unlawful activities</li>
+              </ul>
 
-                <h3 className="font-headline text-xl mt-8 border-t pt-4">9. Changes to These Terms</h3>
-                <p>HyperDelivery reserves the right to update or modify these Terms at any time.</p>
-                <p>Any updates will be posted on this page. Continued use of the platform after changes indicates acceptance of the revised Terms.</p>
+              <h3 className="font-headline text-xl mt-8 border-t pt-4">8. Limitation of Liability</h3>
+              <p>HyperDelivery is provided on an “as is” and “as available” basis.</p>
+              <p>We do not make any warranties regarding product quality provided by Vendors, delivery timelines, or availability of products.</p>
+              <p>HyperDelivery shall not be liable for any direct or indirect damages arising from the use of the platform.</p>
 
-                <h3 className="font-headline text-xl mt-8 border-t pt-4">10. Contact Us</h3>
-                <p>If you have questions about these Terms of Service, please contact us:</p>
-                <p>Email: <strong>rvp.officework@gmail.com</strong></p>
+              <h3 className="font-headline text-xl mt-8 border-t pt-4">9. Changes to These Terms</h3>
+              <p>HyperDelivery reserves the right to update or modify these Terms at any time.</p>
+              <p>Any updates will be posted on this page. Continued use of the platform after changes indicates acceptance of the revised Terms.</p>
+
+              <h3 className="font-headline text-xl mt-8 border-t pt-4">10. Contact Us</h3>
+              <p>If you have questions about these Terms of Service, please contact us:</p>
+              <p>Email: <strong>hyperlabsupport@gmail.com</strong></p>
 
             </CardContent>
           </Card>
