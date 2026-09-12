@@ -15,7 +15,7 @@ import { useMenu } from '@/context/menu-context';
 import { useSpecialMenu } from '@/context/special-menu-context';
 import { useOrder } from '@/context/order-context';
 import { useCart } from '@/context/cart-context';
-import { Star, Building, ShoppingCart, Loader2, Minus, Plus, Utensils, X, Sparkles, Gift, Search, Hand, Tag, ArrowLeft, Fingerprint, Leaf, Bike, Beef, ChevronDown, ChevronLeft, ChevronRight, Flame, Percent, UtensilsCrossed } from 'lucide-react';
+import { Star, Building, ShoppingCart, Loader2, Minus, Plus, Utensils, X, Sparkles, Gift, Search, Hand, Tag, ArrowLeft, Fingerprint, Leaf, Bike, Beef, ChevronDown, ChevronLeft, ChevronRight, Flame, Percent, UtensilsCrossed, MapPinOff, Zap, MapPin } from 'lucide-react';
 import { useVendor } from '@/context/vendor-context';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -925,7 +925,7 @@ export default function MenuPageContent() {
   const { menuItems, fetchAllItems, isFetchingItems, globalCategories } = useMenu();
   const { specialMenus, fetchAllSpecialMenus } = useSpecialMenu();
   const { orders } = useOrder();
-  const { userLocation, isLoading: isLocationLoading } = useLocation();
+  const { userLocation, isLoading: isLocationLoading, selectSavedAddress } = useLocation();
   const { customer, isAuthLoading } = useCustomer();
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
   const [pendingCartAction, setPendingCartAction] = useState<{
@@ -970,6 +970,177 @@ export default function MenuPageContent() {
   const fastDeliveryParam = searchParams.get('fastDelivery');
   const minRatingParam = searchParams.get('minRating');
   const offersOnlyParam = searchParams.get('offersOnly');
+
+  // Identify if user arrived via a targeted vendor link or dish link (e.g. from WhatsApp)
+  const targetedVendor = useMemo(() => {
+    if (vendorParam) {
+      return vendors.find(v => (v.slug === vendorParam || v.username === vendorParam) && v.isApproved) || null;
+    }
+    if (itemParam) {
+      const item = menuItems.find(i => i.id === itemParam);
+      if (item) {
+        return vendors.find(v => v.username === item.vendorUsername && v.isApproved) || null;
+      }
+    }
+    return null;
+  }, [vendorParam, itemParam, vendors, menuItems]);
+
+  // Check if the targeted vendor is outside the user's active delivery location
+  const isTargetVendorOutOfRange = useMemo(() => {
+    if (!targetedVendor || !userLocation) return false;
+    return !isVendorServiceable(targetedVendor, userLocation);
+  }, [targetedVendor, userLocation]);
+
+  const currentDistanceToTarget = useMemo(() => {
+    if (!targetedVendor || !userLocation || targetedVendor.latitude === undefined || targetedVendor.longitude === undefined) {
+      return null;
+    }
+    return calculateDistanceInKm(userLocation.latitude, userLocation.longitude, targetedVendor.latitude, targetedVendor.longitude);
+  }, [targetedVendor, userLocation]);
+
+  // Find if customer has another saved address that IS serviceable for this vendor
+  const serviceableSavedAddress = useMemo(() => {
+    if (!isTargetVendorOutOfRange || !targetedVendor || !customer?.savedAddresses) return null;
+    return customer.savedAddresses.find(addr => {
+      if (addr.latitude === undefined || addr.longitude === undefined) return false;
+      const dist = calculateDistanceInKm(addr.latitude, addr.longitude, targetedVendor.latitude ?? 0, targetedVendor.longitude ?? 0);
+      return dist <= (targetedVendor.deliveryRadius || 0);
+    }) || null;
+  }, [isTargetVendorOutOfRange, targetedVendor, customer?.savedAddresses]);
+
+  // Option A: Custom Mismatch Action Dialog state & handlers
+  const [mismatchDialogState, setMismatchDialogState] = useState<{
+    open: boolean;
+    item: MenuItemType | null;
+    vendor: Vendor | null;
+    selectedOptions: Record<string, string | string[]>;
+    quantity: number;
+    forceSelfPickup?: boolean;
+  }>({
+    open: false,
+    item: null,
+    vendor: null,
+    selectedOptions: {},
+    quantity: 1,
+  });
+
+  const currentMismatchDistance = useMemo(() => {
+    if (!mismatchDialogState.vendor || !userLocation || mismatchDialogState.vendor.latitude === undefined || mismatchDialogState.vendor.longitude === undefined) {
+      return null;
+    }
+    return calculateDistanceInKm(userLocation.latitude, userLocation.longitude, mismatchDialogState.vendor.latitude, mismatchDialogState.vendor.longitude);
+  }, [mismatchDialogState.vendor, userLocation]);
+
+  const mismatchServiceableAddress = useMemo(() => {
+    if (!mismatchDialogState.vendor || !customer?.savedAddresses) return null;
+    const vendor = mismatchDialogState.vendor;
+    return customer.savedAddresses.find(addr => {
+      if (addr.latitude === undefined || addr.longitude === undefined) return false;
+      const dist = calculateDistanceInKm(addr.latitude, addr.longitude, vendor.latitude ?? 0, vendor.longitude ?? 0);
+      return dist <= (vendor.deliveryRadius || 0);
+    }) || null;
+  }, [mismatchDialogState.vendor, customer?.savedAddresses]);
+
+  // Calculate actual price taking into account selected variant/customization or starting price (avoids ₹0)
+  const mismatchItemPrice = useMemo(() => {
+    if (!mismatchDialogState.item) return 0;
+    const item = mismatchDialogState.item;
+    const selectedOptions = mismatchDialogState.selectedOptions;
+
+    // Check if user selected options from customization sheet
+    if (selectedOptions && Object.keys(selectedOptions).length > 0 && item.customizations) {
+      const hasMandatoryCustomization = item.customizations.some(c => Number(c.minSelect) === 1);
+      const basePrice = hasMandatoryCustomization ? 0 : (item.isDiscountActive && item.discountPrice && item.discountPrice > 0 ? item.discountPrice : (item.price || 0));
+      let total = basePrice;
+
+      Object.entries(selectedOptions).forEach(([customizationId, selected]) => {
+        const customization = item.customizations?.find(c => c.id === customizationId);
+        if (!customization) return;
+
+        if (Array.isArray(selected)) {
+          selected.forEach(optionId => {
+            const option = customization.options.find(o => o.id === optionId);
+            if (option) {
+              const effectivePrice = item.isDiscountActive ? option.price : (option.originalPrice || option.price);
+              total += effectivePrice;
+            }
+          });
+        } else {
+          const option = customization.options.find(o => o.id === selected);
+          if (option) {
+            const effectivePrice = item.isDiscountActive ? option.price : (option.originalPrice || option.price);
+            total += effectivePrice;
+          }
+        }
+      });
+
+      if (total > 0) return total;
+    }
+
+    // Fallback: starting price (e.g. Bangar Pedhe variant starting from ₹250)
+    return getItemStartingPrice(item);
+  }, [mismatchDialogState.item, mismatchDialogState.selectedOptions]);
+
+  // Extract selected variant names (e.g. "500g", "1 kg")
+  const mismatchSelectedVariantNames = useMemo(() => {
+    if (!mismatchDialogState.item || !mismatchDialogState.selectedOptions) return '';
+    const item = mismatchDialogState.item;
+    const selectedOptions = mismatchDialogState.selectedOptions;
+    const names: string[] = [];
+
+    if (item.customizations && Object.keys(selectedOptions).length > 0) {
+      Object.entries(selectedOptions).forEach(([customizationId, selected]) => {
+        const customization = item.customizations?.find(c => c.id === customizationId);
+        if (!customization) return;
+
+        if (Array.isArray(selected)) {
+          selected.forEach(optionId => {
+            const option = customization.options.find(o => o.id === optionId);
+            if (option?.name) names.push(option.name);
+          });
+        } else {
+          const option = customization.options.find(o => o.id === selected);
+          if (option?.name) names.push(option.name);
+        }
+      });
+    }
+
+    return names.join(', ');
+  }, [mismatchDialogState.item, mismatchDialogState.selectedOptions]);
+
+  const handleMismatchSwitchAddressAndAdd = () => {
+    if (!mismatchServiceableAddress || !mismatchDialogState.item || !mismatchDialogState.vendor) return;
+    const { item, selectedOptions, quantity, forceSelfPickup } = mismatchDialogState;
+    selectSavedAddress(mismatchServiceableAddress);
+    setMismatchDialogState(prev => ({ ...prev, open: false }));
+
+    if (forceSelfPickup !== undefined) {
+      addToCart(item, selectedOptions, quantity, forceSelfPickup);
+    } else {
+      const isSelfPickupVendor = mismatchDialogState.vendor.deliveryType === 'Self Pickup Only';
+      const isFirstItemFromThisVendor = cartItems.every(cartItem => cartItem.vendorUsername !== item.vendorUsername);
+      const isCartEmpty = cartItems.length === 0;
+
+      if (isSelfPickupVendor && (isCartEmpty || isFirstItemFromThisVendor)) {
+        setSelfPickupDialogState({ open: true, item, selectedOptions, quantity, items: null });
+      } else {
+        addToCart(item, selectedOptions, quantity);
+      }
+    }
+
+    toast({
+      title: `Switched location to ${mismatchServiceableAddress.label || mismatchServiceableAddress.tag}`,
+      description: `${item.name} has been added to your order.`,
+    });
+  };
+
+  const handleMismatchChooseAnotherAddress = () => {
+    if (!mismatchDialogState.item) return;
+    const { item, selectedOptions, quantity, forceSelfPickup } = mismatchDialogState;
+    setMismatchDialogState(prev => ({ ...prev, open: false }));
+    setPendingCartAction({ item, selectedOptions, quantity, forceSelfPickup });
+    setIsLocationDialogOpen(true);
+  };
 
   const [portionSelectItems, setPortionSelectItems] = useState<MenuItemType[] | null>(null);
   const [deliveryChoiceForPortionSelect, setDeliveryChoiceForPortionSelect] = useState<'yes' | 'no' | null>(null);
@@ -1071,15 +1242,13 @@ export default function MenuPageContent() {
 
       const vendor = vendors.find(v => v.username === item.vendorUsername);
       if (vendor && !isVendorServiceable(vendor, userLocation)) {
-        const distance = (vendor.latitude !== undefined && vendor.longitude !== undefined)
-          ? calculateDistanceInKm(userLocation.latitude, userLocation.longitude, vendor.latitude, vendor.longitude)
-          : null;
-        toast({
-          variant: "destructive",
-          title: "Outside Delivery Area",
-          description: distance !== null
-            ? `${vendor.shopName || 'This kitchen'} is ~${distance.toFixed(1)} km away and delivers up to ${vendor.deliveryRadius || 0} km.`
-            : `${vendor.shopName || 'This kitchen'} does not deliver to your selected location.`,
+        setMismatchDialogState({
+          open: true,
+          item,
+          vendor,
+          selectedOptions,
+          quantity,
+          forceSelfPickup,
         });
         return;
       }
@@ -1120,15 +1289,13 @@ export default function MenuPageContent() {
     // Verify vendor serviceability for current location
     const vendor = vendors.find(v => v.username === item.vendorUsername);
     if (vendor && userLocation && !isVendorServiceable(vendor, userLocation)) {
-      const distance = (vendor.latitude !== undefined && vendor.longitude !== undefined)
-        ? calculateDistanceInKm(userLocation.latitude, userLocation.longitude, vendor.latitude, vendor.longitude)
-        : null;
-      toast({
-        variant: "destructive",
-        title: "Outside Delivery Area",
-        description: distance !== null
-          ? `${vendor.shopName || 'This kitchen'} is ~${distance.toFixed(1)} km away and delivers up to ${vendor.deliveryRadius || 0} km.`
-          : `${vendor.shopName || 'This kitchen'} does not deliver to your selected location.`,
+      setMismatchDialogState({
+        open: true,
+        item,
+        vendor,
+        selectedOptions,
+        quantity,
+        forceSelfPickup,
       });
       return;
     }
@@ -1219,6 +1386,11 @@ export default function MenuPageContent() {
     if (userLocation) {
       list = list.filter(v => isVendorServiceable(v, userLocation));
 
+      // If user arrived via a targeted link, ensure that vendor is preserved in the view so menu & categories render
+      if (targetedVendor && !list.some(v => v.username === targetedVendor.username)) {
+        list = [targetedVendor, ...list];
+      }
+
       list.sort((a, b) => {
         if (a.latitude === undefined || a.longitude === undefined || b.latitude === undefined || b.longitude === undefined) return 0;
         const distA = calculateDistanceInKm(userLocation.latitude, userLocation.longitude, a.latitude, a.longitude);
@@ -1228,7 +1400,7 @@ export default function MenuPageContent() {
     }
 
     return list;
-  }, [vendors, userLocation]);
+  }, [vendors, userLocation, targetedVendor]);
 
   const vendorsToDisplay = useMemo(() => {
     let list = approvedVendors;
@@ -1792,6 +1964,58 @@ export default function MenuPageContent() {
         "container mx-auto px-4 pt-3 sm:pt-6 transition-[padding] duration-300",
         totalItems > 0 ? "pb-36 sm:pb-28" : "pb-12"
       )}>
+        {/* ── LOCATION MISMATCH NOTICE BANNER ───────────────────────────────── */}
+        {isTargetVendorOutOfRange && targetedVendor && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-3xl p-3.5 sm:p-4 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-in fade-in duration-300">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-2xl bg-amber-500/15 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+                <MapPinOff className="h-4.5 w-4.5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-sm text-foreground">
+                  Not delivering to &ldquo;{userLocation?.addressName || 'Current Location'}&rdquo;
+                </h4>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                  <span className="font-semibold text-foreground">{targetedVendor.shopName}</span> delivers up to {targetedVendor.deliveryRadius || 0} km
+                  {currentDistanceToTarget !== null ? ` (your active location is ~${currentDistanceToTarget.toFixed(1)} km away).` : '.'}
+                  {serviceableSavedAddress && (
+                    <span className="text-amber-700 dark:text-amber-300 font-semibold block sm:inline sm:ml-1">
+                      Good news: It delivers to your saved &ldquo;{serviceableSavedAddress.label || serviceableSavedAddress.tag}&rdquo; address!
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+              {serviceableSavedAddress && (
+                <Button
+                  size="sm"
+                  type="button"
+                  onClick={() => {
+                    selectSavedAddress(serviceableSavedAddress);
+                    toast({
+                      title: `Switched location to ${serviceableSavedAddress.label || serviceableSavedAddress.tag}`,
+                      description: `Now delivering to your ${serviceableSavedAddress.label || serviceableSavedAddress.tag} address.`,
+                    });
+                  }}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs gap-1.5 flex-1 sm:flex-initial shadow-xs cursor-pointer h-9"
+                >
+                  <Zap className="h-3.5 w-3.5" /> Deliver to {serviceableSavedAddress.label || serviceableSavedAddress.tag}
+                </Button>
+              )}
+              <Button
+                size="sm"
+                type="button"
+                variant="outline"
+                onClick={() => setIsLocationDialogOpen(true)}
+                className="rounded-xl text-xs font-semibold flex-1 sm:flex-initial cursor-pointer border-amber-500/30 hover:bg-amber-500/10 h-9"
+              >
+                Change Location
+              </Button>
+            </div>
+          </div>
+        )}
+
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <div className="space-y-6 mb-6">
             {/* ── SEARCH & FILTER BAR ────────────────────────────────────────────── */}
@@ -2528,6 +2752,99 @@ export default function MenuPageContent() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Custom Location Mismatch Action Dialog (Option A) */}
+        <Dialog
+          open={mismatchDialogState.open}
+          onOpenChange={(open) => setMismatchDialogState(prev => ({ ...prev, open }))}
+        >
+          <DialogContent className="sm:max-w-md rounded-3xl p-5">
+            <DialogHeader className="space-y-2">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/15 flex items-center justify-center text-amber-600 dark:text-amber-400 mx-auto">
+                <MapPinOff className="h-5 w-5" />
+              </div>
+              <DialogTitle className="font-headline text-xl font-bold text-center">
+                Delivery Location Mismatch
+              </DialogTitle>
+              <DialogDescription className="text-center text-xs text-muted-foreground">
+                This kitchen does not deliver to your active location.
+              </DialogDescription>
+            </DialogHeader>
+
+            {mismatchDialogState.item && mismatchDialogState.vendor && (
+              <div className="space-y-4 my-2">
+                <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-muted/40 border border-border/70">
+                  <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-muted flex-shrink-0 border border-border/50">
+                    <Image
+                      src={mismatchDialogState.item.imageDataUrl || mismatchDialogState.item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&auto=format&fit=crop&q=80'}
+                      alt={mismatchDialogState.item.name}
+                      fill
+                      sizes="48px"
+                      className="object-cover"
+                      unoptimized
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h5 className="font-bold text-xs truncate text-foreground">{mismatchDialogState.item.name}</h5>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {mismatchSelectedVariantNames ? (
+                        <span className="text-primary font-semibold">{mismatchSelectedVariantNames} • </span>
+                      ) : null}
+                      {mismatchDialogState.vendor.shopName}
+                    </p>
+                    <span className="font-extrabold text-xs text-primary">
+                      ₹{mismatchItemPrice.toFixed(0)}
+                      {mismatchDialogState.quantity > 1 ? ` (×${mismatchDialogState.quantity})` : ''}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs text-muted-foreground space-y-1">
+                  <div className="flex items-center justify-between text-foreground font-semibold">
+                    <span>Current: &ldquo;{userLocation?.addressName || 'Active Address'}&rdquo;</span>
+                    <span className="text-amber-600 font-bold">
+                      {currentMismatchDistance !== null ? `~${currentMismatchDistance.toFixed(1)} km` : 'Out of range'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed">
+                    {mismatchDialogState.vendor.shopName} delivers up to <span className="font-bold text-foreground">{mismatchDialogState.vendor.deliveryRadius || 0} km</span>.
+                  </p>
+                </div>
+
+                <div className="space-y-2 pt-1">
+                  {mismatchServiceableAddress && (
+                    <Button
+                      type="button"
+                      onClick={handleMismatchSwitchAddressAndAdd}
+                      className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-2xl py-3 h-auto text-xs gap-2 shadow-xs cursor-pointer"
+                    >
+                      <Zap className="h-4 w-4" /> Switch to &ldquo;{mismatchServiceableAddress.label || mismatchServiceableAddress.tag}&rdquo; & Add to Order
+                    </Button>
+                  )}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleMismatchChooseAnotherAddress}
+                    className="w-full rounded-2xl py-2.5 h-auto text-xs font-semibold gap-2 border-border/80 hover:border-primary/40 cursor-pointer"
+                  >
+                    <MapPin className="h-3.5 w-3.5 text-primary" /> Choose Another Delivery Address
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setMismatchDialogState(prev => ({ ...prev, open: false }))}
+                    className="w-full rounded-2xl text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    Keep Browsing in View-Only Mode
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
         <LocationPicker
           variant="full"
           open={isLocationDialogOpen}
