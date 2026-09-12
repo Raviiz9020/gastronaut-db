@@ -68,6 +68,8 @@ export async function generateMetadata(
                             url: imageUrl,
                             secureUrl: imageUrl,
                             alt: item.name || 'HyperDelivery Menu Item',
+                            width: 600,
+                            height: 600,
                         }],
                     },
                     twitter: {
@@ -110,6 +112,8 @@ export async function generateMetadata(
                             url: imageUrl,
                             secureUrl: imageUrl,
                             alt: category.name || 'HyperDelivery Food Category',
+                            width: 600,
+                            height: 600,
                         }],
                     },
                     twitter: {
@@ -165,6 +169,8 @@ export async function generateMetadata(
                             url: imageUrl,
                             secureUrl: imageUrl,
                             alt: vendorName,
+                            width: 600,
+                            height: 600,
                         }],
                     },
                     twitter: {
@@ -197,6 +203,8 @@ export async function generateMetadata(
                 url: FALLBACK_IMAGE_URL,
                 secureUrl: FALLBACK_IMAGE_URL,
                 alt: `${SITE_NAME} Logo`,
+                width: 600,
+                height: 600,
             }],
         },
         twitter: {
