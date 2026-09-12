@@ -40,6 +40,8 @@ import { Switch } from '@/components/ui/switch';
 import FloatingCartBar from '@/components/floating-cart-bar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useLocation } from '@/context/location-context';
+import { useCustomer } from '@/context/customer-context';
+import { LocationPicker } from '@/components/location-picker';
 import { isVendorServiceable, calculateDistanceInKm } from '@/lib/location-utils';
 
 
@@ -923,7 +925,15 @@ export default function MenuPageContent() {
   const { menuItems, fetchAllItems, isFetchingItems, globalCategories } = useMenu();
   const { specialMenus, fetchAllSpecialMenus } = useSpecialMenu();
   const { orders } = useOrder();
-  const { userLocation } = useLocation();
+  const { userLocation, isLoading: isLocationLoading } = useLocation();
+  const { customer, isAuthLoading } = useCustomer();
+  const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
+  const [pendingCartAction, setPendingCartAction] = useState<{
+    item: MenuItemType;
+    selectedOptions: Record<string, string | string[]>;
+    quantity: number;
+    forceSelfPickup?: boolean;
+  } | null>(null);
 
   const { vendors, fetchAllVendors } = useVendor();
   const [selectedVendor, setSelectedVendor] = useState('all');
@@ -1043,13 +1053,91 @@ export default function MenuPageContent() {
     }
   }, [vendorParam, categoryParam, itemParam, vendors]);
 
+  // Option C: Auto-open location picker dialog after 600ms if customer location is not yet set
+  useEffect(() => {
+    if (!isLocationLoading && !isAuthLoading && !userLocation && !customer?.latitude) {
+      const timer = setTimeout(() => {
+        setIsLocationDialogOpen(true);
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [isLocationLoading, isAuthLoading, userLocation, customer]);
+
+  // When location is set while an add-to-cart was pending, check serviceability and add
+  useEffect(() => {
+    if (userLocation && pendingCartAction) {
+      const { item, selectedOptions, quantity, forceSelfPickup } = pendingCartAction;
+      setPendingCartAction(null);
+
+      const vendor = vendors.find(v => v.username === item.vendorUsername);
+      if (vendor && !isVendorServiceable(vendor, userLocation)) {
+        const distance = (vendor.latitude !== undefined && vendor.longitude !== undefined)
+          ? calculateDistanceInKm(userLocation.latitude, userLocation.longitude, vendor.latitude, vendor.longitude)
+          : null;
+        toast({
+          variant: "destructive",
+          title: "Outside Delivery Area",
+          description: distance !== null
+            ? `${vendor.shopName || 'This kitchen'} is ~${distance.toFixed(1)} km away and delivers up to ${vendor.deliveryRadius || 0} km.`
+            : `${vendor.shopName || 'This kitchen'} does not deliver to your selected location.`,
+        });
+        return;
+      }
+
+      if (forceSelfPickup !== undefined) {
+        addToCart(item, selectedOptions, quantity, forceSelfPickup);
+      } else {
+        const isSelfPickupVendor = vendor?.deliveryType === 'Self Pickup Only';
+        const isFirstItemFromThisVendor = cartItems.every(cartItem => cartItem.vendorUsername !== item.vendorUsername);
+        const isCartEmpty = cartItems.length === 0;
+
+        if (isSelfPickupVendor && (isCartEmpty || isFirstItemFromThisVendor)) {
+          setSelfPickupDialogState({ open: true, item, selectedOptions, quantity, items: null });
+        } else {
+          addToCart(item, selectedOptions, quantity);
+        }
+      }
+
+      toast({
+        title: "Added to cart",
+        description: `${item.name} has been added to your order.`,
+      });
+    }
+  }, [userLocation, pendingCartAction, vendors, cartItems, addToCart, toast]);
+
   const handleAddToCartWithDialogCheck = (item: MenuItemType, selectedOptions: Record<string, string | string[]> = {}, quantity = 1, forceSelfPickup?: boolean) => {
+    // Location Gate: If no location is set yet, prompt user with dialog and save pending action
+    if (!userLocation && !customer?.latitude) {
+      setPendingCartAction({ item, selectedOptions, quantity, forceSelfPickup });
+      setIsLocationDialogOpen(true);
+      toast({
+        title: "Delivery location needed",
+        description: "Please set your location to check if this kitchen delivers to you.",
+      });
+      return;
+    }
+
+    // Verify vendor serviceability for current location
+    const vendor = vendors.find(v => v.username === item.vendorUsername);
+    if (vendor && userLocation && !isVendorServiceable(vendor, userLocation)) {
+      const distance = (vendor.latitude !== undefined && vendor.longitude !== undefined)
+        ? calculateDistanceInKm(userLocation.latitude, userLocation.longitude, vendor.latitude, vendor.longitude)
+        : null;
+      toast({
+        variant: "destructive",
+        title: "Outside Delivery Area",
+        description: distance !== null
+          ? `${vendor.shopName || 'This kitchen'} is ~${distance.toFixed(1)} km away and delivers up to ${vendor.deliveryRadius || 0} km.`
+          : `${vendor.shopName || 'This kitchen'} does not deliver to your selected location.`,
+      });
+      return;
+    }
+
     if (forceSelfPickup !== undefined) {
       addToCart(item, selectedOptions, quantity, forceSelfPickup);
       return;
     }
 
-    const vendor = vendors.find(v => v.username === item.vendorUsername);
     const isSelfPickupVendor = vendor?.deliveryType === 'Self Pickup Only';
     const isFirstItemFromThisVendor = cartItems.every(cartItem => cartItem.vendorUsername !== item.vendorUsername);
     const isCartEmpty = cartItems.length === 0;
@@ -1605,7 +1693,7 @@ export default function MenuPageContent() {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {groupedMenuItems.map((group) => {
-          const vendor = approvedVendors.find(v => v.username === group[0].vendorUsername);
+          const vendor = vendors.find(v => v.username === group[0].vendorUsername);
 
           if (group.length > 1) {
             // This is a combined item (half/full)
@@ -2025,7 +2113,7 @@ export default function MenuPageContent() {
                     >
                       <CarouselContent className="-ml-2">
                         {topRatedItems.map((item) => {
-                          const vendor = approvedVendors.find(v => v.username === item.vendorUsername);
+                          const vendor = vendors.find(v => v.username === item.vendorUsername);
                           const ratingCount = item.ratingCount || 0;
                           const avgRating = ratingCount > 0 && item.totalRatingSum ? item.totalRatingSum / ratingCount : 0;
                           const hasMandatoryVariants = item.customizations?.some(c => Number(c.minSelect) > 0) ?? false;
@@ -2117,7 +2205,7 @@ export default function MenuPageContent() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {discountedItems.map(item => {
-                        const vendor = approvedVendors.find(v => v.username === item.vendorUsername);
+                        const vendor = vendors.find(v => v.username === item.vendorUsername);
                         const ratingCount = item.ratingCount || 0;
                         const avgRating = ratingCount > 0 && item.totalRatingSum ? item.totalRatingSum / ratingCount : 0;
                         return (
@@ -2440,6 +2528,20 @@ export default function MenuPageContent() {
             </div>
           </DialogContent>
         </Dialog>
+        <LocationPicker
+          variant="full"
+          open={isLocationDialogOpen}
+          onOpenChange={(open) => {
+            setIsLocationDialogOpen(open);
+            if (!open && !userLocation) {
+              setPendingCartAction(null);
+            }
+          }}
+          onLocationSelected={() => {
+            setIsLocationDialogOpen(false);
+          }}
+          className="hidden"
+        />
         <FloatingCartBar />
       </div>
     </div>
