@@ -19,9 +19,26 @@ export const metadata: Metadata = {
     icon: '/icon.svg',
   },
   openGraph: {
+    title: 'HyperDelivery – Order Food Online',
+    description: 'Order food from your favourite local restaurants on HyperDelivery. Fresh, fast & reliable delivery.',
+    url: 'https://hyperdelivery.in',
     siteName: 'HyperDelivery',
     locale: 'en_IN',
     type: 'website',
+    images: [
+      {
+        url: '/og-banner.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'HyperDelivery – Order Food Online',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'HyperDelivery – Order Food Online',
+    description: 'Order food from your favourite local restaurants on HyperDelivery.',
+    images: ['/og-banner.jpg'],
   },
 };
 
