@@ -28,16 +28,29 @@ export async function generateMetadata(
     const rawCategoryParam = searchParams?.category;
     const categoryName = Array.isArray(rawCategoryParam) ? rawCategoryParam[0] : (rawCategoryParam as string | undefined);
 
+    const rawVendorParam = searchParams?.vendor;
+    const vendorParam = Array.isArray(rawVendorParam) ? rawVendorParam[0] : (rawVendorParam as string | undefined);
+
     if (itemParam) {
         try {
             const docRef = doc(db, 'menuItems', itemParam as string);
-            const itemDoc = await getDoc(docRef);
+            let itemDoc = await getDoc(docRef);
+            let item: MenuItemType | null = null;
 
             if (itemDoc.exists()) {
-                const item = { id: itemDoc.id, ...itemDoc.data() } as MenuItemType;
+                item = { id: itemDoc.id, ...itemDoc.data() } as MenuItemType;
+            } else {
+                const q = query(collection(db, 'menuItems'), where('slug', '==', itemParam), limit(1));
+                const snap = await getDocs(q);
+                if (!snap.empty) {
+                    item = { id: snap.docs[0].id, ...snap.docs[0].data() } as MenuItemType;
+                }
+            }
+
+            if (item) {
                 const fullUrl = `${SITE_URL}/menu?item=${encodeURIComponent(item.id)}`;
-                const title = `${item.name} - ${SITE_NAME}`;
-                const description = item.description || `Order ${item.name} now from ${item.shopName} on ${SITE_NAME}.`;
+                const title = `${item.name} - ${item.shopName || SITE_NAME}`;
+                const description = item.description || `Order ${item.name} now from ${item.shopName || 'local kitchens'} on ${SITE_NAME}. Fresh, fast & reliable delivery.`;
                 const rawImageUrl = (typeof item.image === 'string' && item.image.trim()) ? item.image : FALLBACK_IMAGE_URL;
                 const imageUrl = rawImageUrl.replace(/&amp;/g, '&');
 
@@ -54,10 +67,7 @@ export async function generateMetadata(
                         images: [{
                             url: imageUrl,
                             secureUrl: imageUrl,
-                            width: 1200,
-                            height: 630,
                             alt: item.name || 'HyperDelivery Menu Item',
-                            type: 'image/png',
                         }],
                     },
                     twitter: {
@@ -81,8 +91,8 @@ export async function generateMetadata(
             if (!categorySnap.empty) {
                 const category = categorySnap.docs[0].data() as Category;
                 const fullUrl = `${SITE_URL}/menu?category=${encodeURIComponent(category.name)}`;
-                const title = `${SITE_NAME} - ${category.name}`;
-                const description = `Explore all items in the ${category.name} category.`;
+                const title = `${category.name} - ${SITE_NAME}`;
+                const description = `Explore delicious ${category.name} options on ${SITE_NAME}.`;
                 const rawImageUrl = (typeof category.imageUrl === 'string' && category.imageUrl.trim()) ? category.imageUrl : FALLBACK_IMAGE_URL;
                 const imageUrl = rawImageUrl.replace(/&amp;/g, '&');
 
@@ -99,10 +109,7 @@ export async function generateMetadata(
                         images: [{
                             url: imageUrl,
                             secureUrl: imageUrl,
-                            width: 1200,
-                            height: 630,
                             alt: category.name || 'HyperDelivery Food Category',
-                            type: 'image/png',
                         }],
                     },
                     twitter: {
@@ -118,9 +125,64 @@ export async function generateMetadata(
         }
     }
 
+    if (vendorParam) {
+        try {
+            let vendorData: any = null;
+            const vendorDoc = await getDoc(doc(db, 'vendors', vendorParam));
+            if (vendorDoc.exists()) {
+                vendorData = { id: vendorDoc.id, ...vendorDoc.data() };
+            } else {
+                const q = query(collection(db, 'vendors'), where('slug', '==', vendorParam), limit(1));
+                const snap = await getDocs(q);
+                if (!snap.empty) {
+                    vendorData = { id: snap.docs[0].id, ...snap.docs[0].data() };
+                }
+            }
+
+            if (vendorData) {
+                const vendorName = vendorData.shopName || vendorData.name || SITE_NAME;
+                const title = `${vendorName} - ${SITE_NAME}`;
+                const description = vendorData.description || `Order online from ${vendorName} on ${SITE_NAME}.`;
+                const rawImageUrl = (typeof vendorData.imageUrl === 'string' && vendorData.imageUrl.trim())
+                    ? vendorData.imageUrl
+                    : (typeof vendorData.coverImage === 'string' && vendorData.coverImage.trim())
+                        ? vendorData.coverImage
+                        : FALLBACK_IMAGE_URL;
+                const imageUrl = rawImageUrl.replace(/&amp;/g, '&');
+                const fullUrl = `${SITE_URL}/menu?vendor=${encodeURIComponent(vendorParam)}`;
+
+                return {
+                    title: title,
+                    description: description,
+                    openGraph: {
+                        title: title,
+                        description: description,
+                        url: fullUrl,
+                        siteName: SITE_NAME,
+                        locale: 'en_IN',
+                        type: 'website',
+                        images: [{
+                            url: imageUrl,
+                            secureUrl: imageUrl,
+                            alt: vendorName,
+                        }],
+                    },
+                    twitter: {
+                        card: 'summary_large_image',
+                        title: title,
+                        description: description,
+                        images: [imageUrl],
+                    },
+                };
+            }
+        } catch (error) {
+            console.error("Error fetching vendor metadata:", error);
+        }
+    }
+
     // Fallback metadata
     const defaultTitle = `Order Now on ${SITE_NAME}`;
-    const defaultDescription = 'Explore a variety of local vendors and home chefs.';
+    const defaultDescription = 'Explore a variety of local vendors and home chefs on HyperDelivery.';
     return {
         title: defaultTitle,
         description: defaultDescription,
@@ -134,10 +196,7 @@ export async function generateMetadata(
             images: [{
                 url: FALLBACK_IMAGE_URL,
                 secureUrl: FALLBACK_IMAGE_URL,
-                width: 1200,
-                height: 630,
                 alt: `${SITE_NAME} Logo`,
-                type: 'image/png',
             }],
         },
         twitter: {
@@ -159,7 +218,8 @@ const MenuPageFallback = () => (
 );
 
 
-export default function MenuPage() {
+export default async function MenuPage(props: Props) {
+    await props.searchParams;
     return (
         <Suspense fallback={<MenuPageFallback />}>
             <MenuPageContent />

@@ -9,6 +9,7 @@ const GA_MEASUREMENT_ID =
   'G-TWDTCQ04E5';
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://hyperdelivery.in'),
   title: {
     template: '%s | HyperDelivery',
     default: 'HyperDelivery – Order Food Online',
@@ -16,6 +17,11 @@ export const metadata: Metadata = {
   description: 'Order food from your favourite local restaurants on HyperDelivery.',
   icons: {
     icon: '/icon.svg',
+  },
+  openGraph: {
+    siteName: 'HyperDelivery',
+    locale: 'en_IN',
+    type: 'website',
   },
 };
 
@@ -26,18 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap"
-          rel="stylesheet"
-        />
+      <body className="font-body antialiased">
         {GA_MEASUREMENT_ID && (
           <>
             <Script
@@ -61,8 +56,6 @@ export default function RootLayout({
             />
           </>
         )}
-      </head>
-      <body className="font-body antialiased">
         <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
