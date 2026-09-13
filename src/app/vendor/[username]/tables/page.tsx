@@ -676,7 +676,7 @@ const QrCodeDialog = ({ order, vendor, open, onOpenChange }: { order: Order | nu
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xs sm:rounded-2xl">
+      <DialogContent className="sm:max-w-xs sm:rounded-2xl z-[60]">
         <DialogHeader>
           <DialogTitle className="text-center">Scan to Pay</DialogTitle>
           <DialogDescription className="text-center">
@@ -703,13 +703,35 @@ const BillViewDialog = ({
   open,
   onOpenChange,
   onComplete,
+  onShowQrCode,
 }: {
   order: Order | null;
   vendor?: Vendor | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onComplete: (orderId: string, takeAwayIdentifier?: string) => void;
+  onShowQrCode: (order: Order) => void;
 }) => {
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
+
+  useEffect(() => {
+    if (open && vendor?.upiId && order && order.totalPrice > 0) {
+      const cleanUpiId = vendor.upiId.trim();
+      const orderIdentifier = order.displayId || order.orderId;
+      const transactionNote = `Order ${orderIdentifier}`;
+      const upiString = `upi://pay?pa=${cleanUpiId}&pn=${encodeURIComponent(vendor.shopName || vendor.name)}&am=${order.totalPrice.toFixed(2)}&cu=INR&tn=${encodeURIComponent(transactionNote)}`;
+      QRCode.toDataURL(upiString, { width: 220, margin: 1 })
+        .then(url => {
+          setQrCodeUrl(url);
+        })
+        .catch(err => {
+          console.error('Bill QR code generation failed:', err);
+        });
+    } else {
+      setQrCodeUrl('');
+    }
+  }, [open, order, vendor]);
+
   if (!order || !vendor) return null;
 
   const generatePdfReceipt = () => {
@@ -766,10 +788,26 @@ const BillViewDialog = ({
     doc.text('TOTAL', 15, finalY + 12);
     doc.text(`${order.totalPrice.toFixed(2)}`, pageWidth - 15, finalY + 12, { align: 'right' });
 
+    // Optional QR Code on PDF receipt if available
+    let nextY = finalY + 18;
+    if (qrCodeUrl) {
+      try {
+        const qrSize = 35;
+        const qrX = (pageWidth - qrSize) / 2;
+        doc.addImage(qrCodeUrl, 'PNG', qrX, nextY, qrSize, qrSize);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Scan & Pay Rs. ${order.totalPrice.toFixed(2)} via UPI`, pageWidth / 2, nextY + qrSize + 5, { align: 'center' });
+        nextY += qrSize + 12;
+      } catch (e) {
+        console.error('Failed adding QR code to PDF receipt:', e);
+      }
+    }
+
     // Footer
     doc.setFontSize(10);
     doc.setFont('helvetica', 'italic');
-    doc.text('Thank you for your visit!', pageWidth / 2, finalY + 22, { align: 'center' });
+    doc.text('Thank you for your visit!', pageWidth / 2, nextY + 4, { align: 'center' });
 
     doc.save(`receipt-${order.displayId}.pdf`);
   };
@@ -778,7 +816,7 @@ const BillViewDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm sm:rounded-2xl">
+      <DialogContent className="sm:max-w-sm sm:rounded-2xl max-h-[92vh] overflow-y-auto">
         <DialogHeader className="text-center">
           <DialogTitle className="font-bold text-lg">{vendor.shopName}</DialogTitle>
           {vendor.address && <DialogDescription className="text-xs">{vendor.address}</DialogDescription>}
@@ -789,7 +827,7 @@ const BillViewDialog = ({
           </div>
         </DialogHeader>
 
-        <div className="max-h-60 overflow-y-auto pr-2">
+        <div className="max-h-48 overflow-y-auto pr-2">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
@@ -832,15 +870,40 @@ const BillViewDialog = ({
           );
         })()}
 
-        <div className="flex justify-between items-center font-bold text-lg">
+        <div className="flex justify-between items-center font-bold text-lg py-1 border-t border-b">
           <span>TOTAL</span>
-          <span>₹{order.totalPrice.toFixed(2)}</span>
+          <span className="text-primary font-black">₹{order.totalPrice.toFixed(2)}</span>
         </div>
+
+        {/* UPI Payment Action */}
+        {vendor?.upiId ? (
+          <div className="my-2.5 flex items-center justify-between p-2.5 rounded-2xl bg-muted/40 border border-border/70">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="p-2 rounded-xl bg-primary/10 text-primary shrink-0">
+                <QrCode className="h-4 w-4" />
+              </div>
+              <div className="text-left min-w-0">
+                <p className="text-xs font-bold text-foreground">Pay QR</p>
+                <p className="text-[10px] text-muted-foreground">GPay • PhonePe • Paytm • BHIM</p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onShowQrCode(order)}
+              className="h-8 px-3 rounded-xl text-xs font-bold shrink-0 shadow-2xs hover:bg-primary hover:text-primary-foreground transition-colors"
+            >
+              <QrCode className="h-3.5 w-3.5 mr-1.5 text-primary" />
+              Show QR
+            </Button>
+          </div>
+        ) : null}
 
         <p className="text-xs text-center text-muted-foreground">Thank you for your visit!</p>
 
         <DialogFooter className="mt-2 flex-row justify-center gap-2">
-          <Button onClick={generatePdfReceipt} variant="outline" size="icon">
+          <Button onClick={generatePdfReceipt} variant="outline" size="icon" title="Download PDF Receipt">
             <Download className="h-4 w-4" />
           </Button>
           <Button
@@ -1977,6 +2040,7 @@ export default function TableViewPage() {
         open={!!billOrder}
         onOpenChange={() => setBillOrder(null)}
         onComplete={handleCompleteOrder}
+        onShowQrCode={setQrCodeOrder}
       />
       <QrCodeDialog
         order={qrCodeOrder}
