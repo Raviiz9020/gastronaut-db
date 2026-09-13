@@ -82,6 +82,17 @@ type TableOrderItem = MenuItemType & {
   selectedOptionsText?: string;
 };
 
+const getOrderNotes = (notes: any, vendorUsername?: string): string => {
+  if (!notes) return '';
+  if (typeof notes === 'string') return notes.trim();
+  if (typeof notes === 'object') {
+    if (vendorUsername && notes[vendorUsername]) return String(notes[vendorUsername]).trim();
+    const vals = Object.values(notes).filter(Boolean);
+    return vals.join(' | ').trim();
+  }
+  return '';
+};
+
 const ZoomedImageOverlay = ({
   item,
   onClose,
@@ -1311,15 +1322,18 @@ function VendorMenuContent({
           />
         )}
       </AnimatePresence>
-      <div className="container mx-auto px-4 py-6 sm:py-8">
+      <div className={cn("container mx-auto px-4", isDineInMode ? "pt-2 pb-6 sm:py-6" : "py-6 sm:py-8")}>
         <div className="w-full max-w-5xl mx-auto">
           {/* Innovative Compact Restaurant Cockpit */}
-          <div className="rounded-2xl border border-border/70 bg-card/95 backdrop-blur-md shadow-xs p-3.5 sm:p-4 mb-4 max-w-5xl mx-auto">
+          <div className={cn(
+            "rounded-2xl border border-border/70 bg-card/95 backdrop-blur-md shadow-xs max-w-5xl mx-auto",
+            isDineInMode ? "p-2.5 sm:p-3.5 mb-3" : "p-3.5 sm:p-4 mb-4"
+          )}>
             {/* Top Row: Brand, Live Status, and Table/Actions */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
               {/* Brand & Status */}
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden border border-border/60 shadow-xs bg-muted shrink-0">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div className="relative w-11 h-11 sm:w-13 sm:h-13 rounded-2xl overflow-hidden border border-border/60 shadow-xs bg-muted shrink-0">
                   <Image
                     src={vendor.shopImage || 'https://placehold.co/224x224.png'}
                     alt={vendor.shopName || 'Vendor'}
@@ -1361,9 +1375,11 @@ function VendorMenuContent({
                       );
                     })()}
                   </div>
-                  <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                    {vendor.tagline || 'Fresh Food & Gourmet Delights'}
-                  </p>
+                  {!isDineInMode && vendor.tagline && (
+                    <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                      {vendor.tagline}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1421,46 +1437,48 @@ function VendorMenuContent({
               </div>
             </div>
 
-            {/* Bottom Metadata Strip: Address, Hours, Phone */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-2.5 mt-2.5 border-t border-border/40 text-[11px] sm:text-xs text-muted-foreground">
-              {vendor.workingHours && (
-                <div className="flex items-center gap-1">
-                  <Clock className="h-3 w-3 text-primary shrink-0" />
-                  <span>{vendor.workingHours}</span>
-                </div>
-              )}
-              {vendor.address && (
-                <div className="flex items-center gap-1">
-                  <MapPin className="h-3 w-3 text-primary shrink-0" />
-                  <span className="truncate max-w-[200px] sm:max-w-[320px]">{vendor.address}</span>
-                  {vendor.googleMapsUrl && (
-                    <a
-                      href={vendor.googleMapsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline inline-flex items-center gap-0.5 font-bold"
-                    >
-                      <ExternalLink className="h-2.5 w-2.5" />
-                    </a>
-                  )}
-                </div>
-              )}
-              {vendor.contact && (
-                <a
-                  href={`tel:${vendor.contact}`}
-                  className="flex items-center gap-1 hover:text-primary font-medium transition-colors"
-                >
-                  <Phone className="h-3 w-3 text-primary shrink-0" />
-                  <span>{vendor.contact.replace('+91', '')}</span>
-                </a>
-              )}
-              {vendor.minOrderAmount && vendor.minOrderAmount > 0 ? (
-                <div className="flex items-center gap-1 text-primary font-medium">
-                  <Info className="h-3 w-3 shrink-0" />
-                  <span>Min ₹{vendor.minOrderAmount}</span>
-                </div>
-              ) : null}
-            </div>
+            {/* Bottom Metadata Strip: Address, Hours, Phone (Home Delivery only - Hidden for in-store Dine-In) */}
+            {!isDineInMode && (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-2.5 mt-2.5 border-t border-border/40 text-[11px] sm:text-xs text-muted-foreground">
+                {vendor.workingHours && (
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-3 w-3 text-primary shrink-0" />
+                    <span>{vendor.workingHours}</span>
+                  </div>
+                )}
+                {vendor.address && (
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3 text-primary shrink-0" />
+                    <span className="truncate max-w-[200px] sm:max-w-[320px]">{vendor.address}</span>
+                    {vendor.googleMapsUrl && (
+                      <a
+                        href={vendor.googleMapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline inline-flex items-center gap-0.5 font-bold"
+                      >
+                        <ExternalLink className="h-2.5 w-2.5" />
+                      </a>
+                    )}
+                  </div>
+                )}
+                {vendor.contact && (
+                  <a
+                    href={`tel:${vendor.contact}`}
+                    className="flex items-center gap-1 hover:text-primary font-medium transition-colors"
+                  >
+                    <Phone className="h-3 w-3 text-primary shrink-0" />
+                    <span>{vendor.contact.replace('+91', '')}</span>
+                  </a>
+                )}
+                {vendor.minOrderAmount && vendor.minOrderAmount > 0 ? (
+                  <div className="flex items-center gap-1 text-primary font-medium">
+                    <Info className="h-3 w-3 shrink-0" />
+                    <span>Min ₹{vendor.minOrderAmount}</span>
+                  </div>
+                ) : null}
+              </div>
+            )}
           </div>
 
           {/* Live Kitchen Status Widget */}
@@ -1565,6 +1583,20 @@ function VendorMenuContent({
                     </div>
                   </div>
 
+                  {(() => {
+                    const notesText = getOrderNotes(activeTableOrder.customNotes, vendor?.username);
+                    if (!notesText) return null;
+                    return (
+                      <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2 shadow-2xs">
+                        <MessageSquare className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                        <div className="min-w-0 flex-1">
+                          <span className="font-extrabold text-[11px] uppercase tracking-wider block text-amber-700 dark:text-amber-300">Special Instructions for Chef</span>
+                          <span className="break-words font-medium">{notesText}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {activeTableOrder.status === 'Processing' && (
                     <p className="text-[11px] text-muted-foreground bg-muted/40 p-2.5 rounded-xl border border-border/50">
                       🔒 Dishes are currently cooking in the kitchen. To modify or cancel any dish, please notify your server.
@@ -1599,7 +1631,7 @@ function VendorMenuContent({
           )}
 
           {/* Search Box */}
-          <div className="mb-4 max-w-md mx-auto">
+          <div className={cn("max-w-md mx-auto", isDineInMode ? "mb-2.5" : "mb-4")}>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -1623,7 +1655,7 @@ function VendorMenuContent({
 
           {/* Sticky Interactive Category Pills Bar */}
           {!isSearching && vendorCategories.length > 0 && (
-            <div className="sticky top-[60px] bg-background/95 backdrop-blur-md z-40 py-2.5 my-4 -mx-4 px-4 border-y border-border/60 overflow-x-auto no-scrollbar shadow-xs">
+            <div className={cn("sticky top-[60px] bg-background/95 backdrop-blur-md z-40 -mx-4 px-4 border-y border-border/60 overflow-x-auto no-scrollbar shadow-xs", isDineInMode ? "py-2 my-2.5 sm:my-3" : "py-2.5 my-4")}>
               <div className="flex items-center gap-2 max-w-5xl mx-auto">
                 {discountedItems.length > 0 && (
                   <button

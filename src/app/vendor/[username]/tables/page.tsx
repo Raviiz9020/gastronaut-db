@@ -34,6 +34,7 @@ import {
   RefreshCw,
   Bike,
   ShoppingBag,
+  MessageSquare,
 } from 'lucide-react';
 import { useVendor } from '@/context/vendor-context';
 import { useOrder } from '@/context/order-context';
@@ -74,6 +75,17 @@ const statusColors: Record<OrderStatus, string> = {
   'Cancelled': 'bg-red-500',
   'Order Ready': 'bg-teal-500',
   'Picked Up': 'bg-green-500',
+};
+
+const getOrderNotes = (notes: any, vendorUsername?: string): string => {
+  if (!notes) return '';
+  if (typeof notes === 'string') return notes.trim();
+  if (typeof notes === 'object') {
+    if (vendorUsername && notes[vendorUsername]) return String(notes[vendorUsername]).trim();
+    const vals = Object.values(notes).filter(Boolean);
+    return vals.join(' | ').trim();
+  }
+  return '';
 };
 
 
@@ -806,6 +818,20 @@ const BillViewDialog = ({
 
         <Separator className="my-2" />
 
+        {(() => {
+          const notesText = getOrderNotes(order.customNotes, order.vendorUsername);
+          if (!notesText) return null;
+          return (
+            <div className="my-2 p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs flex items-start gap-1.5">
+              <MessageSquare className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="min-w-0 flex-1">
+                <span className="font-bold text-[10px] uppercase tracking-wider block text-amber-700 dark:text-amber-400">Special Instructions</span>
+                <span className="text-foreground font-medium break-words">{notesText}</span>
+              </div>
+            </div>
+          );
+        })()}
+
         <div className="flex justify-between items-center font-bold text-lg">
           <span>TOTAL</span>
           <span>₹{order.totalPrice.toFixed(2)}</span>
@@ -921,6 +947,19 @@ const CustomerOrderCard = ({
             );
           })}
         </div>
+        {(() => {
+          const notesText = getOrderNotes(order.customNotes, order.vendorUsername);
+          if (!notesText) return null;
+          return (
+            <div className="mt-2.5 p-2 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-1.5 shadow-2xs">
+              <MessageSquare className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="min-w-0 flex-1">
+                <span className="font-extrabold text-[10px] uppercase tracking-wider block text-amber-700 dark:text-amber-300">Customer Note</span>
+                <span className="break-words font-medium text-xs leading-tight">{notesText}</span>
+              </div>
+            </div>
+          );
+        })()}
       </CardContent>
       <CardFooter className="p-4 flex flex-col gap-2">
         <div className="flex w-full items-center gap-2">
@@ -1180,6 +1219,20 @@ const TableCard = ({
             <p className="text-[10px]">Over-the-counter orders</p>
           </div>
         )}
+
+        {isOccupied && (() => {
+          const notesText = getOrderNotes(order.customNotes, order.vendorUsername);
+          if (!notesText) return null;
+          return (
+            <div className="mt-2.5 p-2 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-1.5 shadow-2xs">
+              <MessageSquare className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="min-w-0 flex-1">
+                <span className="font-extrabold text-[10px] uppercase tracking-wider block text-amber-700 dark:text-amber-300">Chef Instructions</span>
+                <span className="break-words font-medium text-xs leading-tight">{notesText}</span>
+              </div>
+            </div>
+          );
+        })()}
       </CardContent>
 
       {/* New Order Acceptance Banner (Round 1 Unpaid) */}
