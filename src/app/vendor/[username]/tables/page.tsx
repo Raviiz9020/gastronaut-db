@@ -32,6 +32,8 @@ import {
   QrCode,
   Download,
   RefreshCw,
+  Bike,
+  ShoppingBag,
 } from 'lucide-react';
 import { useVendor } from '@/context/vendor-context';
 import { useOrder } from '@/context/order-context';
@@ -851,20 +853,54 @@ const CustomerOrderCard = ({
     }
   }
 
+  const isPickup = order.deliveryOption === 'Self Pickup';
+
   return (
-    <Card className="border-purple-500/20 rounded-2xl w-full">
-      <CardHeader className="flex flex-row items-start justify-between gap-4 p-4">
-        <div>
-          <CardTitle className="text-lg">Order #{order.displayId}</CardTitle>
-          <p className="text-xs text-muted-foreground">{format(new Date(order.createdAt), 'hh:mm a')}</p>
+    <Card className={cn(
+      "rounded-2xl w-full transition-all border shadow-2xs",
+      isPickup
+        ? "border-purple-500/30 bg-purple-500/5 dark:bg-purple-950/10"
+        : "border-orange-500/30 bg-orange-500/5 dark:bg-orange-950/10"
+    )}>
+      <CardHeader className="flex flex-row items-start justify-between gap-2 p-4 pb-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <CardTitle className="text-base sm:text-lg font-extrabold font-headline">Order #{order.displayId}</CardTitle>
+            {isPickup ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold text-white bg-purple-600 shadow-2xs uppercase tracking-wider whitespace-nowrap">
+                <ShoppingBag className="h-3 w-3" /> Self Pickup
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold text-white bg-orange-600 shadow-2xs uppercase tracking-wider whitespace-nowrap">
+                <Bike className="h-3 w-3" /> Home Delivery
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">{format(new Date(order.createdAt), 'hh:mm a')}</p>
         </div>
-        <p className="text-lg font-bold text-primary">₹{order.totalPrice.toFixed(2)}</p>
+        <p className="text-base sm:text-lg font-black text-primary shrink-0">₹{order.totalPrice.toFixed(2)}</p>
       </CardHeader>
-      <CardContent className="p-4 pt-0">
-        <div className="space-y-2 text-sm">
-          <div className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" /> {order.customer.name}</div>
-          <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /> {order.customer.address}</div>
-          <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" /> {order.customer.contact}</div>
+      <CardContent className="p-4 pt-2">
+        <div className="space-y-1.5 text-xs sm:text-sm">
+          <div className="flex items-center gap-2">
+            <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="font-semibold text-foreground">{order.customer.name}</span>
+          </div>
+          {isPickup ? (
+            <div className="flex items-center gap-2 text-purple-700 dark:text-purple-300 font-bold text-xs bg-purple-500/15 px-2.5 py-1.5 rounded-xl border border-purple-500/25 my-1">
+              <ShoppingBag className="h-3.5 w-3.5 shrink-0" />
+              <span>Counter Pickup (No Delivery Needed)</span>
+            </div>
+          ) : (
+            <div className="flex items-start gap-2">
+              <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+              <span className="text-xs text-muted-foreground leading-tight break-words">{order.customer.address}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="text-xs font-medium text-foreground">{order.customer.contact}</span>
+          </div>
         </div>
         <Separator className="my-3" />
         <div className="space-y-1">
@@ -941,28 +977,44 @@ const CustomerOrderCard = ({
 const TableCard = ({
   tableNumber,
   order,
+  isAlerted,
+  alertInfo,
+  onDismissAlert,
   onAddItem,
   onViewBill,
   onShowQrCode,
   onItemQuantityChange,
   onRemoveItem,
+  onToggleItemServed,
+  onAcceptOrder,
+  onMarkAllServed,
 }: {
   tableNumber: number | string;
   order: Order | null;
+  isAlerted?: boolean;
+  alertInfo?: { round: number; timestamp: number };
+  onDismissAlert?: () => void;
   onAddItem: (tableIdentifier: number | string) => void;
   onViewBill: (order: Order) => void;
   onShowQrCode: (order: Order) => void;
   onItemQuantityChange: (orderId: string, cartItemId: string, change: number) => void;
   onRemoveItem: (orderId: string, cartItemId: string) => void;
+  onToggleItemServed?: (orderId: string, cartItemId: string, served: boolean) => void;
+  onAcceptOrder?: (orderId: string) => void;
+  onMarkAllServed?: (orderId: string) => void;
 }) => {
   const isOccupied = !!order;
   const total = order?.totalPrice || 0;
   const isTakeAway = typeof tableNumber === 'string' && tableNumber.startsWith('Take Away');
+  const hasUnservedItems = isOccupied && order.items.some(i => !i.served);
+  const shouldShowAlert = isOccupied && isAlerted;
 
   return (
     <Card className={cn(
       "w-full h-auto flex flex-col justify-between rounded-2xl transition-all shadow-xs border bg-card overflow-hidden",
-      isTakeAway
+      shouldShowAlert
+        ? "border-amber-500 shadow-xl ring-4 ring-amber-400/80 animate-pulse bg-amber-500/5 dark:bg-amber-950/20"
+        : isTakeAway
         ? (isOccupied ? "border-purple-500/50 shadow-xs" : "border-purple-500/30 hover:border-purple-500/50 shadow-xs")
         : isOccupied
         ? "border-red-500/40 shadow-xs"
@@ -970,27 +1022,48 @@ const TableCard = ({
     )}>
       {/* Card Header - Purple for Takeaway, Red for Occupied Dine-in, Soft Green for Available Dine-in */}
       <CardHeader className={cn(
-        "p-3 border-b flex flex-row items-center justify-between gap-2 transition-colors",
-        isTakeAway
+        "p-3 border-b flex flex-row items-center justify-between gap-2 transition-colors whitespace-nowrap",
+        shouldShowAlert
+          ? "bg-amber-500 text-amber-950 border-amber-600 font-extrabold"
+          : isTakeAway
           ? (isOccupied ? "bg-purple-600 text-white border-purple-700 dark:bg-purple-600" : "bg-purple-500 text-white border-purple-600 dark:bg-purple-600")
           : isOccupied
           ? "bg-red-500 text-white border-red-600 dark:bg-red-600"
           : "bg-emerald-500 text-white border-emerald-600 dark:bg-emerald-600"
       )}>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 min-w-0 shrink-0">
           {isTakeAway ? (
-            <Package className="h-4 w-4 text-white" />
+            <Package className="h-4 w-4 text-white shrink-0" />
           ) : (
-            <Utensils className="h-4 w-4 text-white" />
+            <Utensils className="h-4 w-4 text-white shrink-0" />
           )}
-          <span className="text-sm font-bold font-headline text-white">
+          <span className="text-sm font-bold font-headline text-white shrink-0">
             {typeof tableNumber === 'number' ? `Table ${tableNumber}` : tableNumber}
           </span>
+          {shouldShowAlert ? (
+            <span className="text-[10px] bg-amber-300 text-amber-950 px-2 py-0.5 rounded-full font-black animate-bounce shadow-md uppercase tracking-wider whitespace-nowrap shrink-0">
+              ⚡ R{alertInfo?.round || 2} Added!
+            </span>
+          ) : order?.orderRound && order.orderRound > 1 ? (
+            <span className="text-[10px] bg-white/25 text-white px-1.5 py-0.2 rounded-full font-extrabold shrink-0">
+              R{order.orderRound}
+            </span>
+          ) : null}
         </div>
 
         {isOccupied ? (
-          <div className="text-right">
-            <span className="text-sm font-black text-white">₹{total.toFixed(0)}</span>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {order.locationVerified === true && (
+              <span title="Diner location verified within 300m" className="text-[9px] bg-white/20 text-white px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0">
+                📍 Verified
+              </span>
+            )}
+            {order.locationVerified === false && (
+              <span title="Diner location unverified - please confirm diner presence at table" className="text-[9px] bg-amber-300 text-amber-950 px-1.5 py-0.5 rounded-full font-extrabold whitespace-nowrap shrink-0">
+                ⚠️ Unverified
+              </span>
+            )}
+            <span className="text-sm font-black text-white shrink-0">₹{total.toFixed(0)}</span>
           </div>
         ) : (
           <span className={cn(
@@ -1004,6 +1077,26 @@ const TableCard = ({
 
       {/* Card Content */}
       <CardContent className="p-3.5 flex-grow flex flex-col justify-center min-h-[100px]">
+        {shouldShowAlert && (
+          <div className="mb-2.5 p-2 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-900 dark:text-amber-200 text-xs font-bold flex items-center justify-between shadow-2xs">
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping shrink-0" />
+              <span>Round {alertInfo?.round || 2} items added just now!</span>
+            </span>
+            {onDismissAlert && (
+              <button
+                type="button"
+                className="text-[10px] text-amber-800 dark:text-amber-300 hover:underline ml-2 shrink-0 font-extrabold"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDismissAlert();
+                }}
+              >
+                Dismiss
+              </button>
+            )}
+          </div>
+        )}
         {isOccupied && order.items.length > 0 ? (
           <div className="text-xs text-muted-foreground space-y-1 w-full">
             {order.items.map((item, index) => {
@@ -1011,22 +1104,45 @@ const TableCard = ({
               return (
                 <div key={item.cartItemId || index} className="py-1.5 border-b last:border-b-0 border-border/40">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1 pr-1">
-                      <span className="font-bold text-foreground text-xs leading-snug break-words">
-                        {item.quantity}x {item.name}
-                      </span>
-                      {custText && (
-                        <p className="text-[10px] text-muted-foreground italic leading-tight mt-0.5">
-                          {custText}
-                        </p>
+                    <div className="flex items-start gap-1.5 min-w-0 flex-1 pr-1">
+                      {onToggleItemServed && (
+                        <button
+                          type="button"
+                          onClick={() => onToggleItemServed((item as any).orderId || order.orderId, item.cartItemId, !item.served)}
+                          className={cn(
+                            "mt-0.5 h-4 w-4 rounded flex items-center justify-center border transition-all shrink-0",
+                            item.served ? "bg-emerald-500 border-emerald-600 text-white" : "border-border hover:border-emerald-500"
+                          )}
+                          title={item.served ? "Mark as unserved" : "Mark as served"}
+                        >
+                          {item.served && <Check className="h-3 w-3 stroke-[3]" />}
+                        </button>
                       )}
+                      <div className="min-w-0 flex-1">
+                        <span className={cn(
+                          "font-bold text-xs leading-snug break-words",
+                          item.served ? "line-through text-muted-foreground" : "text-foreground"
+                        )}>
+                          {item.quantity}x {item.name}
+                        </span>
+                        {item.round && item.round > 1 && (
+                          <span className="ml-1 text-[9px] font-bold px-1 rounded bg-muted text-muted-foreground border">
+                            R{item.round}
+                          </span>
+                        )}
+                        {custText && (
+                          <p className="text-[10px] text-muted-foreground italic leading-tight mt-0.5">
+                            {custText}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0 mt-0.5">
                       <Button
                         variant="outline"
                         size="icon"
                         className="h-5 w-5 rounded-full text-muted-foreground hover:text-foreground"
-                        onClick={() => onItemQuantityChange(order.orderId, item.cartItemId, -1)}
+                        onClick={() => onItemQuantityChange((item as any).orderId || order.orderId, item.cartItemId, -1)}
                       >
                         <Minus className="h-2.5 w-2.5" />
                       </Button>
@@ -1035,7 +1151,7 @@ const TableCard = ({
                         variant="outline"
                         size="icon"
                         className="h-5 w-5 rounded-full text-muted-foreground hover:text-foreground"
-                        onClick={() => onItemQuantityChange(order.orderId, item.cartItemId, 1)}
+                        onClick={() => onItemQuantityChange((item as any).orderId || order.orderId, item.cartItemId, 1)}
                       >
                         <Plus className="h-2.5 w-2.5" />
                       </Button>
@@ -1043,7 +1159,7 @@ const TableCard = ({
                         variant="ghost"
                         size="icon"
                         className="h-5 w-5 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => onRemoveItem(order.orderId, item.cartItemId)}
+                        onClick={() => onRemoveItem((item as any).orderId || order.orderId, item.cartItemId)}
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
@@ -1066,6 +1182,22 @@ const TableCard = ({
         )}
       </CardContent>
 
+      {/* New Order Acceptance Banner (Round 1 Unpaid) */}
+      {isOccupied && order.status === 'Order Placed' && onAcceptOrder && (
+        <div className="p-2 bg-amber-500/10 border-t border-amber-500/20 flex items-center justify-between gap-2">
+          <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400">
+            ⏳ Placed from Phone
+          </span>
+          <Button
+            size="sm"
+            className="h-6 text-[10px] font-bold rounded-full bg-amber-600 hover:bg-amber-700 text-white px-2.5"
+            onClick={() => onAcceptOrder(order.orderId)}
+          >
+            Accept & Cook
+          </Button>
+        </div>
+      )}
+
       {/* Card Footer */}
       <CardFooter className="p-2.5 bg-muted/10 border-t border-border/50 flex flex-wrap items-center gap-2">
         <Button
@@ -1082,6 +1214,17 @@ const TableCard = ({
         </Button>
         {isOccupied && (
           <>
+            {hasUnservedItems && onMarkAllServed && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2 rounded-full text-[11px] font-bold text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
+                onClick={() => onMarkAllServed(order.orderId)}
+                title="Mark all dishes served"
+              >
+                <Check className="h-3 w-3 mr-1" /> All Served
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -1113,7 +1256,7 @@ export default function TableViewPage() {
   const identifier = params.username as string;
 
   const { vendor: loggedInVendor, isAuthLoading: isVendorLoading, vendors, fetchAllVendors } = useVendor();
-  const { addOrder, updateOrderItems, updateOrderStatus, removeOrder } = useOrder();
+  const { addOrder, addRoundToOrder, updateOrderItems, updateOrderStatus, removeOrder, toggleItemServed } = useOrder();
   const { toast } = useToast();
 
   const [vendorMenuItems, setVendorMenuItems] = useState<MenuItem[]>([]);
@@ -1231,6 +1374,119 @@ export default function TableViewPage() {
     prevCustomerOrderCount.current = activeCustomerOrders.length;
   }, [activeCustomerOrders]);
 
+  const [recentlyAlertedTables, setRecentlyAlertedTables] = useState<Record<string, { round: number, timestamp: number }>>({});
+  const prevDineInSnapshots = useRef<Record<string, { round: number, itemCount: number }>>({});
+  const isFirstDineInRender = useRef(true);
+
+  // Helper to extract canonical table identifier matching TableCard props ("1", "2", ... or "Take Away")
+  const getTableIdentifier = (o: Order) => {
+    if (o.tableId) return String(o.tableId);
+    const match = o.customer?.name?.match(/Table\s+(\d+)/i);
+    if (match) return match[1];
+    return o.customer?.name || o.orderId;
+  };
+
+  useEffect(() => {
+    // 1. Do not trigger alerts while initial data is still loading
+    if (isLoading) return;
+
+    // 2. Initial mount after data loads: seed snapshot from Firestore so existing orders do not trigger false alerts
+    if (isFirstDineInRender.current) {
+      const initialMap: Record<string, { round: number, itemCount: number }> = {};
+      activeDineInOrders.forEach(o => {
+        const tableKey = getTableIdentifier(o);
+        initialMap[tableKey] = {
+          round: o.orderRound || 1,
+          itemCount: o.items?.length || 0,
+        };
+      });
+      prevDineInSnapshots.current = initialMap;
+      isFirstDineInRender.current = false;
+      return;
+    }
+
+    const currentMap: Record<string, { round: number, itemCount: number }> = {};
+    const alerted: Record<string, { round: number, timestamp: number }> = {};
+
+    activeDineInOrders.forEach(o => {
+      const tableKey = getTableIdentifier(o);
+      const prev = prevDineInSnapshots.current[tableKey];
+      const currentRound = o.orderRound || 1;
+      const currentItemsCount = o.items?.length || 0;
+
+      if (!prev) {
+        // Brand new table order placed from customer's phone!
+        playSound();
+        const tableName = tableKey === 'Take Away' ? 'Take Away' : `Table ${tableKey}`;
+        toast({
+          title: `🍽️ New Order: ${tableName}!`,
+          description: `${currentItemsCount} dish(es) placed from customer's phone.`,
+        });
+        if (tableKey) {
+          alerted[tableKey] = { round: currentRound, timestamp: Date.now() };
+        }
+      } else if (currentRound > prev.round || currentItemsCount > prev.itemCount) {
+        // Round 2, Round 3, etc. added on this table!
+        playSound();
+        const tableName = tableKey === 'Take Away' ? 'Take Away' : `Table ${tableKey}`;
+        const newItemsAdded = Math.max(1, currentItemsCount - prev.itemCount);
+        toast({
+          title: `⚡ Round ${currentRound} Added: ${tableName}!`,
+          description: `${newItemsAdded} new dish(es) sent to kitchen.`,
+        });
+        if (tableKey) {
+          alerted[tableKey] = { round: currentRound, timestamp: Date.now() };
+        }
+      }
+
+      currentMap[tableKey] = {
+        round: currentRound,
+        itemCount: currentItemsCount,
+      };
+    });
+
+    // CRITICAL: Always update snapshot so subsequent renders compare against latest state
+    prevDineInSnapshots.current = currentMap;
+
+    // 3. Immediately purge any alerted table that is no longer occupied (e.g. after bill is complete)
+    const activeTableKeys = new Set(
+      activeDineInOrders.flatMap(o => [
+        getTableIdentifier(o),
+        String(o.tableId || ''),
+        o.customer?.name || '',
+      ]).filter(Boolean)
+    );
+
+    setRecentlyAlertedTables(prev => {
+      const updated: Record<string, { round: number, timestamp: number }> = {};
+      Object.entries(prev).forEach(([key, val]) => {
+        if (activeTableKeys.has(key)) {
+          updated[key] = val;
+        }
+      });
+      return { ...updated, ...alerted };
+    });
+
+    if (Object.keys(alerted).length > 0) {
+      const timer = setTimeout(() => {
+        setRecentlyAlertedTables(prev => {
+          const updated = { ...prev };
+          Object.keys(alerted).forEach(k => delete updated[k]);
+          return updated;
+        });
+      }, 25000);
+      return () => clearTimeout(timer);
+    }
+  }, [activeDineInOrders, isLoading, toast]);
+
+  const handleDismissAlert = (tableIdentifier: string) => {
+    setRecentlyAlertedTables(prev => {
+      const updated = { ...prev };
+      delete updated[tableIdentifier];
+      return updated;
+    });
+  };
+
   const tableOrders = useMemo(() => {
     if (!vendor) return {};
     const tables: Record<string, Order | null> = {};
@@ -1238,12 +1494,42 @@ export default function TableViewPage() {
     const takeAwayIdentifiers = ['Take Away'];
 
     for (let i = 1; i <= tableCount; i++) {
-      const orderForTable = activeDineInOrders.find(o => o.customer.name === `Table ${i}`);
-      tables[String(i)] = orderForTable || null;
+      const matchingOrders = activeDineInOrders.filter(o => o.tableId === String(i) || o.customer?.name === `Table ${i}`);
+      if (matchingOrders.length === 0) {
+        tables[String(i)] = null;
+      } else if (matchingOrders.length === 1) {
+        tables[String(i)] = matchingOrders[0];
+      } else {
+        const primaryOrder = matchingOrders[0];
+        const combinedItems = matchingOrders.flatMap(o => (o.items || []).map(it => ({ ...it, orderId: o.orderId })));
+        const combinedTotal = matchingOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+        const maxRound = Math.max(...matchingOrders.map(o => o.orderRound || 1));
+        tables[String(i)] = {
+          ...primaryOrder,
+          items: combinedItems,
+          totalPrice: combinedTotal,
+          orderRound: maxRound,
+          _mergedOrderIds: matchingOrders.map(o => o.orderId),
+        } as any;
+      }
     }
     for (const id of takeAwayIdentifiers) {
-      const orderForTakeAway = activeDineInOrders.find(o => o.customer.name === id);
-      tables[id] = orderForTakeAway || null;
+      const matchingOrders = activeDineInOrders.filter(o => o.customer?.name === id || o.tableId === id);
+      if (matchingOrders.length === 0) {
+        tables[id] = null;
+      } else if (matchingOrders.length === 1) {
+        tables[id] = matchingOrders[0];
+      } else {
+        const primaryOrder = matchingOrders[0];
+        const combinedItems = matchingOrders.flatMap(o => (o.items || []).map(it => ({ ...it, orderId: o.orderId })));
+        const combinedTotal = matchingOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+        tables[id] = {
+          ...primaryOrder,
+          items: combinedItems,
+          totalPrice: combinedTotal,
+          _mergedOrderIds: matchingOrders.map(o => o.orderId),
+        } as any;
+      }
     }
     return tables;
   }, [activeDineInOrders, vendor]);
@@ -1276,6 +1562,43 @@ export default function TableViewPage() {
 
   const handleOpenAddItemDialog = (tableIdentifier: number | string) => {
     setAddItemDialogState({ open: true, tableNumber: tableIdentifier });
+  };
+
+  const handleToggleItemServed = async (orderId: string, cartItemId: string, served: boolean) => {
+    try {
+      await toggleItemServed(orderId, cartItemId, served);
+      toast({ title: served ? "Dish Marked Served ✅" : "Dish Marked Pending" });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const handleAcceptOrder = async (orderId: string) => {
+    try {
+      await updateOrderStatus(orderId, 'Processing');
+      toast({ title: "Order Accepted", description: "Kitchen status updated to Cooking." });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const handleMarkAllServed = async (orderId: string) => {
+    try {
+      const tableOrder = Object.values(tableOrders).find(o => o && (o.orderId === orderId || (o as any)._mergedOrderIds?.includes(orderId)));
+      const mergedIds = (tableOrder as any)?._mergedOrderIds as string[] | undefined;
+      const targetIds = mergedIds && mergedIds.length > 0 ? mergedIds : [orderId];
+
+      for (const tId of targetIds) {
+        const order = activeDineInOrders.find(o => o.orderId === tId);
+        if (order) {
+          const updatedItems = order.items.map(item => ({ ...item, served: true, servedAt: new Date().toISOString() }));
+          await updateOrderItems(tId, updatedItems);
+        }
+      }
+      toast({ title: "All Dishes Served ✅" });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
   };
 
   const handleItemQuantityChange = async (orderId: string, cartItemId: string, change: number) => {
@@ -1313,14 +1636,14 @@ export default function TableViewPage() {
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     }
-  }
+  };
 
   const handleAddItemsToTable = async (itemsToAdd: { menuItem: MenuItem; quantity: number, customizationDetails?: Record<string, string | string[]>, price?: number }[]) => {
     if (!vendor || addItemDialogState.tableNumber === null) return;
     const tableIdentifier = String(addItemDialogState.tableNumber);
     const isTakeAway = tableIdentifier.startsWith('Take Away');
     const customerName = isTakeAway ? tableIdentifier : `Table ${tableIdentifier}`;
-    const existingOrder = activeDineInOrders.find(o => o.customer.name === customerName);
+    const existingOrder = activeDineInOrders.find(o => isTakeAway ? (o.customer?.name === customerName || o.tableId === tableIdentifier) : (o.tableId === tableIdentifier || o.customer?.name === customerName));
 
     const cartItems = itemsToAdd.map(({ menuItem, quantity, customizationDetails, price }) => {
       const details = customizationDetails || {};
@@ -1335,27 +1658,10 @@ export default function TableViewPage() {
     });
 
     if (existingOrder) {
-      const newItems = [...existingOrder.items];
-      cartItems.forEach(cartItem => {
-        const existingCartItemIndex = newItems.findIndex(i => {
-          if (i.cartItemId && cartItem.cartItemId) {
-            return i.cartItemId === cartItem.cartItemId;
-          }
-          const isSameItem = (i as any).menuItemId === cartItem.id || i.id === cartItem.id;
-          const hasNoCust1 = !i.customizations || i.customizations.length === 0;
-          const hasNoCust2 = !cartItem.customizationDetails || Object.keys(cartItem.customizationDetails).length === 0;
-          return isSameItem && hasNoCust1 && hasNoCust2;
-        });
-        if (existingCartItemIndex > -1) {
-          newItems[existingCartItemIndex].quantity += cartItem.quantity;
-        } else {
-          newItems.push(cartItem);
-        }
-      });
-
       try {
-        await updateOrderItems(existingOrder.orderId, newItems);
-        toast({ title: "Items Added", description: `Added items to ${customerName}.` });
+        const nextRound = (existingOrder.orderRound || 1) + 1;
+        await addRoundToOrder(existingOrder.orderId, cartItems as any);
+        toast({ title: `⚡ Round ${nextRound} Added!`, description: `Added items to ${customerName}.` });
       } catch (e: any) {
         toast({ title: "Error", description: e.message, variant: "destructive" });
       }
@@ -1378,7 +1684,29 @@ export default function TableViewPage() {
 
   const handleCompleteOrder = async (orderId: string, takeAwayIdentifier?: string) => {
     try {
-      await updateOrderStatus(orderId, 'Delivered');
+      const mergedIds = (billOrder as any)?._mergedOrderIds as string[] | undefined;
+      if (mergedIds && mergedIds.length > 0) {
+        await Promise.all(mergedIds.map(id => updateOrderStatus(id, 'Delivered')));
+      } else {
+        await updateOrderStatus(orderId, 'Delivered');
+      }
+
+      // Immediately clear any alert state for this table so vacant table is instantly clean
+      if (billOrder) {
+        const tableId = billOrder.tableId ? String(billOrder.tableId) : '';
+        const match = billOrder.customer?.name?.match(/Table\s+(\d+)/i);
+        const derivedNum = match ? match[1] : '';
+        const custName = billOrder.customer?.name || '';
+        setRecentlyAlertedTables(prev => {
+          const updated = { ...prev };
+          if (tableId) delete updated[tableId];
+          if (derivedNum) delete updated[derivedNum];
+          if (custName) delete updated[custName];
+          if (takeAwayIdentifier) delete updated[takeAwayIdentifier];
+          return updated;
+        });
+      }
+
       setBillOrder(null);
       toast({ title: "Order Completed", description: "The order has been marked as complete." });
     } catch (e: any) {
@@ -1551,11 +1879,17 @@ export default function TableViewPage() {
                 key={tableNum}
                 tableNumber={tableNum}
                 order={tableOrders[String(tableNum)] || null}
+                isAlerted={Boolean(recentlyAlertedTables[String(tableNum)])}
+                alertInfo={recentlyAlertedTables[String(tableNum)]}
+                onDismissAlert={() => handleDismissAlert(String(tableNum))}
                 onAddItem={handleOpenAddItemDialog}
                 onViewBill={setBillOrder}
                 onShowQrCode={setQrCodeOrder}
                 onItemQuantityChange={handleItemQuantityChange}
                 onRemoveItem={onRemoveItem}
+                onToggleItemServed={handleToggleItemServed}
+                onAcceptOrder={handleAcceptOrder}
+                onMarkAllServed={handleMarkAllServed}
               />
             ))}
             {takeAwayTables.map(id => (
@@ -1563,11 +1897,17 @@ export default function TableViewPage() {
                 key={id}
                 tableNumber={id}
                 order={tableOrders[id] || null}
+                isAlerted={Boolean(recentlyAlertedTables[id])}
+                alertInfo={recentlyAlertedTables[id]}
+                onDismissAlert={() => handleDismissAlert(id)}
                 onAddItem={handleOpenAddItemDialog}
                 onViewBill={setBillOrder}
                 onShowQrCode={setQrCodeOrder}
                 onItemQuantityChange={handleItemQuantityChange}
                 onRemoveItem={onRemoveItem}
+                onToggleItemServed={handleToggleItemServed}
+                onAcceptOrder={handleAcceptOrder}
+                onMarkAllServed={handleMarkAllServed}
               />
             ))}
           </div>

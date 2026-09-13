@@ -54,3 +54,62 @@ export function isVendorServiceable(
     // If deliveryRadius is 0, we treat it as 0 (no delivery) or handled specifically
     return distance <= radius;
 }
+
+export interface DineInLocationVerification {
+    verified: boolean;
+    distanceMeters?: number;
+    reason?: 'within_range' | 'out_of_range' | 'permission_denied' | 'timeout' | 'no_vendor_coords' | 'unsupported';
+}
+
+/**
+ * Soft Geofence verification for Dine-In orders.
+ * Fast check (2.5s hard timeout) so diner experience is never blocked.
+ * Default radius is 300 meters as requested.
+ * 
+ * @param vendor The vendor object with latitude and longitude
+ * @param maxRadiusMeters Maximum allowed distance in meters (default: 300)
+ */
+export async function verifyDineInLocation(
+    vendor: { latitude?: number; longitude?: number },
+    maxRadiusMeters: number = 300
+): Promise<DineInLocationVerification> {
+    if (vendor.latitude === undefined || vendor.longitude === undefined) {
+        return { verified: true, reason: 'no_vendor_coords' };
+    }
+
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+        return { verified: false, reason: 'unsupported' };
+    }
+
+    const geoPromise = new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 2500,
+            maximumAge: 30000,
+        });
+    });
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('timeout')), 2500);
+    });
+
+    try {
+        const position = await Promise.race([geoPromise, timeoutPromise]);
+        const userLat = position.coords.latitude;
+        const userLng = position.coords.longitude;
+        const distanceKm = calculateDistanceInKm(userLat, userLng, vendor.latitude, vendor.longitude);
+        const distanceMeters = Math.round(distanceKm * 1000);
+
+        if (distanceMeters <= maxRadiusMeters) {
+            return { verified: true, distanceMeters, reason: 'within_range' };
+        } else {
+            return { verified: false, distanceMeters, reason: 'out_of_range' };
+        }
+    } catch (err: any) {
+        if (err?.message === 'timeout') {
+            return { verified: false, reason: 'timeout' };
+        }
+        return { verified: false, reason: 'permission_denied' };
+    }
+}
+

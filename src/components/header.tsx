@@ -35,11 +35,13 @@ const navLinks = [
 
 interface HeaderProps {
     pageVendor?: Vendor | null;
+    tableId?: string | null;
 }
 
-export default function Header({ pageVendor }: HeaderProps) {
+export default function Header({ pageVendor, tableId }: HeaderProps) {
   const { totalItems, totalPrice } = useCart();
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const isTableMode = Boolean(tableId);
   const { customer, logout, fetchCustomer, isAuthLoading: isCustomerLoading } = useCustomer();
   const { vendor: loggedInVendor, vendors } = useVendor();
   const router = useRouter();
@@ -133,6 +135,15 @@ export default function Header({ pageVendor }: HeaderProps) {
   }, [isVendorOwner, pageVendor]);
 
 
+  const isVendorPage = Boolean(pageVendor) || pathname.startsWith('/vendor/');
+
+  const visibleNavLinks = useMemo(() => {
+    if (isVendorPage) {
+      return [];
+    }
+    return navLinks;
+  }, [isVendorPage]);
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-primary/10 bg-background/95 backdrop-blur-sm">
       {customer?.isDemoCustomer && (
@@ -150,11 +161,17 @@ export default function Header({ pageVendor }: HeaderProps) {
                 Hyper<span className="text-primary">Delivery</span>
               </span>
             </Link>
-            {!isAdminRoute && !pathname.startsWith('/rider') && (
-                <LocationPicker variant="full" className="flex max-w-[130px] sm:max-w-[150px] md:max-w-none" />
-            )}
-            <nav className="hidden lg:flex items-center gap-6 text-sm">
-                {navLinks.map(link => (
+            {isTableMode ? (
+              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 font-bold text-xs gap-1.5 px-3 py-1.5 rounded-full flex items-center shadow-2xs">
+                <Utensils className="h-3.5 w-3.5" />
+                <span>Table {tableId}</span>
+              </Badge>
+            ) : !isAdminRoute && !pathname.startsWith('/rider') ? (
+              <LocationPicker variant="full" className="flex max-w-[130px] sm:max-w-[150px] md:max-w-none" />
+            ) : null}
+            {visibleNavLinks.length > 0 && (
+              <nav className="hidden lg:flex items-center gap-6 text-sm">
+                {visibleNavLinks.map(link => (
                      <Link 
                         key={link.href} 
                         href={link.href} 
@@ -168,11 +185,12 @@ export default function Header({ pageVendor }: HeaderProps) {
                            {link.label}
                      </Link>
                 ))}
-            </nav>
+              </nav>
+            )}
         </div>
         
         <div className="flex items-center gap-4">
-            {isVendorOwner && loggedInVendor ? (
+            {isVendorOwner && loggedInVendor && !isTableMode ? (
                 <div className="flex items-center gap-2">
                   {vendorTableUrl && (
                     <Link href={vendorTableUrl} passHref>
@@ -210,14 +228,14 @@ export default function Header({ pageVendor }: HeaderProps) {
                     </DropdownMenuContent>
                 </DropdownMenu>
                 </div>
-            ) : showVendorLogin ? (
+            ) : (showVendorLogin && !isTableMode) ? (
                 <Button variant="outline" onClick={handleVendorLoginClick}>
                     <LogIn className="mr-2 h-4 w-4"/>
                     Vendor
                 </Button>
             ) : null}
 
-            {!isVendorOwner && (
+            {!isVendorOwner && !isTableMode && (
               <div className="hidden sm:block relative">
                  <Button
                     variant="outline"
@@ -240,7 +258,7 @@ export default function Header({ pageVendor }: HeaderProps) {
               </div>
             )}
 
-            {customer && !isVendorOwner ? (
+            {customer && !isVendorOwner && !isTableMode ? (
                  <div className="flex items-center gap-2">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -307,7 +325,7 @@ export default function Header({ pageVendor }: HeaderProps) {
                     </DropdownMenu>
                  </div>
             ) : (
-                !loggedInVendor && !isVendorOwner && (
+                !loggedInVendor && !isVendorOwner && !isTableMode && (
                   <div className="flex items-center gap-2">
                       <Button variant="outline" onClick={handleLoginClick}>
                           <User className="mr-2 h-4 w-4"/>

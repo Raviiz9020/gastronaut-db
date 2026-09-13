@@ -119,14 +119,17 @@ match /customers/{userId} {
       
       
    allow update: if isSignedIn() && (
-        (resource.data.customerUsername == request.auth.uid && (
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vendorRating', 'vendorFeedback', 'items','paymentStatus', 'paymentRequestedAt','paymentMethod']) ||
-          (resource.data.status == 'Order Placed' && 
-           request.resource.data.status == 'Cancelled' && 
-           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancellationReason']))
-        )) ||
+         (resource.data.customerUsername == request.auth.uid && (
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vendorRating', 'vendorFeedback', 'items', 'subtotal', 'totalPrice', 'updatedAt', 'paymentStatus', 'paymentRequestedAt', 'paymentMethod', 'customNotes', 'orderRound']) ||
+           (resource.data.deliveryOption == 'Dine-In' &&
+            request.resource.data.status in ['Order Placed', 'Processing'] &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['items', 'subtotal', 'totalPrice', 'updatedAt', 'customNotes', 'orderRound', 'status'])) ||
+           (resource.data.status == 'Order Placed' && 
+            request.resource.data.status == 'Cancelled' && 
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancellationReason']))
+         )) ||
         (resource.data.vendorUsername == request.auth.uid &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'assignedDeliveryBoyId', 'assignedDeliveryBoyName', 'assignedDeliveryBoyContact', 'assignedDeliveryBoyAt','cancellationReason', 'subtotal','items', 'totalPrice', 'updatedAt','paymentStatus','paymentRequestedAt','paymentConfirmedAt','riderSettlementStatus', 'riderSettlementPaymentMode', 'riderSettlementMarkedAt', 'riderSettlementMarkedBy'])) ||
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'assignedDeliveryBoyId', 'assignedDeliveryBoyName', 'assignedDeliveryBoyContact', 'assignedDeliveryBoyAt','cancellationReason', 'subtotal','items', 'totalPrice', 'updatedAt','paymentStatus','paymentRequestedAt','paymentConfirmedAt','riderSettlementStatus', 'riderSettlementPaymentMode', 'riderSettlementMarkedAt', 'riderSettlementMarkedBy', 'orderRound', 'customNotes'])) ||
         (resource.data.assignedDeliveryBoyId == request.auth.uid &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancellationReason','riderSettlementStatus', 'riderSettlementConfirmedAt'])) ||
         isSuperAdmin()

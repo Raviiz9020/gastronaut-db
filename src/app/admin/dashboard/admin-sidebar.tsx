@@ -3,7 +3,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { LogOut, Package, Utensils, PanelLeftClose, PanelRight, Bike, LayoutDashboard, LayoutList, IndianRupee, Settings, Users, Sparkles, ClipboardList, FileSpreadsheet, Gift, Table } from 'lucide-react';
+import { LogOut, Package, Utensils, PanelLeftClose, PanelRight, Bike, LayoutDashboard, LayoutList, IndianRupee, Settings, Users, Sparkles, ClipboardList, FileSpreadsheet, Gift, Table, QrCode } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import Logo from '@/components/logo';
 const navLinks = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/dashboard/orders', label: 'Orders', icon: Package },
+  { href: '/admin/dashboard/tables', label: 'Dine-In & QR', icon: QrCode, featureFlag: 'canAcceptDineIn' },
   { href: '/admin/dashboard/expenses', label: 'Expenses', icon: FileSpreadsheet, featureFlag: 'isExpenseTrackingEnabled' },
   { href: '/admin/dashboard/menu', label: 'Menu', icon: Utensils },
   { href: '/admin/dashboard/availability', label: 'Availability', icon: ClipboardList },

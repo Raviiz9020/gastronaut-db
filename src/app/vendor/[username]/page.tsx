@@ -1,9 +1,9 @@
 'use client';
 
-import type { SpecialMenu, Vendor, MenuItem as MenuItemType, Category } from '@/types';
+import type { SpecialMenu, Vendor, MenuItem as MenuItemType, Category, Order } from '@/types';
 import { VendorStatus } from '@/types';
 import { VendorStatusManager, isItemInStock } from '@/lib/vendorStatusManager';
-import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef, Suspense } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Header from '@/components/header';
 import {
@@ -43,6 +43,12 @@ import {
   X,
   MessageSquare,
   ExternalLink,
+  CheckCircle2,
+  ChefHat,
+  AlertCircle,
+  ShieldCheck,
+  Check,
+  RefreshCw,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -65,9 +71,16 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useVendor as useAppVendor } from '@/context/vendor-context';
 import { Textarea } from '@/components/ui/textarea';
+import { verifyDineInLocation } from '@/lib/location-utils';
+import { Badge } from '@/components/ui/badge';
 
-
-type TableOrderItem = MenuItemType & { quantity: number; finalPrice: number };
+type TableOrderItem = MenuItemType & {
+  quantity: number;
+  finalPrice: number;
+  cartItemId?: string;
+  customizationDetails?: Record<string, string | string[]>;
+  selectedOptionsText?: string;
+};
 
 const ZoomedImageOverlay = ({
   item,
@@ -469,7 +482,15 @@ const CombinedMenuItemRow = ({
 };
 
 
-function VendorMenuContent({ categories }: { categories: Category[] }) {
+function VendorMenuContent({
+  categories,
+  tableId: propTableId,
+  setTableId: propSetTableId
+}: {
+  categories: Category[];
+  tableId?: string;
+  setTableId?: (t: string) => void;
+}) {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -477,7 +498,7 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
   const targetItemId = searchParams.get('item');
   const orderIdToEdit = searchParams.get('edit_order');
 
-  const { orders, updateOrderItems, addOrder } = useOrder();
+  const { orders, updateOrderItems, addOrder, addRoundToOrder } = useOrder();
   const { cartItems, addToCart, getCartItemCount } = useCart();
   const { vendor: loggedInVendor, vendors: allAppVendors, fetchAllVendors } = useAppVendor();
 
@@ -491,8 +512,21 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
   const [isTableOrderSheetVisible, setIsTableOrderSheetVisible] = useState(false);
   const [isTableOrderSheetMinimized, setIsTableOrderSheetMinimized] = useState(false);
   const [tableOrderItems, setTableOrderItems] = useState<TableOrderItem[]>([]);
-  const [tableId, setTableId] = useState('');
+  
+  const [internalTableId, setInternalTableId] = useState('');
+  const activeTableId = propTableId !== undefined ? propTableId : internalTableId;
+  const setTableId = propSetTableId || setInternalTableId;
+  
   const [dineInNotes, setDineInNotes] = useState('');
+  const [isUniversalPickerOpen, setIsUniversalPickerOpen] = useState(false);
+  const [pendingItemToAdd, setPendingItemToAdd] = useState<{ item: MenuItemType; quantity: number } | null>(null);
+
+  const [locationVerified, setLocationVerified] = useState<boolean | null>(null);
+  const [isVerifyingLocation, setIsVerifyingLocation] = useState(false);
+
+  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+  const [activeTableOrder, setActiveTableOrder] = useState<Order | null>(null);
+  const [graceSecondsLeft, setGraceSecondsLeft] = useState<number>(0);
 
   const [zoomedItem, setZoomedItem] = useState<{
     id: string;
@@ -523,6 +557,9 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
     return !!(loggedInVendor && vendor && loggedInVendor.username === vendor.username);
   }, [loggedInVendor, vendor]);
 
+  const isDineInMode = useMemo(() => {
+    return Boolean(vendor?.canAcceptDineIn && (activeTableId || searchParams.get('table')));
+  }, [vendor, activeTableId, searchParams]);
 
   useEffect(() => {
     if (allAppVendors.length === 0) {
@@ -530,6 +567,122 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
     }
   }, [allAppVendors, fetchAllVendors]);
 
+  // Non-blocking soft geofence check (300m max radius with 2.5s hard timeout)
+  useEffect(() => {
+    if (isDineInMode && vendor && locationVerified === null && !isVerifyingLocation) {
+      setIsVerifyingLocation(true);
+      verifyDineInLocation(vendor, 300)
+        .then(res => {
+          setLocationVerified(res.verified);
+        })
+        .catch(() => {
+          setLocationVerified(false);
+        })
+        .finally(() => {
+          setIsVerifyingLocation(false);
+        });
+    }
+  }, [isDineInMode, vendor, locationVerified, isVerifyingLocation]);
+
+  // Dine-In Table Session ID persistence
+  const [tableSessionId, setTableSessionId] = useState<string>('');
+  useEffect(() => {
+    if (activeTableId && vendor) {
+      let sess = sessionStorage.getItem(`dineInSession_${vendor.username}_${activeTableId}`);
+      if (!sess) {
+        sess = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        sessionStorage.setItem(`dineInSession_${vendor.username}_${activeTableId}`, sess);
+      }
+      setTableSessionId(sess);
+    }
+  }, [activeTableId, vendor]);
+
+  // Listen to active order for this table
+  useEffect(() => {
+    if (vendor && activeTableId) {
+      const savedId = localStorage.getItem(`dineInActiveOrderId_${vendor.username}_table_${activeTableId}`);
+      if (savedId) {
+        setActiveOrderId(savedId);
+      } else {
+        setActiveOrderId(null);
+      }
+    }
+  }, [vendor, activeTableId]);
+
+  useEffect(() => {
+    if (!activeOrderId) {
+      setActiveTableOrder(null);
+      return;
+    }
+    const orderRef = doc(db, 'orders', activeOrderId);
+    const unsub = onSnapshot(orderRef, (snap) => {
+      if (snap.exists()) {
+        const data = { orderId: snap.id, ...snap.data() } as Order;
+        if (data.status === 'Delivered' || data.status === 'Cancelled') {
+          setActiveTableOrder(null);
+          if (vendor && activeTableId) {
+            localStorage.removeItem(`dineInActiveOrderId_${vendor.username}_table_${activeTableId}`);
+          }
+        } else {
+          setActiveTableOrder(data);
+        }
+      } else {
+        setActiveTableOrder(null);
+      }
+    }, (err) => {
+      console.error('Error listening to active table order:', err);
+    });
+    return () => unsub();
+  }, [activeOrderId, vendor, activeTableId]);
+
+  // 90-second self-reduction grace countdown
+  useEffect(() => {
+    if (!activeTableOrder || activeTableOrder.status !== 'Order Placed' || !activeTableOrder.createdAt) {
+      setGraceSecondsLeft(0);
+      return;
+    }
+
+    const calculateGrace = () => {
+      const createdMs = new Date(activeTableOrder.createdAt).getTime();
+      const elapsedSec = Math.floor((Date.now() - createdMs) / 1000);
+      const remaining = Math.max(0, 90 - elapsedSec);
+      setGraceSecondsLeft(remaining);
+    };
+
+    calculateGrace();
+    const timer = setInterval(calculateGrace, 1000);
+    return () => clearInterval(timer);
+  }, [activeTableOrder]);
+
+  const handleReduceActiveOrderItem = async (cartItemIdOrId: string) => {
+    if (!activeTableOrder) return;
+    if (activeTableOrder.status !== 'Order Placed') {
+      toast({ title: "Order Locked", description: "Food preparation has started. Please ask your server.", variant: "destructive" });
+      return;
+    }
+    if (graceSecondsLeft <= 0) {
+      toast({ title: "Grace Period Expired", description: "The 90-second modification window has expired.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const currentItems = [...activeTableOrder.items];
+      const targetIdx = currentItems.findIndex(i => (i.cartItemId || i.id) === cartItemIdOrId);
+      if (targetIdx === -1) return;
+
+      const target = currentItems[targetIdx];
+      if (target.quantity > 1) {
+        currentItems[targetIdx] = { ...target, quantity: target.quantity - 1 };
+      } else {
+        currentItems.splice(targetIdx, 1);
+      }
+
+      await updateOrderItems(activeTableOrder.orderId, currentItems);
+      toast({ title: "Item Reduced", description: `${target.name} quantity updated.` });
+    } catch (err: any) {
+      toast({ title: "Update Failed", description: err.message || "Failed to update item.", variant: "destructive" });
+    }
+  };
 
   // Effect to handle "Edit Order" mode
   useEffect(() => {
@@ -588,8 +741,9 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
         await updateOrderItems(orderIdToEdit, tableOrderItems as any, dineInNotes);
         router.push('/admin/dashboard/orders/live');
       } else {
-        if (!tableId.trim()) {
+        if (!activeTableId.trim()) {
           toast({ title: "Table number required", variant: "destructive" });
+          setIsUniversalPickerOpen(true);
           setIsPlacingTableOrder(false);
           return;
         }
@@ -599,19 +753,44 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
           notesForOrder[vendor.username] = dineInNotes.trim();
         }
 
-        await addOrder({
-          cartItems: tableOrderItems as any,
-          customer: {},
-          allVendors: [vendor],
-          paymentMethod: 'Pay at Counter',
-          deliveryOption: 'Dine-In',
-          tableId: tableId,
-          customNotes: notesForOrder,
-        } as any);
+        // If an active order already exists for this table, APPEND items as a new round
+        if (activeTableOrder && activeTableOrder.status !== 'Delivered' && activeTableOrder.status !== 'Cancelled') {
+          const nextRound = (activeTableOrder.orderRound || 1) + 1;
+          await addRoundToOrder(activeTableOrder.orderId, tableOrderItems as any, dineInNotes);
+          toast({
+            title: `Round ${nextRound} Sent!`,
+            description: `Items added to Table ${activeTableId} order.`,
+          });
+        } else {
+          // Fresh table order (Round 1)
+          const sessionId = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+          const createdOrderIds = await addOrder({
+            cartItems: tableOrderItems as any,
+            customer: {},
+            allVendors: [vendor],
+            paymentMethod: 'Pay at Counter',
+            deliveryOption: 'Dine-In',
+            tableId: activeTableId,
+            customNotes: notesForOrder,
+            locationVerified: locationVerified === true,
+            tableSessionId: sessionId,
+            orderRound: 1,
+          } as any);
 
-        toast({ title: "Order Placed!", description: `Order for Table ${tableId} has been sent to the kitchen.` });
+          if (createdOrderIds && createdOrderIds.length > 0) {
+            const newId = createdOrderIds[0];
+            localStorage.setItem(`dineInActiveOrderId_${vendor.username}_table_${activeTableId}`, newId);
+            setActiveOrderId(newId);
+          }
+
+          toast({
+            title: "Order Placed!",
+            description: `Order for Table ${activeTableId} has been sent to the kitchen.`,
+          });
+        }
+
         setTableOrderItems([]);
-        setTableId('');
+        // Table ID remains active for the diner's entire meal session
         setDineInNotes('');
         setIsTableOrderSheetVisible(false);
         setIsTableOrderSheetMinimized(false);
@@ -698,22 +877,56 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
   };
 
 
-  const handleAddToTableOrder = useCallback((item: MenuItemType, quantity: number) => {
-    const finalPrice = item.isDiscountActive && item.discountPrice ? item.discountPrice : item.price;
+  const handleAddToTableOrder = useCallback((item: MenuItemType, quantity: number, selectedOptions?: Record<string, string | string[]>) => {
+    let finalPrice = item.isDiscountActive && item.discountPrice ? item.discountPrice : item.price;
+    let optionsText = '';
+    if (selectedOptions && item.customizations) {
+      item.customizations.forEach(cust => {
+        const sel = selectedOptions[cust.id];
+        if (sel) {
+          if (Array.isArray(sel)) {
+            sel.forEach(optId => {
+              const opt = cust.options.find(o => o.id === optId);
+              if (opt) {
+                finalPrice += item.isDiscountActive ? opt.price : (opt.originalPrice || opt.price);
+                optionsText += (optionsText ? ', ' : '') + opt.name;
+              }
+            });
+          } else {
+            const opt = cust.options.find(o => o.id === sel);
+            if (opt) {
+              finalPrice += item.isDiscountActive ? opt.price : (opt.originalPrice || opt.price);
+              optionsText += (optionsText ? ', ' : '') + opt.name;
+            }
+          }
+        }
+      });
+    }
+
+    const cartItemId = `${item.id}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
     setTableOrderItems(prevItems => {
-      const existingItem = prevItems.find(i => i.id === item.id);
-      if (existingItem) {
-        return prevItems.map(i =>
-          i.id === item.id ? { ...i, quantity: i.quantity + quantity } : i
-        );
+      if (!selectedOptions || Object.keys(selectedOptions).length === 0) {
+        const existingItem = prevItems.find(i => i.id === item.id && !i.customizationDetails);
+        if (existingItem) {
+          return prevItems.map(i =>
+            (i.id === item.id && !i.customizationDetails) ? { ...i, quantity: i.quantity + quantity } : i
+          );
+        }
       }
-      return [...prevItems, { ...item, quantity, finalPrice }];
+      return [...prevItems, {
+        ...item,
+        cartItemId,
+        quantity,
+        finalPrice,
+        customizationDetails: selectedOptions,
+        selectedOptionsText: optionsText
+      }];
     });
 
     if (!isTableOrderSheetVisible) {
       setIsTableOrderSheetVisible(true);
     }
-    // Always expand the sheet when a new item is added.
     setIsTableOrderSheetMinimized(false);
   }, [isTableOrderSheetVisible]);
 
@@ -723,8 +936,13 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
       return;
     }
 
-    if (isVendorOwner) {
+    if (isVendorOwner || isDineInMode) {
       if (vendor?.canAcceptDineIn) {
+        if (!activeTableId) {
+          setPendingItemToAdd({ item, quantity: 1 });
+          setIsUniversalPickerOpen(true);
+          return;
+        }
         handleAddToTableOrder(item, 1);
       } else {
         toast({
@@ -738,15 +956,19 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
         handleAddToCartWithDialogCheck(item);
       }
     }
-  }, [isVendorOwner, getCartItemCount, handleOpenCustomization, handleAddToTableOrder, toast, vendor]);
+  }, [isVendorOwner, isDineInMode, vendor, activeTableId, handleAddToTableOrder, getCartItemCount, handleAddToCartWithDialogCheck, handleOpenCustomization, toast]);
 
   const handleCombinedItemRowClick = useCallback((items: MenuItemType[]) => {
     const isSelfPickupVendor = vendor?.deliveryType === 'Self Pickup Only';
     const isFirstItemFromThisVendor = cartItems.every(cartItem => cartItem.vendorUsername !== items[0].vendorUsername);
     const isCartEmpty = cartItems.length === 0;
 
-    if (isVendorOwner) {
+    if (isVendorOwner || isDineInMode) {
       if (vendor?.canAcceptDineIn) {
+        if (!activeTableId) {
+          setIsUniversalPickerOpen(true);
+          return;
+        }
         setPortionSelectItems(items);
       } else {
         toast({ title: "Dine-In Disabled", description: "This feature has been disabled by the administrator.", variant: "destructive" });
@@ -756,7 +978,7 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
     } else {
       setPortionSelectItems(items);
     }
-  }, [vendor, isVendorOwner, cartItems]);
+  }, [vendor, isVendorOwner, isDineInMode, activeTableId, cartItems, toast]);
 
   const handleCloseCustomization = useCallback((open: boolean) => {
     if (!open) {
@@ -1091,121 +1313,290 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
       </AnimatePresence>
       <div className="container mx-auto px-4 py-6 sm:py-8">
         <div className="w-full max-w-5xl mx-auto">
-          {/* Modern Restaurant Hero Card */}
-          <div className="rounded-3xl border border-border/70 bg-card/95 backdrop-blur-md overflow-hidden shadow-xs mb-6">
-            {/* Top Cover Banner */}
-            <div className="relative h-28 sm:h-36 w-full bg-gradient-to-r from-primary/25 via-primary/10 to-amber-500/15">
-              {/* PDF Download Button top-right */}
-              <div className="absolute top-3 right-3 z-10">
+          {/* Innovative Compact Restaurant Cockpit */}
+          <div className="rounded-2xl border border-border/70 bg-card/95 backdrop-blur-md shadow-xs p-3.5 sm:p-4 mb-4 max-w-5xl mx-auto">
+            {/* Top Row: Brand, Live Status, and Table/Actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              {/* Brand & Status */}
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden border border-border/60 shadow-xs bg-muted shrink-0">
+                  <Image
+                    src={vendor.shopImage || 'https://placehold.co/224x224.png'}
+                    alt={vendor.shopName || 'Vendor'}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h1 className="font-headline text-base sm:text-xl font-black text-foreground tracking-tight truncate">
+                      {vendor.shopName}
+                    </h1>
+                    {/* Live Status Badge */}
+                    {(() => {
+                      const statusInfo = VendorStatusManager.getShopStatus(vendor);
+                      const isOpen = statusInfo.status === VendorStatus.OPEN;
+                      const isTempClosed = statusInfo.status === VendorStatus.CLOSED_TEMP;
+
+                      let badgeColor = 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
+                      let pulseColor = 'bg-emerald-500';
+
+                      if (isTempClosed) {
+                        badgeColor = 'bg-destructive/15 text-destructive border-destructive/30';
+                        pulseColor = 'bg-destructive';
+                      } else if (!isOpen) {
+                        badgeColor = 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30';
+                        pulseColor = 'bg-amber-500';
+                      }
+
+                      return (
+                        <span className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold border shadow-2xs", badgeColor)}>
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", pulseColor)} />
+                            <span className={cn("relative inline-flex rounded-full h-1.5 w-1.5", pulseColor)} />
+                          </span>
+                          <span>{statusInfo.msg}</span>
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                    {vendor.tagline || 'Fresh Food & Gourmet Delights'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Cluster: Dine-In Table Capsule + PDF Download */}
+              <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
+                {vendor?.canAcceptDineIn && (
+                  activeTableId ? (
+                    <div className="inline-flex items-center gap-1.5 p-1 sm:p-1.5 rounded-full bg-primary/10 border border-primary/25 shadow-2xs">
+                      <div className="flex items-center gap-1 px-2 text-xs font-extrabold text-foreground">
+                        <Utensils className="h-3.5 w-3.5 text-primary" />
+                        <span>Table {activeTableId}</span>
+                      </div>
+                      {locationVerified === true && (
+                        <span title="In-store location verified" className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                          <ShieldCheck className="h-3 w-3" /> Verified
+                        </span>
+                      )}
+                      {locationVerified === false && (
+                        <span title="Location unverified" className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                          <AlertCircle className="h-3 w-3" /> Unverified
+                        </span>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2.5 text-[11px] font-bold rounded-full hover:bg-primary/20 text-primary"
+                        onClick={() => setIsUniversalPickerOpen(true)}
+                      >
+                        Change
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs font-bold rounded-full border-primary/30 text-primary hover:bg-primary/10 gap-1 px-3"
+                      onClick={() => setIsUniversalPickerOpen(true)}
+                    >
+                      <Utensils className="h-3 w-3" />
+                      <span>Select Table</span>
+                    </Button>
+                  )
+                )}
+
                 <Button
                   onClick={generatePdf}
                   size="sm"
-                  variant="secondary"
-                  className="rounded-full text-xs font-bold gap-1.5 backdrop-blur-md bg-background/80 shadow-xs hover:bg-background"
+                  variant="outline"
+                  className="h-7 sm:h-8 px-3 rounded-full text-xs font-bold gap-1 text-muted-foreground hover:text-foreground border-border/80 shadow-2xs"
+                  title="Download Menu PDF"
                 >
-                  <Download className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Menu PDF</span>
+                  <Download className="h-3 w-3 text-primary" />
+                  <span className="hidden md:inline">Menu PDF</span>
                 </Button>
               </div>
             </div>
 
-            {/* Main Header Info Area */}
-            <div className="px-5 sm:px-8 pb-6 pt-0 relative">
-              {/* Floating Avatar & Title Row */}
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between -mt-10 sm:-mt-14 gap-3 sm:gap-4 mb-3">
-                <div className="flex items-end gap-3.5 sm:gap-4">
-                  <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-3xl overflow-hidden border-4 border-card shadow-md bg-card shrink-0">
-                    <Image
-                      src={vendor.shopImage || 'https://placehold.co/224x224.png'}
-                      alt={vendor.shopName || 'Vendor'}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-
-                  <div className="min-w-0 pb-0.5">
-                    <h1 className="font-headline text-xl sm:text-3xl font-extrabold text-foreground tracking-tight truncate">
-                      {vendor.shopName}
-                    </h1>
-                    <p className="text-xs sm:text-sm text-muted-foreground font-medium line-clamp-1 mt-0.5">
-                      {vendor.tagline || 'Fresh Food & Gourmet Delights'}
-                    </p>
-                  </div>
+            {/* Bottom Metadata Strip: Address, Hours, Phone */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-2.5 mt-2.5 border-t border-border/40 text-[11px] sm:text-xs text-muted-foreground">
+              {vendor.workingHours && (
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3 text-primary shrink-0" />
+                  <span>{vendor.workingHours}</span>
                 </div>
-
-                {/* Live Status Pill */}
-                {(() => {
-                  const statusInfo = VendorStatusManager.getShopStatus(vendor);
-                  const isOpen = statusInfo.status === VendorStatus.OPEN;
-                  const isTempClosed = statusInfo.status === VendorStatus.CLOSED_TEMP;
-
-                  let badgeColor = 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
-                  let pulseColor = 'bg-emerald-500';
-
-                  if (isTempClosed) {
-                    badgeColor = 'bg-destructive/15 text-destructive border-destructive/30';
-                    pulseColor = 'bg-destructive';
-                  } else if (!isOpen) {
-                    badgeColor = 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30';
-                    pulseColor = 'bg-amber-500';
-                  }
-
-                  return (
-                    <div className="shrink-0">
-                      <div className={cn("inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border shadow-2xs backdrop-blur-sm", badgeColor)}>
-                        <span className="relative flex h-2 w-2">
-                          <span className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", pulseColor)} />
-                          <span className={cn("relative inline-flex rounded-full h-2 w-2", pulseColor)} />
-                        </span>
-                        <span>{statusInfo.msg}</span>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Highlights & Store Metadata */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-3 border-t border-border/60 text-xs text-muted-foreground">
-                {vendor.workingHours && (
-                  <div className="flex items-center gap-1.5 font-semibold text-foreground">
-                    <Clock className="h-3.5 w-3.5 text-primary" />
-                    <span>{vendor.workingHours}</span>
-                  </div>
-                )}
-                {vendor.address && (
-                  <div className="flex items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
-                    <span className="truncate max-w-[260px]">{vendor.address}</span>
-                    {vendor.googleMapsUrl && (
-                      <a
-                        href={vendor.googleMapsUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline flex items-center gap-0.5 font-bold"
-                      >
-                        Directions <ExternalLink className="h-3 w-3" />
-                      </a>
-                    )}
-                  </div>
-                )}
-                {vendor.contact && (
-                  <a
-                    href={`tel:${vendor.contact}`}
-                    className="flex items-center gap-1.5 hover:text-primary font-semibold transition-colors"
-                  >
-                    <Phone className="h-3.5 w-3.5 text-primary" />
-                    <span>{vendor.contact.replace('+91', '')}</span>
-                  </a>
-                )}
-                {vendor.minOrderAmount && vendor.minOrderAmount > 0 ? (
-                  <div className="flex items-center gap-1.5 font-bold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full">
-                    <Info className="h-3.5 w-3.5" />
-                    <span>Min. Order: ₹{vendor.minOrderAmount.toFixed(0)}</span>
-                  </div>
-                ) : null}
-              </div>
+              )}
+              {vendor.address && (
+                <div className="flex items-center gap-1">
+                  <MapPin className="h-3 w-3 text-primary shrink-0" />
+                  <span className="truncate max-w-[200px] sm:max-w-[320px]">{vendor.address}</span>
+                  {vendor.googleMapsUrl && (
+                    <a
+                      href={vendor.googleMapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline inline-flex items-center gap-0.5 font-bold"
+                    >
+                      <ExternalLink className="h-2.5 w-2.5" />
+                    </a>
+                  )}
+                </div>
+              )}
+              {vendor.contact && (
+                <a
+                  href={`tel:${vendor.contact}`}
+                  className="flex items-center gap-1 hover:text-primary font-medium transition-colors"
+                >
+                  <Phone className="h-3 w-3 text-primary shrink-0" />
+                  <span>{vendor.contact.replace('+91', '')}</span>
+                </a>
+              )}
+              {vendor.minOrderAmount && vendor.minOrderAmount > 0 ? (
+                <div className="flex items-center gap-1 text-primary font-medium">
+                  <Info className="h-3 w-3 shrink-0" />
+                  <span>Min ₹{vendor.minOrderAmount}</span>
+                </div>
+              ) : null}
             </div>
           </div>
+
+          {/* Live Kitchen Status Widget */}
+          {activeTableOrder && (
+            <div className="mb-4 max-w-5xl mx-auto">
+              <Card className="rounded-2xl border-2 border-primary/40 bg-card shadow-lg overflow-hidden">
+                <div className="p-3 sm:p-4 bg-primary/5 border-b border-border/60 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-9 w-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-xs shrink-0">
+                      <ChefHat className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-extrabold text-sm sm:text-base text-foreground">
+                          Kitchen Status • Table {activeTableOrder.tableId}
+                        </h3>
+                        <Badge variant="outline" className={cn(
+                          "font-extrabold text-[10px] uppercase tracking-wider",
+                          activeTableOrder.status === 'Processing' ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30" :
+                          activeTableOrder.status === 'Order Placed' ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30" :
+                          "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                        )}>
+                          {activeTableOrder.status === 'Order Placed' ? '⏳ Sent to Kitchen' :
+                           activeTableOrder.status === 'Processing' ? '👨‍🍳 Cooking in Kitchen' :
+                           activeTableOrder.status === 'Out for Delivery' ? '🍽️ Being Served' :
+                           activeTableOrder.status}
+                        </Badge>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Order #{activeTableOrder.displayId || activeTableOrder.orderId?.slice(-6)} • Round {activeTableOrder.orderRound || 1}
+                      </p>
+                    </div>
+                  </div>
+
+                  {activeTableOrder.status === 'Order Placed' && graceSecondsLeft > 0 ? (
+                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-bold animate-pulse">
+                      <Clock className="h-3.5 w-3.5" />
+                      <span>Edit Window: {Math.floor(graceSecondsLeft / 60)}:{(graceSecondsLeft % 60).toString().padStart(2, '0')}</span>
+                    </div>
+                  ) : activeTableOrder.status === 'Processing' ? (
+                    <div className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold flex items-center gap-1">
+                      <ChefHat className="h-3.5 w-3.5" /> Cooking in Progress
+                    </div>
+                  ) : null}
+                </div>
+
+                <CardContent className="p-3 sm:p-4 space-y-3">
+                  <div className="space-y-2">
+                    <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Dishes in this Order</div>
+                    <div className="divide-y divide-border/40">
+                      {activeTableOrder.items.map((item, idx) => {
+                        const itemIdKey = item.cartItemId || item.id || `dish-${idx}`;
+                        const itemPrice = typeof item.price === 'number' ? item.price : ((item as any).finalPrice ?? 0);
+                        const itemTotal = itemPrice * (item.quantity || 1);
+                        return (
+                          <div key={itemIdKey} className="py-2.5 flex items-center justify-between text-xs sm:text-sm gap-2">
+                            <div className="flex items-center gap-2 flex-1 min-w-0 pr-2">
+                              <span className="font-bold text-foreground shrink-0">{item.quantity}x</span>
+                              <div className="min-w-0">
+                                <span className="font-semibold text-foreground break-words">{item.name}</span>
+                                {item.selectedOptionsText && (
+                                  <p className="text-[10px] text-muted-foreground">{item.selectedOptionsText}</p>
+                                )}
+                                {(item.round || 1) > 1 || (activeTableOrder.orderRound && activeTableOrder.orderRound > 1) ? (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-muted text-muted-foreground border ml-1.5 inline-block">
+                                    Round {item.round || 1}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                              <span className="font-bold text-foreground text-xs sm:text-sm whitespace-nowrap">
+                                ₹{itemTotal.toFixed(2)}
+                              </span>
+
+                              {item.served ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 whitespace-nowrap">
+                                  <CheckCircle2 className="h-3 w-3" /> Served
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 whitespace-nowrap">
+                                  <ChefHat className="h-3 w-3" /> Cooking
+                                </span>
+                              )}
+
+                              {activeTableOrder.status === 'Order Placed' && graceSecondsLeft > 0 && !item.served && (
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-6 w-6 rounded-full border-destructive/40 text-destructive hover:bg-destructive hover:text-white shrink-0"
+                                  title="Reduce quantity or remove dish"
+                                  onClick={() => handleReduceActiveOrderItem(itemIdKey)}
+                                >
+                                  <Minus className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {activeTableOrder.status === 'Processing' && (
+                    <p className="text-[11px] text-muted-foreground bg-muted/40 p-2.5 rounded-xl border border-border/50">
+                      🔒 Dishes are currently cooking in the kitchen. To modify or cancel any dish, please notify your server.
+                    </p>
+                  )}
+
+                  <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border/60">
+                    <div className="text-xs">
+                      <span className="text-muted-foreground">Order Total: </span>
+                      <span className="font-extrabold text-foreground">₹{activeTableOrder.totalPrice.toFixed(2)}</span>
+                      <span className="text-muted-foreground ml-2">(Pay at Counter)</span>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full text-xs font-bold border-primary text-primary hover:bg-primary hover:text-primary-foreground gap-1.5 shadow-2xs"
+                      onClick={() => {
+                        toast({
+                          title: `Menu open for Round ${(activeTableOrder.orderRound || 1) + 1}`,
+                          description: "Select dishes from the menu below to add more items to your table.",
+                        });
+                        window.scrollBy({ top: 220, behavior: 'smooth' });
+                      }}
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Add More Items (Round {(activeTableOrder.orderRound || 1) + 1})
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* Search Box */}
           <div className="mb-4 max-w-md mx-auto">
@@ -1389,9 +1780,45 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
         vendor={vendor}
         open={!!selectedItem}
         onOpenChange={handleCloseCustomization}
+        onAdd={(isVendorOwner || isDineInMode) ? (item, selectedOptions, quantity) => {
+          handleAddToTableOrder(item, quantity, selectedOptions);
+        } : undefined}
       />
 
-      {isVendorOwner && (
+      {/* Floating Bottom Dine-In Order Bar */}
+      {(isVendorOwner || isDineInMode) && tableOrderItems.length > 0 && !isTableOrderSheetVisible && (
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="fixed bottom-4 inset-x-3 sm:inset-x-auto sm:right-6 z-40 sm:w-96"
+        >
+          <div
+            onClick={() => {
+              setIsTableOrderSheetVisible(true);
+              setIsTableOrderSheetMinimized(false);
+            }}
+            className="bg-primary text-primary-foreground p-3 sm:p-3.5 rounded-2xl shadow-xl flex items-center justify-between cursor-pointer hover:bg-primary/95 transition-all"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center font-extrabold text-xs">
+                {tableOrderItems.reduce((sum, i) => sum + i.quantity, 0)}
+              </div>
+              <div>
+                <p className="font-extrabold text-sm leading-tight">
+                  Table {activeTableId || 'Order'} ({tableOrderItems.reduce((sum, i) => sum + i.quantity, 0)} {tableOrderItems.reduce((sum, i) => sum + i.quantity, 0) === 1 ? 'item' : 'items'})
+                </p>
+                <p className="text-[11px] text-primary-foreground/80">₹{tableOrderTotal.toFixed(2)} • Tap to Review</p>
+              </div>
+            </div>
+            <Button size="sm" variant="secondary" className="rounded-full font-extrabold text-xs h-8 pointer-events-none">
+              Review & Send <Utensils className="h-3.5 w-3.5 ml-1" />
+            </Button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Dine-In Order Sheet / Drawer */}
+      {(isVendorOwner || isDineInMode) && (
         <AnimatePresence>
           {isTableOrderSheetVisible && (
             <motion.div
@@ -1399,49 +1826,71 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 50, scale: 0.9 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="fixed bottom-4 right-4 z-50 w-80"
+              className="fixed bottom-4 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-96 max-w-sm"
             >
-              <Card className="w-full shadow-2xl rounded-2xl bg-card/90 backdrop-blur-sm">
+              <Card className="w-full shadow-2xl rounded-3xl border-2 border-primary/20 bg-card/95 backdrop-blur-md overflow-hidden">
                 <CardHeader
                   className={cn(
-                    "flex flex-row items-center justify-between p-3",
-                    "cursor-pointer" // Always allow clicking the header
+                    "flex flex-row items-center justify-between p-3.5 bg-primary/5 border-b border-border/40",
+                    "cursor-pointer"
                   )}
                   onClick={() => setIsTableOrderSheetMinimized(!isTableOrderSheetMinimized)}
                 >
-                  <CardTitle className="text-base">
-                    {orderIdToEdit ? `Editing: #${orderIdToEdit.split('-')[1] || orderIdToEdit}` : 'New Table Order'}
-                  </CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsTableOrderSheetMinimized(!isTableOrderSheetMinimized);
-                    }}
-                  >
-                    {isTableOrderSheetMinimized ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs">
+                      <Utensils className="h-3.5 w-3.5" />
+                    </div>
+                    <CardTitle className="text-sm sm:text-base font-extrabold text-foreground">
+                      {orderIdToEdit
+                        ? `Editing: #${orderIdToEdit.split('-')[1] || orderIdToEdit}`
+                        : activeTableOrder
+                        ? `Table ${activeTableId} • Round ${(activeTableOrder.orderRound || 1) + 1}`
+                        : `Table ${activeTableId || 'Selection'} • Dine-In`}
+                    </CardTitle>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 rounded-full"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsTableOrderSheetMinimized(!isTableOrderSheetMinimized);
+                      }}
+                    >
+                      {isTableOrderSheetMinimized ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsTableOrderSheetVisible(false);
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </CardHeader>
                 {!isTableOrderSheetMinimized && (
                   <>
-                    <CardContent className="px-3 space-y-4">
-                      {!orderIdToEdit && (
-                        <div className="space-y-2">
-                          <Label htmlFor="table-id-selector" className="text-xs">Select Table</Label>
-                          <div id="table-id-selector" className="flex flex-wrap gap-2">
-                            {Array.from({ length: (vendor?.dineInTables ?? 6) + 1 }, (_, i) => i).map((number) => (
+                    <CardContent className="px-3.5 py-3 space-y-3.5">
+                      {!orderIdToEdit && !activeTableId && (
+                        <div className="space-y-1.5">
+                          <Label htmlFor="table-id-selector" className="text-xs font-bold">Select Table Number</Label>
+                          <div id="table-id-selector" className="flex flex-wrap gap-1.5">
+                            {Array.from({ length: vendor?.dineInTables ?? 6 }, (_, i) => i + 1).map((number) => (
                               <Button
                                 key={number}
                                 type="button"
-                                variant={tableId === `${number}` ? 'default' : 'outline'}
-                                size="icon"
-                                className="h-8 w-8 rounded-full"
+                                variant={activeTableId === `${number}` ? 'default' : 'outline'}
+                                size="sm"
+                                className="h-7 w-7 p-0 rounded-full font-bold text-xs"
                                 onClick={() => setTableId(`${number}`)}
                               >
                                 {number}
@@ -1451,46 +1900,83 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
                         </div>
                       )}
                       <div className="space-y-1">
-                        <Label htmlFor="dine-in-notes" className="text-xs">Special Instructions</Label>
+                        <Label htmlFor="dine-in-notes" className="text-xs font-semibold">Special Instructions for Chef</Label>
                         <Textarea
                           id="dine-in-notes"
-                          placeholder="e.g., extra spicy, no onions..."
+                          placeholder="e.g., extra spicy, no onions, serve hot..."
                           rows={2}
                           value={dineInNotes}
                           onChange={(e) => setDineInNotes(e.target.value)}
+                          className="text-xs rounded-xl"
                         />
                       </div>
-                      <ScrollArea className="h-40">
-                        <div className="space-y-2 pr-4">
-                          {tableOrderItems.length > 0 ? tableOrderItems.map((item) => (
-                            <div key={item.id} className="flex justify-between items-center text-xs">
-                              <span className="flex-1 break-words pr-2">{item.name}</span>
-                              <div className="flex items-center gap-1">
-                                <Button variant="outline" size="icon" className="h-6 w-6 rounded-full border-destructive text-destructive hover:bg-destructive hover:text-white" onClick={() => handleTableOrderQuantityChange(item.id, -1)}><Minus className="h-3 w-3" /></Button>
-                                <span className="w-4 text-center font-bold">{item.quantity}</span>
-                                <Button variant="outline" size="icon" className="h-6 w-6 rounded-full border-destructive text-destructive hover:bg-destructive hover:text-white" onClick={() => handleTableOrderQuantityChange(item.id, 1)}><Plus className="h-3 w-3" /></Button>
+                      <ScrollArea className="h-44">
+                        <div className="space-y-2 pr-3">
+                          {tableOrderItems.length > 0 ? tableOrderItems.map((item, idx) => (
+                            <div key={item.cartItemId || item.id || idx} className="flex justify-between items-center text-xs p-1.5 rounded-xl hover:bg-muted/40 transition-colors">
+                              <div className="flex-1 pr-2">
+                                <span className="font-semibold block text-foreground">{item.name}</span>
+                                {item.selectedOptionsText && (
+                                  <span className="text-[10px] text-muted-foreground block">{item.selectedOptionsText}</span>
+                                )}
                               </div>
-                              <span className="font-medium w-12 text-right">₹{(item.finalPrice * item.quantity).toFixed(2)}</span>
-                              <Button variant="ghost" size="icon" className="h-5 w-5 ml-1" onClick={() => setTableOrderItems(prev => prev.filter(i => i.id !== item.id))}>
-                                <Trash2 className="h-3 w-3 text-destructive" />
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-6 w-6 rounded-full border-destructive text-destructive hover:bg-destructive hover:text-white"
+                                  onClick={() => handleTableOrderQuantityChange(item.id, -1)}
+                                >
+                                  <Minus className="h-3 w-3" />
+                                </Button>
+                                <span className="w-5 text-center font-bold text-xs">{item.quantity}</span>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-6 w-6 rounded-full border-primary text-primary hover:bg-primary hover:text-white"
+                                  onClick={() => handleTableOrderQuantityChange(item.id, 1)}
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                              </div>
+                              <span className="font-bold w-12 text-right">₹{(item.finalPrice * item.quantity).toFixed(2)}</span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 ml-1 text-muted-foreground hover:text-destructive"
+                                onClick={() => setTableOrderItems(prev => prev.filter(i => (i.cartItemId || i.id) !== (item.cartItemId || item.id)))}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             </div>
-                          )) : <p className="text-center text-xs text-muted-foreground pt-8">No items added yet.</p>}
+                          )) : <p className="text-center text-xs text-muted-foreground pt-10">No items added to this order yet.</p>}
                         </div>
                       </ScrollArea>
                     </CardContent>
-                    <CardFooter className="flex-col gap-2 p-3">
-                      <div className="flex justify-between w-full font-bold text-sm">
-                        <span>Total:</span>
-                        <span>₹{tableOrderTotal.toFixed(2)}</span>
+                    <CardFooter className="flex-col gap-2 p-3.5 bg-muted/20 border-t border-border/40">
+                      <div className="flex justify-between w-full font-extrabold text-sm">
+                        <span>Total (Pay at Counter):</span>
+                        <span className="text-primary">₹{tableOrderTotal.toFixed(2)}</span>
                       </div>
                       {showMinAmountWarning && (
                         <p className="text-xs text-destructive text-center">
                           The total must be at least ₹{minAmount.toFixed(2)} to update the order.
                         </p>
                       )}
-                      <Button className="w-full h-9" onClick={handlePlaceOrUpdateOrder} disabled={isUpdateDisabled || tableOrderItems.length === 0 || (!orderIdToEdit && !tableId.trim()) || isPlacingTableOrder}>
-                        {isPlacingTableOrder ? <Loader2 className="h-4 w-4 animate-spin" /> : (orderIdToEdit ? 'Update Order' : 'Place Order')}
+                      <Button
+                        className="w-full h-10 rounded-full font-extrabold text-xs tracking-wider uppercase shadow-md"
+                        onClick={handlePlaceOrUpdateOrder}
+                        disabled={isUpdateDisabled || tableOrderItems.length === 0 || (!orderIdToEdit && !activeTableId.trim()) || isPlacingTableOrder}
+                      >
+                        {isPlacingTableOrder ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : orderIdToEdit ? (
+                          'Update Order'
+                        ) : activeTableOrder ? (
+                          `Send Round ${(activeTableOrder.orderRound || 1) + 1} to Kitchen`
+                        ) : (
+                          'Send Order to Kitchen'
+                        )}
                       </Button>
                     </CardFooter>
                   </>
@@ -1501,11 +1987,56 @@ function VendorMenuContent({ categories }: { categories: Category[] }) {
         </AnimatePresence>
       )}
 
+      {/* Universal Table Picker Dialog */}
+      <Dialog open={isUniversalPickerOpen} onOpenChange={setIsUniversalPickerOpen}>
+        <DialogContent className="sm:max-w-md rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="font-headline text-xl text-center flex items-center justify-center gap-2">
+              <Utensils className="h-5 w-5 text-primary" /> Select Your Table
+            </DialogTitle>
+            <DialogDescription className="text-center text-xs">
+              Choose the table you are currently seated at in {vendor?.shopName || 'the restaurant'}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2.5 max-h-60 overflow-y-auto p-1">
+              {Array.from({ length: vendor?.dineInTables ?? 6 }, (_, i) => i + 1).map((tableNum) => (
+                <Button
+                  key={tableNum}
+                  type="button"
+                  variant={activeTableId === `${tableNum}` ? 'default' : 'outline'}
+                  className={cn(
+                    "h-12 text-sm font-extrabold rounded-2xl flex flex-col items-center justify-center transition-all",
+                    activeTableId === `${tableNum}` ? "shadow-md scale-105 border-primary" : "hover:border-primary/50"
+                  )}
+                  onClick={() => {
+                    setTableId(`${tableNum}`);
+                    setIsUniversalPickerOpen(false);
+                    toast({
+                      title: `Table ${tableNum} Selected`,
+                      description: "You can now add dishes to order directly to your table.",
+                    });
+                    if (pendingItemToAdd) {
+                      handleAddToTableOrder(pendingItemToAdd.item, pendingItemToAdd.quantity);
+                      setPendingItemToAdd(null);
+                    }
+                  }}
+                >
+                  <span className="text-[10px] font-medium opacity-75">T</span>
+                  <span>{tableNum}</span>
+                </Button>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <CartSheet open={isCartOpen} onOpenChange={setIsCartOpen} />
       <PortionSelectDialog
         items={portionSelectItems}
         open={!!portionSelectItems}
         isVendorOwner={!!isVendorOwner}
+        isDineInMode={!!isDineInMode}
         vendor={vendor}
         onOpenChange={() => setPortionSelectItems(null)}
         onAddToCart={(item, quantity) => {
@@ -1552,6 +2083,7 @@ const PortionSelectDialog = ({
   open,
   onOpenChange,
   isVendorOwner,
+  isDineInMode,
   onAddToCart,
   onAddToTableOrder,
   vendor,
@@ -1560,6 +2092,7 @@ const PortionSelectDialog = ({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   isVendorOwner?: boolean;
+  isDineInMode?: boolean;
   onAddToCart?: (item: MenuItemType, quantity: number) => void;
   onAddToTableOrder?: (item: MenuItemType, quantity: number) => void;
   vendor?: Vendor | null;
@@ -1570,7 +2103,6 @@ const PortionSelectDialog = ({
 
   useEffect(() => {
     if (open && items && items.length > 0) {
-      // Default to the first available item, or just the first item
       const defaultItem = items.find(item => item.isAvailable) || items[0];
       setSelectedItemId(defaultItem.id);
       setQuantity(1);
@@ -1589,7 +2121,7 @@ const PortionSelectDialog = ({
       return;
     }
 
-    if (isVendorOwner && onAddToTableOrder) {
+    if ((isVendorOwner || isDineInMode) && onAddToTableOrder) {
       onAddToTableOrder(selectedItem, quantity);
     } else if (onAddToCart) {
       onAddToCart(selectedItem, quantity);
@@ -1653,20 +2185,64 @@ const PortionSelectDialog = ({
   );
 };
 
-
-export default function VendorPublicMenuPage() {
+function VendorPublicMenuPageInner() {
   const { categories } = useMenu();
   const params = useParams();
+  const searchParams = useSearchParams();
   const identifier = params.username as string;
   const { vendors } = useAppVendor();
   const vendor = vendors.find(v => v.slug === identifier || v.username === identifier) || null;
 
+  const urlTable = searchParams.get('table');
+  const [tableId, setTableId] = useState<string>(urlTable || '');
+
+  useEffect(() => {
+    if (urlTable) {
+      setTableId(urlTable);
+      if (vendor) {
+        localStorage.setItem(`dineInTable_${vendor.username}`, urlTable);
+      }
+    } else if (vendor) {
+      const saved = localStorage.getItem(`dineInTable_${vendor.username}`);
+      if (saved) {
+        setTableId(saved);
+      }
+    }
+  }, [urlTable, vendor]);
+
+  const handleSetTableId = (newTable: string) => {
+    setTableId(newTable);
+    if (vendor) {
+      if (newTable) {
+        localStorage.setItem(`dineInTable_${vendor.username}`, newTable);
+      } else {
+        localStorage.removeItem(`dineInTable_${vendor.username}`);
+      }
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
-      <Header pageVendor={vendor} />
+      <Header pageVendor={vendor} tableId={tableId} />
       <main className="flex-1">
-        <VendorMenuContent categories={categories} />
+        <VendorMenuContent
+          categories={categories}
+          tableId={tableId}
+          setTableId={handleSetTableId}
+        />
       </main>
     </div>
+  );
+}
+
+export default function VendorPublicMenuPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    }>
+      <VendorPublicMenuPageInner />
+    </Suspense>
   );
 }

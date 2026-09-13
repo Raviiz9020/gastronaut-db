@@ -203,7 +203,17 @@ const LiveOrderCard = ({
                   <span className="w-5 h-5 rounded-full bg-primary/10 text-primary font-extrabold text-[10px] flex items-center justify-center shrink-0">
                     {item.quantity}
                   </span>
-                  <span className="font-bold text-foreground">{item.name}</span>
+                  <span className={cn("font-bold text-foreground", item.served && "line-through text-muted-foreground")}>{item.name}</span>
+                  {item.round && item.round > 1 && (
+                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
+                      R{item.round}
+                    </span>
+                  )}
+                  {item.served && (
+                    <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">
+                      Served
+                    </span>
+                  )}
                 </div>
                 <span className="font-semibold text-muted-foreground">
                   ₹{(item.price * item.quantity).toFixed(0)}

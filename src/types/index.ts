@@ -56,6 +56,10 @@ export interface CartItem extends MenuItem {
   rating?: number;
   feedback?: string;
   vendorResponse?: string;
+  served?: boolean;
+  servedAt?: string | null;
+  round?: number;
+  selectedOptionsText?: string;
 }
 
 export interface EmailPreferences {
@@ -264,6 +268,9 @@ export interface Order {
     razorpayPaymentId?: string;
     razorpayOrderId?: string;
     tableId?: string;
+    locationVerified?: boolean;
+    tableSessionId?: string;
+    orderRound?: number;
     
     // Admin commission settlement fields
     adminSettlementStatus?: 'pending' | 'payment_sent' | 'settled' | string;

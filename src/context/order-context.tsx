@@ -16,7 +16,7 @@ import {
   collection, onSnapshot, addDoc, updateDoc, doc, setDoc, query, where,
   writeBatch, getDocs, DocumentData, QuerySnapshot, runTransaction, getDoc, increment, deleteDoc, FieldValue
 } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { sendOrderEmail } from '@/ai/flows/send-order-email';
 import { sendCustomerInvoice } from '@/ai/flows/send-customer-invoice';
 import { sendCancellationEmail } from '@/ai/flows/send-cancellation-email';
@@ -37,6 +37,9 @@ interface OrderContextType {
     deliveryOptions?: Record<string, DeliveryOption>; // Optional now
     tableId?: string;
     customNotes?: Record<string, string>;
+    locationVerified?: boolean;
+    orderRound?: number;
+    tableSessionId?: string;
     paymentDetails?: {
       razorpay_order_id?: string;
       razorpay_payment_id?: string;
@@ -50,8 +53,11 @@ interface OrderContextType {
       discountAmount: number;
     }
   }) => Promise<string[]>;
+  toggleItemServed: (orderId: string, itemCartItemId: string, served: boolean) => Promise<void>;
+  markRoundServed: (orderId: string, roundNumber: number) => Promise<void>;
   updateOrderStatus: (orderId: string, status: OrderStatus, reason?: string) => Promise<void>;
   updateOrderItems: (orderId: string, newItems: CartItem[], customNotes?: string) => Promise<void>;
+  addRoundToOrder: (orderId: string, newItems: CartItem[], customNotes?: string) => Promise<void>;
   assignDeliveryBoyToOrder: (orderId: string, deliveryBoyId: string, deliveryTeam: DeliveryBoy[]) => Promise<void>;
   addRatingToOrderItem: (orderId: string, itemIndex: number, rating: number, feedback?: string) => Promise<void>;
   addRatingToVendor: (orderId: string, rating: number, feedback?: string) => Promise<void>;
@@ -63,7 +69,7 @@ interface OrderContextType {
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
 
-const cleanOrderItem = (item: any) => {
+const cleanOrderItem = (item: any, defaultRound: number = 1) => {
   const itemId = item.id || item.menuItemId || '';
   const customizationDetails = item.customizationDetails || {};
 
@@ -72,13 +78,17 @@ const cleanOrderItem = (item: any) => {
     return {
       menuItemId: item.menuItemId,
       name: item.name || '',
-      price: item.price ?? 0,
+      price: typeof item.price === 'number' ? item.price : (item.finalPrice ?? 0),
       quantity: item.quantity ?? 1,
       image: item.image || '',
       shopName: item.shopName || '',
       vendorUsername: item.vendorUsername || '',
       cartItemId: item.cartItemId || item.menuItemId || `${Date.now()}`,
-      customizations: item.customizations || []
+      customizations: item.customizations || [],
+      served: item.served ?? false,
+      servedAt: item.servedAt || null,
+      round: item.round ?? defaultRound,
+      selectedOptionsText: item.selectedOptionsText || '',
     };
   }
 
@@ -111,13 +121,17 @@ const cleanOrderItem = (item: any) => {
   return {
     menuItemId: itemId,
     name: item.name || '',
-    price: item.price ?? 0,
+    price: typeof item.price === 'number' ? item.price : (item.finalPrice ?? 0),
     quantity: item.quantity ?? 1,
     image: item.image || '',
     shopName: item.shopName || '',
     vendorUsername: item.vendorUsername || '',
     cartItemId: item.cartItemId || itemId || `${Date.now()}`,
-    customizations: filteredCustomizations
+    customizations: filteredCustomizations,
+    served: item.served ?? false,
+    servedAt: item.servedAt || null,
+    round: item.round ?? defaultRound,
+    selectedOptionsText: item.selectedOptionsText || '',
   };
 };
 
@@ -151,23 +165,41 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
   }, [toast]);
 
   const addOrder: OrderContextType['addOrder'] = async ({
-    cartItems, customer: cust, allVendors, paymentMethod, deliveryOptions, tableId, customNotes, paymentDetails, redemption
+    cartItems, customer: cust, allVendors, paymentMethod, deliveryOptions, tableId, customNotes, locationVerified, orderRound, tableSessionId, paymentDetails, redemption
   }) => {
-    const user = auth.currentUser;
+    let user = auth.currentUser;
     const isDineInFlow = !!tableId;
 
     if (isDineInFlow && !user) {
-      throw new Error("A vendor must be logged in to create a dine-in order.");
+      try {
+        // Diner sits at table and self-orders: silently sign in anonymously.
+        // Satisfies firestore.rules (request.resource.data.customerUsername == request.auth.uid)
+        // without forcing diner through login forms or polluting CRM /customers collection.
+        const anonCred = await signInAnonymously(auth);
+        user = anonCred.user;
+      } catch (authErr: any) {
+        console.error('Silent anonymous auth for dine-in failed:', authErr);
+        if (authErr?.code === 'auth/admin-restricted-operation' || authErr?.code === 'auth/operation-not-allowed') {
+          throw new Error('Anonymous Authentication is not enabled in your Firebase Console. Please go to Firebase Console > Authentication > Sign-in method and enable "Anonymous" provider.');
+        }
+      }
     }
+
     if (!isDineInFlow && !cust?.username) {
       throw new Error("Customer details are required for this order type.");
     }
 
     const customerForOrder: Partial<Customer> = isDineInFlow
-      ? { name: `Table ${tableId}`, contact: '', address: 'Dine-In' }
+      ? {
+          name: cust?.name || `Table ${tableId}`,
+          contact: cust?.contact || '',
+          address: `Table ${tableId} (Dine-In)`,
+          latitude: cust?.latitude,
+          longitude: cust?.longitude,
+        }
       : cust;
 
-    const customerUsername = isDineInFlow ? user!.uid : cust!.username!;
+    const customerUsername = isDineInFlow ? (user?.uid || cust?.username || 'guest') : cust!.username!;
     const newOrderIds: string[] = [];
 
     try {
@@ -288,6 +320,11 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
 
           const vendorDeliveryOption = (deliveryOptions && deliveryOptions[v.username]) || (isDineInFlow ? (String(tableId).startsWith('Take Away') ? 'Self Pickup' : 'Dine-In') : 'Home Delivery');
 
+          // Strict Monetization Gate: Dine-In ordering requires canAcceptDineIn === true
+          if ((vendorDeliveryOption === 'Dine-In' || isDineInFlow) && !v.canAcceptDineIn) {
+            throw new Error(`${v.shopName || v.name} has not activated Dine-In self-ordering.`);
+          }
+
           // Strict Guard: COD is only allowed for Home Delivery
           if (paymentMethod === 'COD' && vendorDeliveryOption !== 'Home Delivery') {
             throw new Error(`Cash on Delivery (COD) is not available for Self Pickup, Dine-In, or Take Away orders.`);
@@ -336,7 +373,7 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
             finalPrice -= discountAmount;
           }
 
-          const cleanedItems = vendorItems.map(item => cleanOrderItem(item));
+          const cleanedItems = vendorItems.map(item => cleanOrderItem(item, orderRound || 1));
 
           const isHomeDelivery = vendorDeliveryOption === 'Home Delivery';
           const isOnlineAppOrder = !isDineInFlow && !tableId;
@@ -369,6 +406,22 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
             commissionAmount = Number(((commissionBase * v.commissionPercentage) / 100).toFixed(2));
           }
 
+          // Anti-Prank & Multi-Round status logic:
+          // 1. If paid upfront (UPI/Razorpay success) -> 'Processing' (Cooking immediately)
+          // 2. If Round 2+ (add-on items on already active table) -> 'Processing' (Cooking immediately)
+          // 3. If Round 1 unpaid (first order on table) -> 'Order Placed' (Waiter confirms presence on POS to prevent home pranks)
+          let initialStatus: OrderStatus = 'Order Placed';
+          if (isDineInFlow) {
+            const isPaidUpfront = paymentDetails?.status === 'Success';
+            const isAddonRound = (orderRound && orderRound > 1);
+            const isStaffOrder = (cust?.username === v.username);
+            if (isPaidUpfront || isAddonRound || isStaffOrder) {
+              initialStatus = 'Processing';
+            } else {
+              initialStatus = 'Order Placed';
+            }
+          }
+
           const newOrderData: Omit<Order, 'orderId'> = {
             displayId: displayId,
             customer: {
@@ -390,7 +443,7 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
             paymentGateway: isOnlinePayment ? 'Razorpay' : 'None',
             paymentGatewayFee: orderGatewayFee,
             amountPaid: orderTotalPrice,
-            status: isDineInFlow ? 'Processing' : 'Order Placed',
+            status: isDineInFlow ? initialStatus : 'Order Placed',
             vendorUsername: v.username,
             createdAt: nowIso,
             paymentMethod,
@@ -399,7 +452,12 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
             customNotes: (customNotes && customNotes[v.username]) ? customNotes[v.username] : '',
             pointsEarned: pointsEarned > 0 ? pointsEarned : 0,
             pointsRedeemed: shouldRedeemPoints ? redemption.pointsToRedeem : 0,
-            ...(tableId ? { tableId: String(tableId) } : {}),
+            ...(tableId ? {
+              tableId: String(tableId),
+              locationVerified: locationVerified ?? false,
+              orderRound: orderRound || 1,
+              tableSessionId: tableSessionId || `${v.username}-table-${tableId}-${Date.now()}`,
+            } : {}),
             deliveryDistanceKm: deliveryDistanceKm > 0 ? deliveryDistanceKm : 0,
             deliveryCharge: deliveryCharge > 0 ? deliveryCharge : 0,
             distanceCalculationType: distanceCalculationType || "",
@@ -692,8 +750,21 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
         }
 
         const orderData = orderSnap.data() as Order;
-        if (orderData.vendorUsername !== user.uid) {
+        const isOwnerVendor = orderData.vendorUsername === user.uid;
+        const isCustomer = orderData.customerUsername === user.uid;
+
+        if (!isOwnerVendor && !isCustomer) {
           throw new Error('You do not have permission to edit this order.');
+        }
+
+        if (isCustomer && !isOwnerVendor) {
+          if (orderData.status !== 'Order Placed') {
+            throw new Error('Order is already being prepared by the kitchen and cannot be modified directly.');
+          }
+          const elapsedSec = (Date.now() - new Date(orderData.createdAt).getTime()) / 1000;
+          if (elapsedSec > 95) {
+            throw new Error('The 90-second modification grace window has expired. Please ask your server.');
+          }
         }
 
         const newTotalPrice = newItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -756,6 +827,98 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
     } catch (e: any) {
       console.error('Error updating order items:', e);
       toast({ title: 'Update Failed', description: e.message || 'Could not update the order.', variant: 'destructive' });
+    }
+  };
+
+  const addRoundToOrder: OrderContextType['addRoundToOrder'] = async (orderId, newItems, customNotes) => {
+    try {
+      const user = await ensureAuthUser();
+
+      if (!newItems || newItems.length === 0) {
+        throw new Error("No items selected for this round.");
+      }
+
+      await runTransaction(db, async (transaction) => {
+        const orderRef = doc(db, 'orders', orderId);
+        const orderSnap = await transaction.get(orderRef);
+
+        if (!orderSnap.exists()) {
+          throw new Error('Order does not exist!');
+        }
+
+        const orderData = orderSnap.data() as Order;
+        const isOwnerVendor = orderData.vendorUsername === user.uid || (user?.uid && orderData.vendorUsername?.toLowerCase() === user.uid.toLowerCase());
+        const isCustomer = orderData.customerUsername === user.uid;
+
+        if (!isOwnerVendor && !isCustomer) {
+          throw new Error('You do not have permission to add items to this order.');
+        }
+
+        if (orderData.status === 'Delivered' || orderData.status === 'Cancelled') {
+          throw new Error('This table order is already completed or closed.');
+        }
+
+        const nextRound = (orderData.orderRound || 1) + 1;
+
+        // Clean and tag new items with the next round number, unique cartItemId, and unserved status
+        const taggedNewItems = newItems.map(item => {
+          const cleaned = cleanOrderItem(item, nextRound);
+          const uniqueCartItemId = `${cleaned.cartItemId || cleaned.menuItemId}_r${nextRound}_${Math.random().toString(36).substring(2, 7)}`;
+          return {
+            ...cleaned,
+            cartItemId: uniqueCartItemId,
+            vendorUsername: orderData.vendorUsername,
+            shopName: orderData.items[0]?.shopName || cleaned.shopName || '',
+            round: nextRound,
+            served: false,
+            servedAt: null,
+          };
+        });
+
+        // Combine existing items with the new round items
+        const combinedItems = [...(orderData.items || []), ...taggedNewItems];
+
+        // Recalculate subtotal and totalPrice
+        const addedAmount = taggedNewItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const newSubtotal = (orderData.subtotal || 0) + addedAmount;
+        const newTotalPrice = (orderData.totalPrice || 0) + addedAmount;
+
+        const updatePayload: any = {
+          items: combinedItems,
+          subtotal: newSubtotal,
+          totalPrice: newTotalPrice,
+          orderRound: nextRound,
+          updatedAt: new Date().toISOString(),
+        };
+
+        // If custom cooking notes provided for this round, append them
+        if (customNotes?.trim()) {
+          const prevNotes: any = orderData.customNotes || {};
+          const prevVendorNote = typeof prevNotes === 'object' ? (prevNotes[orderData.vendorUsername] || '') : (typeof prevNotes === 'string' ? prevNotes : '');
+          const newNote = prevVendorNote ? `${prevVendorNote} | [R${nextRound}]: ${customNotes.trim()}` : `[R${nextRound}]: ${customNotes.trim()}`;
+          updatePayload.customNotes = typeof prevNotes === 'object' ? { ...prevNotes, [orderData.vendorUsername]: newNote } : { [orderData.vendorUsername]: newNote };
+        }
+
+        // If kitchen had already marked previous items 'Order Ready' or if it was 'Order Placed', transition to 'Processing' so kitchen sees active cooking
+        if (orderData.status === 'Order Ready' || orderData.status === 'Order Placed') {
+          updatePayload.status = 'Processing';
+        }
+
+        transaction.update(orderRef, updatePayload);
+      });
+
+      toast({
+        title: 'Round Sent to Kitchen!',
+        description: 'New items have been added to your table order.',
+      });
+    } catch (e: any) {
+      console.error('Error adding round to order:', e);
+      toast({
+        title: 'Could not send items',
+        description: e.message || 'Failed to add round to order.',
+        variant: 'destructive',
+      });
+      throw e;
     }
   };
 
@@ -995,13 +1158,75 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
     }
   };
 
+  const toggleItemServed = async (orderId: string, itemCartItemId: string, served: boolean) => {
+    try {
+      const orderRef = doc(db, 'orders', orderId);
+      const orderSnap = await getDoc(orderRef);
+      if (!orderSnap.exists()) throw new Error('Order not found');
+
+      const orderData = orderSnap.data() as Order;
+      const updatedItems = (orderData.items || []).map((item) => {
+        if (item.cartItemId === itemCartItemId) {
+          return {
+            ...item,
+            served,
+            servedAt: served ? new Date().toISOString() : null,
+          };
+        }
+        return item;
+      });
+
+      await updateDoc(orderRef, { items: updatedItems });
+      toast({
+        title: served ? 'Item Marked Served' : 'Item Marked Pending',
+        description: 'Floor status updated in real time.',
+      });
+    } catch (err: any) {
+      console.error('Failed to update item served status:', err);
+      toast({
+        title: 'Update failed',
+        description: err.message || 'Could not update item status',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const markRoundServed = async (orderId: string, roundNumber: number) => {
+    try {
+      const orderRef = doc(db, 'orders', orderId);
+      const orderSnap = await getDoc(orderRef);
+      if (!orderSnap.exists()) throw new Error('Order not found');
+
+      const orderData = orderSnap.data() as Order;
+      const nowIso = new Date().toISOString();
+      const updatedItems = (orderData.items || []).map((item) => {
+        if ((item.round || 1) === roundNumber) {
+          return { ...item, served: true, servedAt: nowIso };
+        }
+        return item;
+      });
+
+      await updateDoc(orderRef, { items: updatedItems });
+      toast({
+        title: `Round ${roundNumber} Served`,
+        description: `All items in Round ${roundNumber} marked served.`,
+      });
+    } catch (err: any) {
+      console.error('Failed to mark round served:', err);
+      toast({ title: 'Update failed', description: err.message, variant: 'destructive' });
+    }
+  };
+
   const value = useMemo(() => ({
     orders,
     setOrders,
     loadUserOrders,
     addOrder,
+    toggleItemServed,
+    markRoundServed,
     updateOrderStatus,
     updateOrderItems,
+    addRoundToOrder,
     assignDeliveryBoyToOrder,
     addRatingToOrderItem,
     addRatingToVendor,

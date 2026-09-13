@@ -208,7 +208,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         return orders.filter(o => o.vendorUsername === vendor.username && activeOrderStatuses.includes(o.status));
     }, [orders, vendor]);
 
-    const previousActiveOrderCount = useRef(0);
+    const prevOrdersSnapshot = useRef<Record<string, { round: number, count: number }>>({});
+    const isFirstOrdersMount = useRef(true);
 
     useEffect(() => {
         if (vendor?.username) {
@@ -223,31 +224,77 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (!isMounted) {
             setIsMounted(true);
-            previousActiveOrderCount.current = vendorActiveOrders.length;
             return;
         }
 
-        if (vendorActiveOrders.length > previousActiveOrderCount.current) {
-            const newOrder = vendorActiveOrders.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-            if (newOrder) {
-                playSound();
-                toast({
-                    title: 'New Order Received!',
-                    description: (
-                        <div>
-                            <p>Order #{newOrder.displayId || newOrder.orderId} for ₹{newOrder.totalPrice.toFixed(2)} has been placed.</p>
-                            <Link href="/admin/dashboard/orders">
-                                <Button variant="link" className="p-0 h-auto text-primary">View Orders</Button>
-                            </Link>
-                        </div>
-                    ),
-                    duration: 3000,
-                });
-            }
+        if (isFirstOrdersMount.current) {
+            const map: Record<string, { round: number, count: number }> = {};
+            vendorActiveOrders.forEach(o => {
+                map[o.orderId] = { round: o.orderRound || 1, count: o.items?.length || 0 };
+            });
+            prevOrdersSnapshot.current = map;
+            isFirstOrdersMount.current = false;
+            return;
         }
-        
-        previousActiveOrderCount.current = vendorActiveOrders.length;
-    }, [vendorActiveOrders, isMounted, vendor, toast]);
+
+        let hasNewOrder = false;
+        let hasNewRound = false;
+        let alertedOrder: Order | null = null;
+        let newRoundNum = 1;
+
+        vendorActiveOrders.forEach(o => {
+            const prev = prevOrdersSnapshot.current[o.orderId];
+            const currentRound = o.orderRound || 1;
+            const currentCount = o.items?.length || 0;
+
+            if (!prev) {
+                hasNewOrder = true;
+                alertedOrder = o;
+            } else if (currentRound > prev.round || currentCount > prev.count) {
+                hasNewRound = true;
+                alertedOrder = o;
+                newRoundNum = currentRound;
+            }
+        });
+
+        if (hasNewOrder && alertedOrder) {
+            const ord: Order = alertedOrder;
+            playSound();
+            toast({
+                title: ord.tableId ? `🍽️ New Order: Table ${ord.tableId}!` : 'New Order Received!',
+                description: (
+                    <div>
+                        <p>Order #{ord.displayId || ord.orderId} for ₹{ord.totalPrice.toFixed(2)} has been placed.</p>
+                        <Link href="/admin/dashboard/orders">
+                            <Button variant="link" className="p-0 h-auto text-primary">View Orders</Button>
+                        </Link>
+                    </div>
+                ),
+                duration: 4000,
+            });
+        } else if (hasNewRound && alertedOrder) {
+            const ord: Order = alertedOrder;
+            playSound();
+            toast({
+                title: `⚡ Round ${newRoundNum} Added: ${ord.tableId ? `Table ${ord.tableId}` : ord.customer.name}!`,
+                description: (
+                    <div>
+                        <p>New dishes sent to kitchen. Total bill: ₹{ord.totalPrice.toFixed(2)}.</p>
+                        <Link href="/admin/dashboard/orders">
+                            <Button variant="link" className="p-0 h-auto text-primary">View in KDS</Button>
+                        </Link>
+                    </div>
+                ),
+                duration: 5000,
+            });
+        }
+
+        const nextMap: Record<string, { round: number, count: number }> = {};
+        vendorActiveOrders.forEach(o => {
+            nextMap[o.orderId] = { round: o.orderRound || 1, count: o.items?.length || 0 };
+        });
+        prevOrdersSnapshot.current = nextMap;
+    }, [vendorActiveOrders, isMounted, toast]);
     
 
     const handleLogout = () => {
