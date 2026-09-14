@@ -101,22 +101,18 @@ match /customers/{userId} {
     // =========================
     match /orders/{orderId} {
       allow create: if isSignedIn() && request.resource.data.customerUsername == request.auth.uid;
-      //allow get, list: if isSignedIn() && (
-        //resource.data.customerUsername == request.auth.uid ||
-        //resource.data.vendorUsername   == request.auth.uid ||
-        //isSuperAdmin()
-      //);
       
-       // UPDATED RULE HERE:
-  allow get, list: if isSignedIn() && (
-    resource.data.customerUsername == request.auth.uid ||
-    resource.data.vendorUsername   == request.auth.uid ||
-    // This part allows you to see orders assigned to your riders
-    exists(/databases/$(database)/documents/vendor_rider_map/$(request.auth.uid + "_" + resource.data.assignedDeliveryBoyId)) ||
-    isSuperAdmin()
-  );
-
-      
+      // Allow reading active Dine-In orders for any diner (including anonymous/incognito)
+      // so the table picker and live kitchen status work seamlessly.
+      allow get, list: if 
+        (resource.data.deliveryOption == 'Dine-In' && resource.data.status in ['Order Placed', 'Processing', 'Out for Delivery']) ||
+        (isSignedIn() && (
+          resource.data.customerUsername == request.auth.uid ||
+          resource.data.vendorUsername   == request.auth.uid ||
+          // This part allows you to see orders assigned to your riders
+          exists(/databases/$(database)/documents/vendor_rider_map/$(request.auth.uid + "_" + resource.data.assignedDeliveryBoyId)) ||
+          isSuperAdmin()
+        ));
       
    allow update: if isSignedIn() && (
          (resource.data.customerUsername == request.auth.uid && (

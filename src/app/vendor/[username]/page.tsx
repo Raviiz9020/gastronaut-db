@@ -49,6 +49,8 @@ import {
   ShieldCheck,
   Check,
   RefreshCw,
+  ArrowRight,
+  ShoppingBag,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -535,8 +537,6 @@ function VendorMenuContent({
   const [locationVerified, setLocationVerified] = useState<boolean | null>(null);
   const [isVerifyingLocation, setIsVerifyingLocation] = useState(false);
 
-  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
-  const [activeTableOrder, setActiveTableOrder] = useState<Order | null>(null);
   const [graceSecondsLeft, setGraceSecondsLeft] = useState<number>(0);
 
   const [zoomedItem, setZoomedItem] = useState<{
@@ -608,43 +608,71 @@ function VendorMenuContent({
     }
   }, [activeTableId, vendor]);
 
-  // Listen to active order for this table
-  useEffect(() => {
-    if (vendor && activeTableId) {
-      const savedId = localStorage.getItem(`dineInActiveOrderId_${vendor.username}_table_${activeTableId}`);
-      if (savedId) {
-        setActiveOrderId(savedId);
-      } else {
-        setActiveOrderId(null);
-      }
-    }
-  }, [vendor, activeTableId]);
+  // Active Dine-in Orders for this vendor
+  const [activeDineInOrders, setActiveDineInOrders] = useState<Order[]>([]);
+  const [isDineInOrdersLoaded, setIsDineInOrdersLoaded] = useState(false);
 
   useEffect(() => {
-    if (!activeOrderId) {
-      setActiveTableOrder(null);
+    if (!vendor?.username) {
+      setActiveDineInOrders([]);
+      setIsDineInOrdersLoaded(false);
       return;
     }
-    const orderRef = doc(db, 'orders', activeOrderId);
-    const unsub = onSnapshot(orderRef, (snap) => {
-      if (snap.exists()) {
-        const data = { orderId: snap.id, ...snap.data() } as Order;
-        if (data.status === 'Delivered' || data.status === 'Cancelled') {
-          setActiveTableOrder(null);
-          if (vendor && activeTableId) {
-            localStorage.removeItem(`dineInActiveOrderId_${vendor.username}_table_${activeTableId}`);
-          }
-        } else {
-          setActiveTableOrder(data);
-        }
-      } else {
-        setActiveTableOrder(null);
-      }
+    const q = query(
+      collection(db, 'orders'),
+      where('vendorUsername', '==', vendor.username),
+      where('deliveryOption', '==', 'Dine-In'),
+      where('status', 'in', ['Order Placed', 'Processing', 'Out for Delivery'])
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const orders = snap.docs.map(d => ({ orderId: d.id, ...d.data() } as Order));
+      setActiveDineInOrders(orders);
+      setIsDineInOrdersLoaded(true);
     }, (err) => {
-      console.error('Error listening to active table order:', err);
+      console.error('Error listening to active dine-in orders:', err);
+      setIsDineInOrdersLoaded(true);
     });
     return () => unsub();
-  }, [activeOrderId, vendor, activeTableId]);
+  }, [vendor?.username]);
+
+  // Derive active order for current activeTableId
+  const activeTableOrder = useMemo(() => {
+    if (!activeTableId) return null;
+    return activeDineInOrders.find(o => String(o.tableId) === String(activeTableId)) || null;
+  }, [activeDineInOrders, activeTableId]);
+
+  // Clean up localStorage when active order on this table is completed or cancelled
+  useEffect(() => {
+    if (isDineInOrdersLoaded && vendor && activeTableId && !activeTableOrder) {
+      localStorage.removeItem(`dineInActiveOrderId_${vendor.username}_table_${activeTableId}`);
+    }
+  }, [isDineInOrdersLoaded, vendor, activeTableId, activeTableOrder]);
+
+  // Derive occupied table IDs (all active tables for this vendor)
+  const occupiedTableIds = useMemo(() => {
+    const set = new Set<string>();
+    activeDineInOrders.forEach(o => {
+      if (o.tableId) set.add(String(o.tableId));
+    });
+    return set;
+  }, [activeDineInOrders]);
+
+  // Determine if current user is the "Table Host"
+  const isTableHost = useMemo(() => {
+    if (!activeTableId || !vendor) return true; // free to place first order
+    if (!activeTableOrder) return true; // no active order exists on this table yet
+    
+    // An active order exists on this table. Check if this device is the one that owns/started it
+    const savedOrderId = typeof window !== 'undefined' ? localStorage.getItem(`dineInActiveOrderId_${vendor.username}_table_${activeTableId}`) : null;
+    if (savedOrderId && (savedOrderId === activeTableOrder.orderId || savedOrderId === (activeTableOrder as any).id)) {
+      return true;
+    }
+    const savedSessionId = typeof window !== 'undefined' ? sessionStorage.getItem(`dineInSession_${vendor.username}_${activeTableId}`) : null;
+    if (savedSessionId && activeTableOrder.tableSessionId && savedSessionId === activeTableOrder.tableSessionId) {
+      return true;
+    }
+    return false;
+  }, [activeTableId, vendor, activeTableOrder]);
 
   // 90-second self-reduction grace countdown
   useEffect(() => {
@@ -666,6 +694,14 @@ function VendorMenuContent({
   }, [activeTableOrder]);
 
   const handleReduceActiveOrderItem = async (cartItemIdOrId: string) => {
+    if (!isTableHost) {
+      toast({
+        title: "Action Not Permitted",
+        description: "Only the table host can modify active order items.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!activeTableOrder) return;
     if (activeTableOrder.status !== 'Order Placed') {
       toast({ title: "Order Locked", description: "Food preparation has started. Please ask your server.", variant: "destructive" });
@@ -764,6 +800,16 @@ function VendorMenuContent({
           notesForOrder[vendor.username] = dineInNotes.trim();
         }
 
+        if (!isTableHost) {
+          toast({
+            title: "Order Managed by Table Host",
+            description: `An active order is already in progress for Table ${activeTableId}.`,
+            variant: "destructive",
+          });
+          setIsPlacingTableOrder(false);
+          return;
+        }
+
         // If an active order already exists for this table, APPEND items as a new round
         if (activeTableOrder && activeTableOrder.status !== 'Delivered' && activeTableOrder.status !== 'Cancelled') {
           const nextRound = (activeTableOrder.orderRound || 1) + 1;
@@ -774,7 +820,7 @@ function VendorMenuContent({
           });
         } else {
           // Fresh table order (Round 1)
-          const sessionId = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+          const sessionId = tableSessionId || `sess_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
           const createdOrderIds = await addOrder({
             cartItems: tableOrderItems as any,
             customer: {},
@@ -791,7 +837,6 @@ function VendorMenuContent({
           if (createdOrderIds && createdOrderIds.length > 0) {
             const newId = createdOrderIds[0];
             localStorage.setItem(`dineInActiveOrderId_${vendor.username}_table_${activeTableId}`, newId);
-            setActiveOrderId(newId);
           }
 
           toast({
@@ -889,6 +934,14 @@ function VendorMenuContent({
 
 
   const handleAddToTableOrder = useCallback((item: MenuItemType, quantity: number, selectedOptions?: Record<string, string | string[]>) => {
+    if (!isTableHost) {
+      toast({
+        title: "Order Managed by Table Host",
+        description: `An active order is already in progress for Table ${activeTableId}. Items can be added from the device that started the order.`,
+      });
+      return;
+    }
+
     let finalPrice = item.isDiscountActive && item.discountPrice ? item.discountPrice : item.price;
     let optionsText = '';
     if (selectedOptions && item.customizations) {
@@ -934,14 +987,17 @@ function VendorMenuContent({
         selectedOptionsText: optionsText
       }];
     });
-
-    if (!isTableOrderSheetVisible) {
-      setIsTableOrderSheetVisible(true);
-    }
-    setIsTableOrderSheetMinimized(false);
-  }, [isTableOrderSheetVisible]);
+  }, [isTableHost, activeTableId, toast]);
 
   const handleItemRowClick = useCallback((item: MenuItemType) => {
+    if ((isVendorOwner || isDineInMode) && !isTableHost) {
+      toast({
+        title: "Order Managed by Table Host",
+        description: `An active order is in progress for Table ${activeTableId}. The menu is in view-only mode for your device.`,
+      });
+      return;
+    }
+
     if (item.customizations && item.customizations.length > 0) {
       handleOpenCustomization(item);
       return;
@@ -967,9 +1023,17 @@ function VendorMenuContent({
         handleAddToCartWithDialogCheck(item);
       }
     }
-  }, [isVendorOwner, isDineInMode, vendor, activeTableId, handleAddToTableOrder, getCartItemCount, handleAddToCartWithDialogCheck, handleOpenCustomization, toast]);
+  }, [isVendorOwner, isDineInMode, isTableHost, vendor, activeTableId, handleAddToTableOrder, getCartItemCount, handleAddToCartWithDialogCheck, handleOpenCustomization, toast]);
 
   const handleCombinedItemRowClick = useCallback((items: MenuItemType[]) => {
+    if ((isVendorOwner || isDineInMode) && !isTableHost) {
+      toast({
+        title: "Order Managed by Table Host",
+        description: `An active order is in progress for Table ${activeTableId}. The menu is in view-only mode for your device.`,
+      });
+      return;
+    }
+
     const isSelfPickupVendor = vendor?.deliveryType === 'Self Pickup Only';
     const isFirstItemFromThisVendor = cartItems.every(cartItem => cartItem.vendorUsername !== items[0].vendorUsername);
     const isCartEmpty = cartItems.length === 0;
@@ -989,7 +1053,7 @@ function VendorMenuContent({
     } else {
       setPortionSelectItems(items);
     }
-  }, [vendor, isVendorOwner, isDineInMode, activeTableId, cartItems, toast]);
+  }, [vendor, isVendorOwner, isDineInMode, isTableHost, activeTableId, cartItems, toast]);
 
   const handleCloseCustomization = useCallback((open: boolean) => {
     if (!open) {
@@ -1204,6 +1268,26 @@ function VendorMenuContent({
     return tableOrderItems.reduce((sum, item) => sum + (item.finalPrice * item.quantity), 0);
   }, [tableOrderItems]);
 
+  const tableOrderTotalCount = useMemo(() => {
+    return tableOrderItems.reduce((sum, item) => sum + item.quantity, 0);
+  }, [tableOrderItems]);
+
+  const tableOrderThumbnails = useMemo(() => {
+    const seen = new Set<string>();
+    const thumbnails: { id: string; name: string; image: string }[] = [];
+
+    for (let i = tableOrderItems.length - 1; i >= 0; i--) {
+      const item = tableOrderItems[i];
+      const imgUrl = (item as any).imageDataUrl || (item as any).image;
+      if (imgUrl && !seen.has(imgUrl) && !imgUrl.includes('placehold.co')) {
+        seen.add(imgUrl);
+        thumbnails.push({ id: item.id || String(i), name: item.name, image: imgUrl });
+      }
+      if (thumbnails.length >= 3) break;
+    }
+    return thumbnails;
+  }, [tableOrderItems]);
+
   const minAmount = vendor?.minOrderAmount || 0;
 
   const isUpdateDisabled = useMemo(() => {
@@ -1402,14 +1486,7 @@ function VendorMenuContent({
                           <AlertCircle className="h-3 w-3" /> Unverified
                         </span>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-2.5 text-[11px] font-bold rounded-full hover:bg-primary/20 text-primary"
-                        onClick={() => setIsUniversalPickerOpen(true)}
-                      >
-                        Change
-                      </Button>
+
                     </div>
                   ) : (
                     <Button
@@ -1565,7 +1642,7 @@ function VendorMenuContent({
                                 </span>
                               )}
 
-                              {activeTableOrder.status === 'Order Placed' && graceSecondsLeft > 0 && !item.served && (
+                              {isTableHost && activeTableOrder.status === 'Order Placed' && graceSecondsLeft > 0 && !item.served && (
                                 <Button
                                   variant="outline"
                                   size="icon"
@@ -1610,20 +1687,26 @@ function VendorMenuContent({
                       <span className="text-muted-foreground ml-2">(Pay at Counter)</span>
                     </div>
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="rounded-full text-xs font-bold border-primary text-primary hover:bg-primary hover:text-primary-foreground gap-1.5 shadow-2xs"
-                      onClick={() => {
-                        toast({
-                          title: `Menu open for Round ${(activeTableOrder.orderRound || 1) + 1}`,
-                          description: "Select dishes from the menu below to add more items to your table.",
-                        });
-                        window.scrollBy({ top: 220, behavior: 'smooth' });
-                      }}
-                    >
-                      <Plus className="h-3.5 w-3.5" /> Add More Items (Round {(activeTableOrder.orderRound || 1) + 1})
-                    </Button>
+                    {isTableHost ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full text-xs font-bold border-primary text-primary hover:bg-primary hover:text-primary-foreground gap-1.5 shadow-2xs"
+                        onClick={() => {
+                          toast({
+                            title: `Menu open for Round ${(activeTableOrder.orderRound || 1) + 1}`,
+                            description: "Select dishes from the menu below to add more items to your table.",
+                          });
+                          window.scrollBy({ top: 220, behavior: 'smooth' });
+                        }}
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Add More Items (Round {(activeTableOrder.orderRound || 1) + 1})
+                      </Button>
+                    ) : (
+                      <span className="text-[11px] font-medium text-muted-foreground bg-muted/60 px-3 py-1 rounded-full border border-border/40 flex items-center gap-1.5">
+                        <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Managed by Table Host
+                      </span>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -1818,33 +1901,63 @@ function VendorMenuContent({
       />
 
       {/* Floating Bottom Dine-In Order Bar */}
-      {(isVendorOwner || isDineInMode) && tableOrderItems.length > 0 && !isTableOrderSheetVisible && (
+      {(isVendorOwner || isDineInMode) && isTableHost && tableOrderItems.length > 0 && !isTableOrderSheetVisible && (
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="fixed bottom-4 inset-x-3 sm:inset-x-auto sm:right-6 z-40 sm:w-96"
+          initial={{ y: 80, opacity: 0, scale: 0.95 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          exit={{ y: 80, opacity: 0, scale: 0.95 }}
+          transition={{ duration: 0.25, ease: 'easeOut' }}
+          className="fixed bottom-4 inset-x-3 sm:inset-x-auto sm:right-6 z-40 sm:w-[420px]"
         >
           <div
             onClick={() => {
               setIsTableOrderSheetVisible(true);
               setIsTableOrderSheetMinimized(false);
             }}
-            className="bg-primary text-primary-foreground p-3 sm:p-3.5 rounded-2xl shadow-xl flex items-center justify-between cursor-pointer hover:bg-primary/95 transition-all"
+            className="cursor-pointer group flex items-center justify-between rounded-2xl bg-gradient-to-r from-[#0b132b]/95 via-[#141e3a]/90 to-[#0b132b]/95 text-white p-3 sm:p-3.5 shadow-[0_12px_36px_rgba(11,19,43,0.55)] border border-blue-400/30 backdrop-blur-xl hover:border-blue-400/60 hover:shadow-[0_14px_44px_rgba(37,99,235,0.35)] transition-all duration-300"
           >
-            <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center font-extrabold text-xs">
-                {tableOrderItems.reduce((sum, i) => sum + i.quantity, 0)}
-              </div>
-              <div>
-                <p className="font-extrabold text-sm leading-tight">
-                  Table {activeTableId || 'Order'} ({tableOrderItems.reduce((sum, i) => sum + i.quantity, 0)} {tableOrderItems.reduce((sum, i) => sum + i.quantity, 0) === 1 ? 'item' : 'items'})
-                </p>
-                <p className="text-[11px] text-primary-foreground/80">₹{tableOrderTotal.toFixed(2)} • Tap to Review</p>
+            {/* Left Section: Stacked Dish Avatars & Order Info */}
+            <div className="flex items-center gap-3 min-w-0">
+              {tableOrderThumbnails.length > 0 ? (
+                <div className="flex items-center -space-x-5 shrink-0">
+                  {tableOrderThumbnails.map((thumb, index) => (
+                    <div
+                      key={`${thumb.id}-${index}`}
+                      className="relative w-10 h-10 sm:w-11 sm:h-11 rounded-full overflow-hidden border-2 border-[#0b132b] shadow-md ring-1 ring-blue-400/30"
+                      style={{ zIndex: 10 - index }}
+                    >
+                      <Image
+                        src={thumb.image}
+                        alt={thumb.name}
+                        fill
+                        sizes="44px"
+                        className="object-cover"
+                        unoptimized={typeof thumb.image === 'string' && thumb.image.startsWith('data:')}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="relative w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-blue-600 flex items-center justify-center text-white shadow-md shrink-0">
+                  <Utensils className="h-5 w-5" />
+                </div>
+              )}
+
+              <div className="flex flex-col min-w-0">
+                <span className="text-[11px] sm:text-xs text-blue-200/90 font-medium truncate">
+                  Table {activeTableId || 'Order'}{activeTableOrder ? ` • Round ${(activeTableOrder.orderRound || 1) + 1}` : ''} • {tableOrderTotalCount} {tableOrderTotalCount === 1 ? 'Item' : 'Items'}
+                </span>
+                <span className="font-black text-base sm:text-lg text-white tracking-tight">
+                  ₹{tableOrderTotal.toFixed(0)}
+                </span>
               </div>
             </div>
-            <Button size="sm" variant="secondary" className="rounded-full font-extrabold text-xs h-8 pointer-events-none">
-              Review & Send <Utensils className="h-3.5 w-3.5 ml-1" />
-            </Button>
+
+            {/* Right Section: View Order Action */}
+            <div className="flex items-center gap-1.5 text-white font-bold text-xs sm:text-sm px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 shadow-md transition-all shrink-0 ml-2 group-hover:scale-[1.02]">
+              <span>View Order</span>
+              <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+            </div>
           </div>
         </motion.div>
       )}
@@ -2032,32 +2145,47 @@ function VendorMenuContent({
           </DialogHeader>
           <div className="py-4">
             <div className="grid grid-cols-4 sm:grid-cols-6 gap-2.5 max-h-60 overflow-y-auto p-1">
-              {Array.from({ length: vendor?.dineInTables ?? 6 }, (_, i) => i + 1).map((tableNum) => (
-                <Button
-                  key={tableNum}
-                  type="button"
-                  variant={activeTableId === `${tableNum}` ? 'default' : 'outline'}
-                  className={cn(
-                    "h-12 text-sm font-extrabold rounded-2xl flex flex-col items-center justify-center transition-all",
-                    activeTableId === `${tableNum}` ? "shadow-md scale-105 border-primary" : "hover:border-primary/50"
-                  )}
-                  onClick={() => {
-                    setTableId(`${tableNum}`);
-                    setIsUniversalPickerOpen(false);
-                    toast({
-                      title: `Table ${tableNum} Selected`,
-                      description: "You can now add dishes to order directly to your table.",
-                    });
-                    if (pendingItemToAdd) {
-                      handleAddToTableOrder(pendingItemToAdd.item, pendingItemToAdd.quantity);
-                      setPendingItemToAdd(null);
-                    }
-                  }}
-                >
-                  <span className="text-[10px] font-medium opacity-75">T</span>
-                  <span>{tableNum}</span>
-                </Button>
-              ))}
+              {Array.from({ length: vendor?.dineInTables ?? 6 }, (_, i) => i + 1).map((tableNum) => {
+                const isSelected = activeTableId === `${tableNum}`;
+                const isOccupied = occupiedTableIds.has(`${tableNum}`);
+                const isDisabled = isOccupied && !isSelected;
+
+                return (
+                  <Button
+                    key={tableNum}
+                    type="button"
+                    disabled={isDisabled}
+                    variant={isSelected ? 'default' : isOccupied ? 'secondary' : 'outline'}
+                    className={cn(
+                      "h-12 text-sm font-extrabold rounded-2xl flex flex-col items-center justify-center transition-all relative",
+                      isSelected && "shadow-md scale-105 border-primary",
+                      isDisabled && "opacity-50 cursor-not-allowed bg-muted/60 border-dashed text-muted-foreground",
+                      !isDisabled && !isSelected && "hover:border-primary/50"
+                    )}
+                    onClick={() => {
+                      if (isDisabled) return;
+                      setTableId(`${tableNum}`);
+                      setIsUniversalPickerOpen(false);
+                      toast({
+                        title: `Table ${tableNum} Selected`,
+                        description: "You can now add dishes to order directly to your table.",
+                      });
+                      if (pendingItemToAdd) {
+                        handleAddToTableOrder(pendingItemToAdd.item, pendingItemToAdd.quantity);
+                        setPendingItemToAdd(null);
+                      }
+                    }}
+                  >
+                    <span className="text-[10px] font-medium opacity-75">T</span>
+                    <span>{tableNum}</span>
+                    {isOccupied && (
+                      <span className="text-[9px] font-semibold text-rose-500 uppercase tracking-wider scale-90">
+                        Busy
+                      </span>
+                    )}
+                  </Button>
+                );
+              })}
             </div>
           </div>
         </DialogContent>

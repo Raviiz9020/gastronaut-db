@@ -136,6 +136,7 @@ export default function Header({ pageVendor, tableId }: HeaderProps) {
 
 
   const isVendorPage = Boolean(pageVendor) || pathname.startsWith('/vendor/');
+  const shouldHideCustomerNav = isTableMode || isVendorPage;
 
   const visibleNavLinks = useMemo(() => {
     if (isVendorPage) {
@@ -166,7 +167,7 @@ export default function Header({ pageVendor, tableId }: HeaderProps) {
                 <Utensils className="h-3.5 w-3.5" />
                 <span>Table {tableId}</span>
               </Badge>
-            ) : !isAdminRoute && !pathname.startsWith('/rider') ? (
+            ) : !isAdminRoute && !pathname.startsWith('/rider') && !isVendorPage ? (
               <LocationPicker variant="full" className="flex max-w-[130px] sm:max-w-[150px] md:max-w-none" />
             ) : null}
             {visibleNavLinks.length > 0 && (
@@ -228,14 +229,14 @@ export default function Header({ pageVendor, tableId }: HeaderProps) {
                     </DropdownMenuContent>
                 </DropdownMenu>
                 </div>
-            ) : (showVendorLogin && !isTableMode) ? (
+            ) : (showVendorLogin && !shouldHideCustomerNav) ? (
                 <Button variant="outline" onClick={handleVendorLoginClick}>
                     <LogIn className="mr-2 h-4 w-4"/>
                     Vendor
                 </Button>
             ) : null}
 
-            {!isVendorOwner && !isTableMode && (
+            {!isVendorOwner && !shouldHideCustomerNav && (
               <div className="hidden sm:block relative">
                  <Button
                     variant="outline"
@@ -258,7 +259,7 @@ export default function Header({ pageVendor, tableId }: HeaderProps) {
               </div>
             )}
 
-            {customer && !isVendorOwner && !isTableMode ? (
+            {customer && !isVendorOwner && !shouldHideCustomerNav ? (
                  <div className="flex items-center gap-2">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -325,7 +326,7 @@ export default function Header({ pageVendor, tableId }: HeaderProps) {
                     </DropdownMenu>
                  </div>
             ) : (
-                !loggedInVendor && !isVendorOwner && !isTableMode && (
+                !loggedInVendor && !isVendorOwner && !shouldHideCustomerNav && (
                   <div className="flex items-center gap-2">
                       <Button variant="outline" onClick={handleLoginClick}>
                           <User className="mr-2 h-4 w-4"/>
