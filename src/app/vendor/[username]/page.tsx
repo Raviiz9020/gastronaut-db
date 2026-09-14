@@ -544,6 +544,8 @@ function VendorMenuContent({
   } | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const menuSectionsRef = useRef<HTMLDivElement>(null);
   const [portionSelectItems, setPortionSelectItems] = useState<MenuItemType[] | null>(null);
   const [isPlacingTableOrder, setIsPlacingTableOrder] = useState(false);
 
@@ -856,6 +858,11 @@ function VendorMenuContent({
         // Table ID remains active for the diner's entire meal session
         setDineInNotes('');
         setIsTableOrderSheetVisible(false);
+
+        // Auto-scroll straight to top so customer immediately sees their placed order and live status
+        setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
       }
     } catch (e) {
       // Errors are toasted from the context
@@ -1262,11 +1269,15 @@ function VendorMenuContent({
   };
 
   const handleCategoryClick = (category: string) => {
-    const element = categoryRefs.current[category];
-    if (element) {
-      const yOffset = -150; // Accounts for sticky header and category bar
-      const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
-      window.scrollTo({ top: y, behavior: 'smooth' });
+    if (searchQuery) setSearchQuery('');
+    setActiveCategory(category);
+    if (menuSectionsRef.current) {
+      const rect = menuSectionsRef.current.getBoundingClientRect();
+      if (rect.top < 60 || rect.top > 300) {
+        const yOffset = -130;
+        const y = rect.top + window.pageYOffset + yOffset;
+        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+      }
     }
   };
 
@@ -1322,6 +1333,39 @@ function VendorMenuContent({
     return !isMinOrderMet;
   }, [orderIdToEdit, tableOrderItems, orders, minAmount, tableOrderTotal]);
 
+  const categoryItemCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    vendorMenuItems.forEach(item => {
+      if (item.category) {
+        counts[item.category] = (counts[item.category] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [vendorMenuItems]);
+
+  const totalCategoryItemsCount = useMemo(() => {
+    return vendorMenuItems.length;
+  }, [vendorMenuItems]);
+
+  const getCategoryThumbnail = useMemo(() => {
+    const map = new Map<string, string>();
+    // 1. Prefer global categories imageUrl
+    categories.forEach(cat => {
+      if (cat.name && cat.imageUrl && typeof cat.imageUrl === 'string' && cat.imageUrl.length > 5) {
+        map.set(cat.name.trim().toLowerCase(), cat.imageUrl);
+      }
+    });
+    // 2. Fallback to dish image in that category
+    vendorMenuItems.forEach(item => {
+      if (item.category && item.image && typeof item.image === 'string' && item.image.length > 5) {
+        const key = item.category.trim().toLowerCase();
+        if (!map.has(key)) {
+          map.set(key, item.image);
+        }
+      }
+    });
+    return (catName: string) => map.get(catName.trim().toLowerCase());
+  }, [categories, vendorMenuItems]);
 
   if (loading) {
     return (
@@ -1742,44 +1786,131 @@ function VendorMenuContent({
             </div>
           </div>
 
-          {/* Sticky Interactive Category Pills Bar */}
+          {/* Sticky Interactive Category Pills Bar (like /menu page) */}
           {!isSearching && vendorCategories.length > 0 && (
-            <div className={cn("sticky top-[60px] bg-background/95 backdrop-blur-md z-40 -mx-4 px-4 border-y border-border/60 overflow-x-auto no-scrollbar shadow-xs", isDineInMode ? "py-2 my-2.5 sm:my-3" : "py-2.5 my-4")}>
-              <div className="flex items-center gap-2 max-w-5xl mx-auto">
+            <div className={cn("sticky top-[58px] bg-background/95 backdrop-blur-md z-40 -mx-4 px-4 border-y border-border/60 overflow-x-auto hide-scrollbar shadow-xs", isDineInMode ? "py-2 my-2.5 sm:my-3" : "py-2.5 my-4")}>
+              <div className="flex items-center gap-2 max-w-5xl mx-auto w-max py-0.5">
+                {/* "All" Option */}
+                <button
+                  type="button"
+                  onClick={() => handleCategoryClick('all')}
+                  className={cn(
+                    "rounded-full border h-9 sm:h-10 pl-1.5 pr-3.5 shrink-0 transition-all flex items-center gap-2 shadow-2xs group cursor-pointer",
+                    activeCategory === 'all'
+                      ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                      : "bg-card/95 border-border/80 text-foreground hover:bg-muted/80 hover:border-primary/40"
+                  )}
+                >
+                  <div className={cn(
+                    "w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shrink-0 transition-colors",
+                    activeCategory === 'all'
+                      ? "bg-white/20 text-white"
+                      : "bg-primary/10 text-primary group-hover:bg-primary/20"
+                  )}>
+                    <Utensils className="h-3.5 w-3.5" />
+                  </div>
+                  <span className="text-xs sm:text-sm font-bold">All</span>
+                  {totalCategoryItemsCount > 0 && (
+                    <span className={cn(
+                      "text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-bold",
+                      activeCategory === 'all'
+                        ? "bg-white/25 text-white"
+                        : "bg-muted text-muted-foreground"
+                    )}>
+                      {totalCategoryItemsCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Special Deals Pill */}
                 {discountedItems.length > 0 && (
                   <button
                     type="button"
-                    className="flex items-center gap-1.5 px-3.5 py-1 text-xs font-bold rounded-full transition-all cursor-pointer shrink-0 bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/25"
-                    onClick={() => {
-                      const el = categoryRefs.current['discounted-section'];
-                      if (el) {
-                        const yOffset = -140;
-                        const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                        window.scrollTo({ top: y, behavior: 'smooth' });
-                      }
-                    }}
+                    onClick={() => handleCategoryClick('special-deals')}
+                    className={cn(
+                      "rounded-full border h-9 sm:h-10 pl-1.5 pr-3.5 shrink-0 transition-all flex items-center gap-2 shadow-2xs group cursor-pointer",
+                      activeCategory === 'special-deals'
+                        ? "bg-amber-500 text-white border-amber-500 shadow-xs"
+                        : "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
+                    )}
                   >
-                    <Tag className="h-3 w-3 text-amber-500" />
-                    Special Deals ({discountedItems.length})
+                    <div className={cn(
+                      "w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shrink-0 transition-colors",
+                      activeCategory === 'special-deals'
+                        ? "bg-white/20 text-white"
+                        : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                    )}>
+                      <Tag className="h-3.5 w-3.5" />
+                    </div>
+                    <span className="text-xs sm:text-sm font-bold whitespace-nowrap">Special Deals</span>
+                    <span className={cn(
+                      "text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-bold",
+                      activeCategory === 'special-deals'
+                        ? "bg-white/25 text-white"
+                        : "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+                    )}>
+                      {discountedItems.length}
+                    </span>
                   </button>
                 )}
 
-                {vendorCategories.map((category) => (
-                  <button
-                    key={category}
-                    type="button"
-                    className="px-3.5 py-1 text-xs font-bold rounded-full transition-all cursor-pointer shrink-0 bg-muted/70 hover:bg-primary hover:text-primary-foreground text-foreground border border-border/50 shadow-2xs"
-                    onClick={() => handleCategoryClick(category)}
-                  >
-                    {category}
-                  </button>
-                ))}
+                {/* Category Items with circular thumbnail and count badge */}
+                {vendorCategories.map((category) => {
+                  const thumb = getCategoryThumbnail(category);
+                  const count = categoryItemCounts[category] || 0;
+                  const isActive = activeCategory === category;
+
+                  return (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => handleCategoryClick(category)}
+                      className={cn(
+                        "rounded-full border h-9 sm:h-10 pl-1.5 pr-3.5 shrink-0 transition-all flex items-center gap-2 shadow-2xs group cursor-pointer",
+                        isActive
+                          ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                          : "bg-card/95 border-border/80 text-foreground hover:bg-muted/80 hover:border-primary/40"
+                      )}
+                    >
+                      {thumb ? (
+                        <div className="relative w-6 h-6 sm:w-7 sm:h-7 rounded-full overflow-hidden shrink-0 border border-border/50 shadow-xs bg-muted">
+                          <Image
+                            src={thumb}
+                            alt={category}
+                            fill
+                            sizes="28px"
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </div>
+                      ) : (
+                        <div className={cn(
+                          "w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shrink-0 font-bold text-xs",
+                          isActive ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
+                        )}>
+                          {category.charAt(0)}
+                        </div>
+                      )}
+                      <span className="text-xs sm:text-sm font-bold whitespace-nowrap">{category}</span>
+                      {count > 0 && (
+                        <span className={cn(
+                          "text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-bold",
+                          isActive
+                            ? "bg-white/25 text-white"
+                            : "bg-muted text-muted-foreground"
+                        )}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
 
           {/* Menu Sections Grid */}
-          <div className="mt-4">
+          <div className="mt-4" ref={menuSectionsRef}>
             {isSearching ? (
               <>
                 {Object.keys(menuItemsByCategory).length > 0 ? (
@@ -1804,7 +1935,7 @@ function VendorMenuContent({
             ) : (
               <>
                 {/* Discounted Items Section */}
-                {discountedItems.length > 0 && (
+                {discountedItems.length > 0 && (activeCategory === 'all' || activeCategory === 'special-deals') && (
                   <div className="mb-8" ref={el => { if (el) categoryRefs.current['discounted-section'] = el; }}>
                     <div className="flex items-center gap-2 mb-4 pb-2 border-b border-amber-500/30">
                       <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-500 flex items-center justify-center font-bold">
@@ -1835,7 +1966,9 @@ function VendorMenuContent({
                 )}
 
                 {/* Categorized Menu Sections */}
-                {Object.entries(menuItemsByCategory).map(([category, itemGroups]) => (
+                {Object.entries(menuItemsByCategory)
+                  .filter(([category]) => activeCategory === 'all' || activeCategory === category)
+                  .map(([category, itemGroups]) => (
                   <div key={category} className="mb-8" ref={el => { if (el) categoryRefs.current[category] = el; }}>
                     <div className="flex items-center gap-2 mb-4 pb-2 border-b border-border/60">
                       <div className="w-8 h-8 rounded-xl bg-primary/15 text-primary flex items-center justify-center font-bold">
@@ -1885,6 +2018,24 @@ function VendorMenuContent({
                     </div>
                   </div>
                 ))}
+
+                {activeCategory !== 'all' && activeCategory !== 'special-deals' && (!menuItemsByCategory[activeCategory] || menuItemsByCategory[activeCategory].length === 0) && (
+                  <div className="text-center py-12">
+                    <p className="text-sm text-muted-foreground">No dishes found in {activeCategory}.</p>
+                    <Button variant="outline" size="sm" onClick={() => handleCategoryClick('all')} className="mt-3 rounded-full text-xs">
+                      View All Dishes
+                    </Button>
+                  </div>
+                )}
+
+                {activeCategory === 'special-deals' && discountedItems.length === 0 && (
+                  <div className="text-center py-12">
+                    <p className="text-sm text-muted-foreground">No special deals currently active.</p>
+                    <Button variant="outline" size="sm" onClick={() => handleCategoryClick('all')} className="mt-3 rounded-full text-xs">
+                      View All Dishes
+                    </Button>
+                  </div>
+                )}
               </>
             )}
 
