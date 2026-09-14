@@ -43,11 +43,12 @@ export default function MobileBottomNav() {
   const { customer, logout } = useCustomer();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
 
-  // Hide on admin, super-admin, and rider routes
+  // Hide on admin, super-admin, rider, auth routes, and vendor in-store QR pages
   const isExcludedRoute = 
     pathname.startsWith('/admin') || 
     pathname.startsWith('/super-admin') || 
     pathname.startsWith('/rider') ||
+    pathname.startsWith('/vendor/') ||
     pathname === '/customer-login' ||
     pathname === '/customer-signup' ||
     pathname === '/forgot-password' ||

@@ -572,6 +572,16 @@ function VendorMenuContent({
     return Boolean(vendor?.canAcceptDineIn && (activeTableId || searchParams.get('table')));
   }, [vendor, activeTableId, searchParams]);
 
+  // Auto-prompt Universal Table Picker on Standee QR scan (when visiting /vendor/[username] without a table)
+  useEffect(() => {
+    if (vendor && vendor.canAcceptDineIn && !activeTableId && !searchParams.get('table')) {
+      const timer = setTimeout(() => {
+        setIsUniversalPickerOpen(true);
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [vendor, activeTableId, searchParams]);
+
   useEffect(() => {
     if (allAppVendors.length === 0) {
       fetchAllVendors();
@@ -2362,11 +2372,9 @@ function VendorPublicMenuPageInner() {
       if (vendor) {
         localStorage.setItem(`dineInTable_${vendor.username}`, urlTable);
       }
-    } else if (vendor) {
-      const saved = localStorage.getItem(`dineInTable_${vendor.username}`);
-      if (saved) {
-        setTableId(saved);
-      }
+    } else {
+      // If there is no ?table in the URL, clear table context so online delivery customers aren't stuck on a past table
+      setTableId('');
     }
   }, [urlTable, vendor]);
 
@@ -2375,8 +2383,20 @@ function VendorPublicMenuPageInner() {
     if (vendor) {
       if (newTable) {
         localStorage.setItem(`dineInTable_${vendor.username}`, newTable);
+        if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href);
+          url.searchParams.set('table', newTable);
+          window.history.replaceState({}, '', url.pathname + url.search);
+          window.dispatchEvent(new Event('dineintablechange'));
+        }
       } else {
         localStorage.removeItem(`dineInTable_${vendor.username}`);
+        if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('table');
+          window.history.replaceState({}, '', url.pathname + (url.search || ''));
+          window.dispatchEvent(new Event('dineintablechange'));
+        }
       }
     }
   };
