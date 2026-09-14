@@ -1,4 +1,3 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -33,19 +32,12 @@ service cloud.firestore {
     // Super Admins
     // =========================
     match /superAdmins/{adminId} {
-      allow read, create: if request.auth.uid == adminId;
+      allow read: if isSuperAdmin();
+      allow create: if false; // Must be created in Firebase Console or backend to prevent self-elevation
       allow update, delete: if isSuperAdmin();
     }
 
-    // =========================
-    // Customers
-    // =========================
-    //match /customers/{userId} {
-      //allow read, update, delete: if isOwner(userId) || isSuperAdmin();
-      //allow create: if isSignedIn();
-    //}
-    
-    // =========================
+      // =========================
 // Customers
 // =========================
 match /customers/{userId} {
@@ -57,16 +49,7 @@ match /customers/{userId} {
   allow get, list: if isSuperAdmin();
 }
 
-   //match /customers/{document=**} {
-    // allow read, list: if isSuperAdmin();
-   //}
-   
-   match /customers/{document=**} {
-  allow read, list: if request.auth == null; // server-side only
-  allow read, list: if isSignedIn();
-}
-
-    // =========================
+      // =========================
     // Expenses
     // =========================
     match /expenses/{expenseId} {
@@ -101,20 +84,21 @@ match /customers/{userId} {
     // =========================
     match /orders/{orderId} {
       allow create: if isSignedIn() && request.resource.data.customerUsername == request.auth.uid;
-      
-      // Allow reading active Dine-In orders for any diner (including anonymous/incognito)
-      // so the table picker and live kitchen status work seamlessly.
-      allow get, list: if 
+     
+   allow get, list: if 
         (resource.data.deliveryOption == 'Dine-In' && resource.data.status in ['Order Placed', 'Processing', 'Out for Delivery']) ||
         (isSignedIn() && (
           resource.data.customerUsername == request.auth.uid ||
           resource.data.vendorUsername   == request.auth.uid ||
           // This part allows you to see orders assigned to your riders
-          exists(/databases/$(database)/documents/vendor_rider_map/$(request.auth.uid + "_" + resource.data.assignedDeliveryBoyId)) ||
+        exists(/databases/$(database)/documents/vendor_rider_map/$(request.auth.uid + "_" + resource.data.assignedDeliveryBoyId)) ||
           isSuperAdmin()
         ));
       
-   allow update: if isSignedIn() && (
+     
+
+
+  allow update: if isSignedIn() && (
          (resource.data.customerUsername == request.auth.uid && (
            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vendorRating', 'vendorFeedback', 'items', 'subtotal', 'totalPrice', 'updatedAt', 'paymentStatus', 'paymentRequestedAt', 'paymentMethod', 'customNotes', 'orderRound']) ||
            (resource.data.deliveryOption == 'Dine-In' &&
@@ -133,6 +117,8 @@ match /customers/{userId} {
       allow delete: if isSuperAdmin();
     }
 
+
+
     // =========================
     // Menu Items
     // =========================
@@ -140,8 +126,8 @@ match /customers/{userId} {
       allow read: if true;
       allow get, list: if true;
       
-       allow create, update: if isSignedIn() || isSuperAdmin();
-      allow create: if isSignedIn() && (request.auth.uid == resource.data.vendorUsername || isSuperAdmin());
+      // allow create, update: if isSignedIn() || isSuperAdmin();
+      allow create: if isSignedIn() && (request.auth.uid == request.resource.data.vendorUsername || isSuperAdmin());
            
       //allow update: if isSignedIn() || isSuperAdmin();
       
@@ -154,6 +140,8 @@ match /customers/{userId} {
         (isSignedIn() && isVendor() && resource.data.vendorUsername == request.auth.uid &&
           request.resource.data.totalRatingSum == resource.data.totalRatingSum &&
           request.resource.data.ratingCount == resource.data.ratingCount)
+        ||
+        isSuperAdmin()
       );
 
       allow delete: if isSignedIn() && (request.auth.uid == resource.data.vendorUsername || isSuperAdmin());

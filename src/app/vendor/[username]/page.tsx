@@ -31,7 +31,6 @@ import {
   Trash2,
   LogIn,
   ChevronDown,
-  ChevronUp,
   Package as PackageIcon,
   Hand,
   Bike,
@@ -523,7 +522,6 @@ function VendorMenuContent({
   const [selectedItem, setSelectedItem] = useState<MenuItemType | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isTableOrderSheetVisible, setIsTableOrderSheetVisible] = useState(false);
-  const [isTableOrderSheetMinimized, setIsTableOrderSheetMinimized] = useState(false);
   const [tableOrderItems, setTableOrderItems] = useState<TableOrderItem[]>([]);
   
   const [internalTableId, setInternalTableId] = useState('');
@@ -756,7 +754,6 @@ function VendorMenuContent({
           setTableOrderItems(itemsFromOrder);
           setDineInNotes(orderData.customNotes || ''); // Load existing notes
           setIsTableOrderSheetVisible(true);
-          setIsTableOrderSheetMinimized(false); // Ensure sheet is visible
         } else {
           toast({ title: "Order not found", variant: "destructive" });
           router.replace(`/vendor/${identifier}`);
@@ -859,7 +856,6 @@ function VendorMenuContent({
         // Table ID remains active for the diner's entire meal session
         setDineInNotes('');
         setIsTableOrderSheetVisible(false);
-        setIsTableOrderSheetMinimized(false);
       }
     } catch (e) {
       // Errors are toasted from the context
@@ -1922,7 +1918,6 @@ function VendorMenuContent({
           <div
             onClick={() => {
               setIsTableOrderSheetVisible(true);
-              setIsTableOrderSheetMinimized(false);
             }}
             className="cursor-pointer group flex items-center justify-between rounded-2xl bg-gradient-to-r from-[#0b132b]/95 via-[#141e3a]/90 to-[#0b132b]/95 text-white p-3 sm:p-3.5 shadow-[0_12px_36px_rgba(11,19,43,0.55)] border border-blue-400/30 backdrop-blur-xl hover:border-blue-400/60 hover:shadow-[0_14px_44px_rgba(37,99,235,0.35)] transition-all duration-300"
           >
@@ -1989,7 +1984,7 @@ function VendorMenuContent({
                     "flex flex-row items-center justify-between p-3.5 bg-primary/5 border-b border-border/40",
                     "cursor-pointer"
                   )}
-                  onClick={() => setIsTableOrderSheetMinimized(!isTableOrderSheetMinimized)}
+                  onClick={() => setIsTableOrderSheetVisible(false)}
                 >
                   <div className="flex items-center gap-2">
                     <div className="h-7 w-7 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs">
@@ -2007,17 +2002,14 @@ function VendorMenuContent({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 rounded-full"
+                      className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setIsTableOrderSheetMinimized(!isTableOrderSheetMinimized);
+                        setIsTableOrderSheetVisible(false);
                       }}
+                      title="Minimize to floating bar"
                     >
-                      {isTableOrderSheetMinimized ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
+                      <ChevronDown className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
@@ -2027,14 +2019,13 @@ function VendorMenuContent({
                         e.stopPropagation();
                         setIsTableOrderSheetVisible(false);
                       }}
+                      title="Close"
                     >
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
                 </CardHeader>
-                {!isTableOrderSheetMinimized && (
-                  <>
-                    <CardContent className="px-3.5 py-3 space-y-3.5">
+                <CardContent className="px-3.5 py-3 space-y-3.5">
                       {!orderIdToEdit && !activeTableId && (
                         <div className="space-y-1.5">
                           <Label htmlFor="table-id-selector" className="text-xs font-bold">Select Table Number</Label>
@@ -2134,8 +2125,6 @@ function VendorMenuContent({
                         )}
                       </Button>
                     </CardFooter>
-                  </>
-                )}
               </Card>
             </motion.div>
           )}
