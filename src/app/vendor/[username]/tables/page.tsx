@@ -35,6 +35,7 @@ import {
   Bike,
   ShoppingBag,
   MessageSquare,
+  Clock,
 } from 'lucide-react';
 import { useVendor } from '@/context/vendor-context';
 import { useOrder } from '@/context/order-context';
@@ -825,6 +826,12 @@ const BillViewDialog = ({
             <span>Order: #{order.displayId}</span>
             <span>{format(new Date(order.createdAt), 'dd/MM/yy hh:mm a')}</span>
           </div>
+          <div className="flex justify-between text-xs text-muted-foreground mt-0.5">
+            <span>{takeAwayIdentifier ? "Waiting Duration:" : "Seated Duration:"}</span>
+            <span className="font-bold text-foreground">
+              {formatDurationSimple(order.createdAt)}
+            </span>
+          </div>
         </DialogHeader>
 
         <div className="max-h-48 overflow-y-auto pr-2">
@@ -1076,6 +1083,103 @@ const CustomerOrderCard = ({
   )
 }
 
+const formatDurationSimple = (createdAt?: string) => {
+  if (!createdAt) return '--';
+  try {
+    const createdTime = new Date(createdAt).getTime();
+    if (isNaN(createdTime)) return '--';
+    const totalMins = Math.max(0, Math.floor((Date.now() - createdTime) / 60000));
+    const hours = Math.floor(totalMins / 60);
+    const mins = totalMins % 60;
+    if (totalMins < 1) return '< 1 min';
+    if (hours === 0) return `${mins} min`;
+    return `${hours}h ${mins}m`;
+  } catch {
+    return '--';
+  }
+};
+
+const TableElapsedTimer = ({ createdAt, isTakeAway }: { createdAt: string; isTakeAway?: boolean }) => {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 15000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const { elapsedMins, formattedDuration, formattedStartTime } = useMemo(() => {
+    try {
+      const createdTime = new Date(createdAt).getTime();
+      if (isNaN(createdTime)) {
+        return { elapsedMins: 0, formattedDuration: '--', formattedStartTime: '' };
+      }
+      const diffMs = Math.max(0, now - createdTime);
+      const totalMins = Math.floor(diffMs / 60000);
+      const hours = Math.floor(totalMins / 60);
+      const mins = totalMins % 60;
+
+      let formatted = '';
+      if (totalMins < 1) {
+        formatted = '< 1 min';
+      } else if (hours === 0) {
+        formatted = `${mins} min`;
+      } else {
+        formatted = `${hours}h ${mins}m`;
+      }
+
+      const startTimeStr = format(new Date(createdAt), 'h:mm a');
+
+      return {
+        elapsedMins: totalMins,
+        formattedDuration: formatted,
+        formattedStartTime: startTimeStr,
+      };
+    } catch {
+      return { elapsedMins: 0, formattedDuration: '--', formattedStartTime: '' };
+    }
+  }, [createdAt, now]);
+
+  const severityStyles = useMemo(() => {
+    if (elapsedMins >= 90) {
+      return {
+        badge: "bg-red-500/15 border-red-500/35 text-red-800 dark:text-red-300 font-extrabold",
+        clock: "text-red-600 dark:text-red-400 animate-pulse",
+      };
+    }
+    if (elapsedMins >= 60) {
+      return {
+        badge: "bg-amber-500/15 border-amber-500/35 text-amber-900 dark:text-amber-200 font-bold",
+        clock: "text-amber-600 dark:text-amber-400",
+      };
+    }
+    if (elapsedMins >= 30) {
+      return {
+        badge: "bg-blue-500/10 border-blue-500/30 text-blue-800 dark:text-blue-300 font-semibold",
+        clock: "text-blue-600 dark:text-blue-400",
+      };
+    }
+    return {
+      badge: "bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-300 font-medium",
+      clock: "text-emerald-600 dark:text-emerald-400",
+    };
+  }, [elapsedMins]);
+
+  return (
+    <div
+      className={cn(
+        "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs border transition-colors shadow-2xs",
+        severityStyles.badge
+      )}
+      title={formattedStartTime ? `Round 1 started at ${formattedStartTime}` : undefined}
+    >
+      <Clock className={cn("h-3 w-3 shrink-0", severityStyles.clock)} />
+      <span>{isTakeAway ? "Waiting" : "Seated"} <strong>{formattedDuration}</strong></span>
+    </div>
+  );
+};
+
 const TableCard = ({
   tableNumber,
   order,
@@ -1176,6 +1280,24 @@ const TableCard = ({
           </span>
         )}
       </CardHeader>
+
+      {/* Table Seating Elapsed Time (Live since Round 1 started) */}
+      {isOccupied && order.createdAt && (
+        <div className="px-3 py-1.5 bg-muted/40 border-b border-border/60 flex items-center justify-between gap-2 text-xs">
+          <TableElapsedTimer createdAt={order.createdAt} isTakeAway={isTakeAway} />
+          <div className="flex items-center gap-1.5 shrink-0">
+            {order.orderRound && order.orderRound > 1 ? (
+              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 shadow-2xs">
+                Round {order.orderRound}
+              </span>
+            ) : (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-background/80 text-muted-foreground border border-border/60 shadow-2xs">
+                Round 1
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Card Content */}
       <CardContent className="p-3.5 flex-grow flex flex-col justify-center min-h-[100px]">
@@ -1620,8 +1742,12 @@ export default function TableViewPage() {
         const combinedItems = matchingOrders.flatMap(o => (o.items || []).map(it => ({ ...it, orderId: o.orderId })));
         const combinedTotal = matchingOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
         const maxRound = Math.max(...matchingOrders.map(o => o.orderRound || 1));
+        const earliestOrder = matchingOrders.reduce((prev, curr) => {
+          return new Date(curr.createdAt).getTime() < new Date(prev.createdAt).getTime() ? curr : prev;
+        }, matchingOrders[0]);
         tables[String(i)] = {
           ...primaryOrder,
+          createdAt: earliestOrder?.createdAt || primaryOrder.createdAt,
           items: combinedItems,
           totalPrice: combinedTotal,
           orderRound: maxRound,
@@ -1639,10 +1765,16 @@ export default function TableViewPage() {
         const primaryOrder = matchingOrders[0];
         const combinedItems = matchingOrders.flatMap(o => (o.items || []).map(it => ({ ...it, orderId: o.orderId })));
         const combinedTotal = matchingOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+        const maxRound = Math.max(...matchingOrders.map(o => o.orderRound || 1));
+        const earliestOrder = matchingOrders.reduce((prev, curr) => {
+          return new Date(curr.createdAt).getTime() < new Date(prev.createdAt).getTime() ? curr : prev;
+        }, matchingOrders[0]);
         tables[id] = {
           ...primaryOrder,
+          createdAt: earliestOrder?.createdAt || primaryOrder.createdAt,
           items: combinedItems,
           totalPrice: combinedTotal,
+          orderRound: maxRound,
           _mergedOrderIds: matchingOrders.map(o => o.orderId),
         } as any;
       }
