@@ -147,6 +147,11 @@ const MenuItemRow = ({
   prefix,
   itemRef,
   vendor,
+  simpleQuantity = 0,
+  totalQuantity = 0,
+  kitchenQuantity = 0,
+  kitchenRound = 1,
+  onQuantityChange,
 }: {
   item: MenuItemType;
   onImageClick: (item: MenuItemType, layoutId: string) => void;
@@ -154,6 +159,11 @@ const MenuItemRow = ({
   prefix: string;
   itemRef?: React.Ref<HTMLDivElement>;
   vendor?: Vendor | null;
+  simpleQuantity?: number;
+  totalQuantity?: number;
+  kitchenQuantity?: number;
+  kitchenRound?: number;
+  onQuantityChange?: (item: MenuItemType, change: number) => void;
 }) => {
   const hasDiscount =
     !!(item.isDiscountActive && item.discountPrice && item.discountPrice > 0);
@@ -222,11 +232,18 @@ const MenuItemRow = ({
           ? "cursor-pointer hover:border-primary/40 hover:shadow-xs hover:bg-card/95"
           : "opacity-60 grayscale-[0.5] cursor-not-allowed bg-muted/20"
       )}
-      onClick={() => isItemEffectivelyAvailable && onRowClick(item)}
+      onClick={() => {
+        if (!isItemEffectivelyAvailable) return;
+        if (isCustomizable) {
+          onRowClick(item);
+        } else if (simpleQuantity === 0) {
+          onRowClick(item);
+        }
+      }}
     >
       {/* Left: Dietary Icon, Dish Details & Pricing */}
       <div className="flex-1 min-w-0 pr-1">
-        <div className="flex items-center gap-1.5 mb-1">
+        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
           {/* Veg/Non-Veg icon */}
           <span
             className={cn(
@@ -246,6 +263,13 @@ const MenuItemRow = ({
           {hasDiscount && (
             <span className="text-[8px] font-extrabold px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
               Offer
+            </span>
+          )}
+
+          {kitchenQuantity > 0 && (
+            <span className="text-[8px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-0.5">
+              <ChefHat className="h-2.5 w-2.5" />
+              <span>{kitchenQuantity} in kitchen{kitchenRound ? ` (R${kitchenRound})` : ''}</span>
             </span>
           )}
         </div>
@@ -316,24 +340,77 @@ const MenuItemRow = ({
           )}
         </div>
 
-        {/* Tactile + ADD Button */}
+        {/* Tactile Stepper / ADD Button */}
         {isItemEffectivelyAvailable && (
-          <div className="w-16 -mt-3.5 z-10 flex flex-col items-center">
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full h-7 rounded-full border-2 border-primary text-primary font-extrabold text-[11px] bg-background hover:bg-primary hover:text-primary-foreground shadow-sm transition-all uppercase tracking-wider flex items-center justify-center gap-0.5 p-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRowClick(item);
-              }}
-            >
-              ADD {isCustomizable && <ChevronDown className="h-3 w-3" />}
-            </Button>
-            {isCustomizable && (
-              <span className="text-[8px] text-muted-foreground text-center block mt-0.5 font-semibold">
-                customisable
-              </span>
+          <div className="w-auto min-w-[64px] -mt-3.5 z-10 flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+            {!isCustomizable ? (
+              simpleQuantity > 0 ? (
+                <div className="flex items-center justify-between gap-1 bg-background border-2 border-primary rounded-full px-1 py-0.5 shadow-md h-7 min-w-[76px]">
+                  <button
+                    type="button"
+                    className="h-5 w-5 rounded-full flex items-center justify-center text-primary hover:bg-primary/15 transition-colors cursor-pointer"
+                    onClick={() => onQuantityChange ? onQuantityChange(item, -1) : onRowClick(item)}
+                    title="Decrease"
+                  >
+                    <Minus className="h-3 w-3 stroke-[2.5]" />
+                  </button>
+                  <span className="font-extrabold text-xs text-primary text-center select-none px-1">
+                    {simpleQuantity}
+                  </span>
+                  <button
+                    type="button"
+                    className="h-5 w-5 rounded-full flex items-center justify-center text-primary hover:bg-primary/15 transition-colors cursor-pointer"
+                    onClick={() => onQuantityChange ? onQuantityChange(item, 1) : onRowClick(item)}
+                    title="Increase"
+                  >
+                    <Plus className="h-3 w-3 stroke-[2.5]" />
+                  </button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-16 h-7 rounded-full border-2 border-primary text-primary font-extrabold text-[11px] bg-background hover:bg-primary hover:text-primary-foreground shadow-sm transition-all uppercase tracking-wider flex items-center justify-center p-0 cursor-pointer"
+                  onClick={() => onRowClick(item)}
+                >
+                  ADD
+                </Button>
+              )
+            ) : (
+              totalQuantity > 0 ? (
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center justify-between gap-1 bg-background border-2 border-primary rounded-full px-2 py-0.5 shadow-md h-7 min-w-[64px]">
+                    <span className="font-extrabold text-xs text-primary select-none pl-1">
+                      {totalQuantity}
+                    </span>
+                    <button
+                      type="button"
+                      className="h-5 w-5 rounded-full flex items-center justify-center text-primary hover:bg-primary/15 transition-colors cursor-pointer ml-1"
+                      onClick={() => onQuantityChange ? onQuantityChange(item, 1) : onRowClick(item)}
+                      title="Add more customized"
+                    >
+                      <Plus className="h-3 w-3 stroke-[2.5]" />
+                    </button>
+                  </div>
+                  <span className="text-[8px] text-muted-foreground text-center block mt-0.5 font-semibold">
+                    customisable
+                  </span>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-16 h-7 rounded-full border-2 border-primary text-primary font-extrabold text-[11px] bg-background hover:bg-primary hover:text-primary-foreground shadow-sm transition-all uppercase tracking-wider flex items-center justify-center gap-0.5 p-0 cursor-pointer"
+                    onClick={() => onRowClick(item)}
+                  >
+                    ADD <ChevronDown className="h-3 w-3" />
+                  </Button>
+                  <span className="text-[8px] text-muted-foreground text-center block mt-0.5 font-semibold">
+                    customisable
+                  </span>
+                </div>
+              )
             )}
           </div>
         )}
@@ -348,7 +425,11 @@ const CombinedMenuItemRow = ({
   onRowClick,
   prefix,
   itemRef,
-  vendor
+  vendor,
+  totalQuantity = 0,
+  kitchenQuantity = 0,
+  kitchenRound = 1,
+  onQuantityChange,
 }: {
   items: MenuItemType[];
   onImageClick: (item: MenuItemType, layoutId: string) => void;
@@ -356,6 +437,10 @@ const CombinedMenuItemRow = ({
   prefix: string;
   itemRef?: React.Ref<HTMLDivElement>;
   vendor?: Vendor | null;
+  totalQuantity?: number;
+  kitchenQuantity?: number;
+  kitchenRound?: number;
+  onQuantityChange?: (item: MenuItemType, change: number) => void;
 }) => {
   const primaryItem = items[0]; // Use the first item for common details
   const layoutId = `${prefix}-${primaryItem.id}`;
@@ -390,7 +475,7 @@ const CombinedMenuItemRow = ({
     >
       {/* Left: Dish Details & Portions */}
       <div className="flex-1 min-w-0 pr-1">
-        <div className="flex items-center gap-1.5 mb-1">
+        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
           <span
             className={cn(
               "w-3.5 h-3.5 rounded-xs border flex items-center justify-center bg-background shrink-0",
@@ -408,6 +493,13 @@ const CombinedMenuItemRow = ({
           <span className="text-[8px] font-bold px-1.5 py-0.2 rounded-full bg-muted text-muted-foreground border border-border/50">
             2 Portions
           </span>
+
+          {kitchenQuantity > 0 && (
+            <span className="text-[8px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-0.5">
+              <ChefHat className="h-2.5 w-2.5" />
+              <span>{kitchenQuantity} in kitchen{kitchenRound ? ` (R${kitchenRound})` : ''}</span>
+            </span>
+          )}
         </div>
 
         <h4 className="font-bold text-xs sm:text-sm text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-1">
@@ -471,21 +563,41 @@ const CombinedMenuItemRow = ({
         </div>
 
         {isEffectivelyAvailable && (
-          <div className="w-16 -mt-3.5 z-10 flex flex-col items-center">
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full h-7 rounded-full border-2 border-primary text-primary font-extrabold text-[11px] bg-background hover:bg-primary hover:text-primary-foreground shadow-sm transition-all uppercase tracking-wider flex items-center justify-center gap-0.5 p-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRowClick(items);
-              }}
-            >
-              ADD <ChevronDown className="h-3 w-3" />
-            </Button>
-            <span className="text-[8px] text-muted-foreground text-center block mt-0.5 font-semibold">
-              select portion
-            </span>
+          <div className="w-auto min-w-[64px] -mt-3.5 z-10 flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+            {totalQuantity > 0 ? (
+              <div className="flex flex-col items-center">
+                <div className="flex items-center justify-between gap-1 bg-background border-2 border-primary rounded-full px-2 py-0.5 shadow-md h-7 min-w-[64px]">
+                  <span className="font-extrabold text-xs text-primary select-none pl-1">
+                    {totalQuantity}
+                  </span>
+                  <button
+                    type="button"
+                    className="h-5 w-5 rounded-full flex items-center justify-center text-primary hover:bg-primary/15 transition-colors cursor-pointer ml-1"
+                    onClick={() => onRowClick(items)}
+                    title="Select more portions"
+                  >
+                    <Plus className="h-3 w-3 stroke-[2.5]" />
+                  </button>
+                </div>
+                <span className="text-[8px] text-muted-foreground text-center block mt-0.5 font-semibold">
+                  select portion
+                </span>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-16 h-7 rounded-full border-2 border-primary text-primary font-extrabold text-[11px] bg-background hover:bg-primary hover:text-primary-foreground shadow-sm transition-all uppercase tracking-wider flex items-center justify-center gap-0.5 p-0 cursor-pointer"
+                  onClick={() => onRowClick(items)}
+                >
+                  ADD <ChevronDown className="h-3 w-3" />
+                </Button>
+                <span className="text-[8px] text-muted-foreground text-center block mt-0.5 font-semibold">
+                  select portion
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -511,7 +623,7 @@ function VendorMenuContent({
   const orderIdToEdit = searchParams.get('edit_order');
 
   const { orders, updateOrderItems, addOrder, addRoundToOrder } = useOrder();
-  const { cartItems, addToCart, getCartItemCount } = useCart();
+  const { cartItems, addToCart, updateCartItemQuantity, getCartItemCount } = useCart();
   const { vendor: loggedInVendor, vendors: allAppVendors, fetchAllVendors } = useAppVendor();
 
   const [vendorMenuItems, setVendorMenuItems] = useState<MenuItemType[]>([]);
@@ -1067,6 +1179,135 @@ function VendorMenuContent({
       setPortionSelectItems(items);
     }
   }, [vendor, isVendorOwner, isDineInMode, isTableHost, activeTableId, cartItems, toast]);
+
+  const isMatchingDish = useCallback((orderItem: any, targetId: string) => {
+    return orderItem.id === targetId || orderItem.menuItemId === targetId || orderItem.cartItemId?.startsWith(targetId);
+  }, []);
+
+  const getItemCartState = useCallback((itemId: string) => {
+    if (isVendorOwner || isDineInMode) {
+      const draftItems = tableOrderItems.filter(i => isMatchingDish(i, itemId));
+      const simpleItem = draftItems.find(i => !i.customizationDetails || Object.keys(i.customizationDetails).length === 0);
+      const simpleQuantity = simpleItem?.quantity || 0;
+      const totalQuantity = draftItems.reduce((sum, i) => sum + (i.quantity || 1), 0);
+
+      const kitchenItems = activeTableOrder?.items ? activeTableOrder.items.filter(i => isMatchingDish(i, itemId)) : [];
+      const kitchenQuantity = kitchenItems.reduce((sum, i) => sum + (i.quantity || 1), 0);
+      const kitchenRound = kitchenItems[0]?.round || activeTableOrder?.orderRound || 1;
+
+      return {
+        simpleQuantity,
+        totalQuantity,
+        kitchenQuantity,
+        kitchenRound,
+      };
+    } else {
+      const matchingCartItems = cartItems.filter(i => isMatchingDish(i, itemId));
+      const simpleItem = matchingCartItems.find(i => !i.customizationDetails || Object.keys(i.customizationDetails).length === 0);
+      const simpleQuantity = simpleItem?.quantity || 0;
+      const totalQuantity = matchingCartItems.reduce((sum, i) => sum + (i.quantity || 1), 0);
+
+      return {
+        simpleQuantity,
+        totalQuantity,
+        kitchenQuantity: 0,
+        kitchenRound: 1,
+      };
+    }
+  }, [isVendorOwner, isDineInMode, tableOrderItems, activeTableOrder, cartItems, isMatchingDish]);
+
+  const handleItemQuantityChange = useCallback((item: MenuItemType, change: number) => {
+    if ((isVendorOwner || isDineInMode) && !isTableHost) {
+      toast({
+        title: "Order Managed by Table Host",
+        description: `An active order is in progress for Table ${activeTableId}. The menu is in view-only mode for your device.`,
+      });
+      return;
+    }
+
+    const isCustomizable = item.customizations && item.customizations.length > 0;
+
+    if (isVendorOwner || isDineInMode) {
+      if (vendor?.canAcceptDineIn) {
+        if (!activeTableId) {
+          setPendingItemToAdd({ item, quantity: 1 });
+          setIsUniversalPickerOpen(true);
+          return;
+        }
+
+        if (change > 0) {
+          if (isCustomizable) {
+            handleOpenCustomization(item);
+          } else {
+            handleAddToTableOrder(item, change);
+          }
+        } else {
+          if (isCustomizable) {
+            setTableOrderItems(prev => {
+              const idx = prev.map(i => i.id).lastIndexOf(item.id);
+              if (idx === -1) return prev;
+              const target = prev[idx];
+              if (target.quantity > 1) {
+                return prev.map((it, i) => i === idx ? { ...it, quantity: it.quantity - 1 } : it);
+              } else {
+                return prev.filter((_, i) => i !== idx);
+              }
+            });
+          } else {
+            handleTableOrderQuantityChange(item.id, change);
+          }
+        }
+      } else {
+        toast({
+          title: "Dine-In Disabled",
+          description: "This feature has been disabled by the administrator.",
+          variant: "destructive",
+        });
+      }
+    } else {
+      // Delivery mode
+      if (change > 0) {
+        if (isCustomizable) {
+          handleOpenCustomization(item);
+        } else {
+          const simpleItem = cartItems.find(i => i.id === item.id && (!i.customizationDetails || Object.keys(i.customizationDetails).length === 0));
+          if (simpleItem) {
+            updateCartItemQuantity(simpleItem.cartItemId, simpleItem.quantity + 1);
+          } else {
+            handleAddToCartWithDialogCheck(item, {}, 1);
+          }
+        }
+      } else {
+        const matchingItems = cartItems.filter(i => i.id === item.id);
+        if (matchingItems.length === 0) return;
+
+        if (!isCustomizable) {
+          const simpleItem = matchingItems.find(i => !i.customizationDetails || Object.keys(i.customizationDetails).length === 0);
+          if (simpleItem) {
+            updateCartItemQuantity(simpleItem.cartItemId, simpleItem.quantity - 1);
+          }
+        } else {
+          const lastItem = matchingItems[matchingItems.length - 1];
+          if (lastItem) {
+            updateCartItemQuantity(lastItem.cartItemId, lastItem.quantity - 1);
+          }
+        }
+      }
+    }
+  }, [
+    isVendorOwner,
+    isDineInMode,
+    isTableHost,
+    vendor,
+    activeTableId,
+    handleOpenCustomization,
+    handleAddToTableOrder,
+    handleTableOrderQuantityChange,
+    cartItems,
+    updateCartItemQuantity,
+    handleAddToCartWithDialogCheck,
+    toast,
+  ]);
 
   const handleCloseCustomization = useCallback((open: boolean) => {
     if (!open) {
@@ -1919,10 +2160,48 @@ function VendorMenuContent({
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                         {itemGroups.map((group, index) => {
                           if (group.length > 1) {
-                            return <CombinedMenuItemRow key={`${group[0].id}-${index}`} items={group} onImageClick={handleImageClick} onRowClick={() => handleCombinedItemRowClick(group)} prefix={'menu-item-image'} vendor={vendor} itemRef={el => { if (el) itemRefs.current[group[0].id] = el; }} />;
+                            const groupCartState = group.reduce((acc, it) => {
+                              const state = getItemCartState(it.id);
+                              return {
+                                totalQuantity: acc.totalQuantity + state.totalQuantity,
+                                kitchenQuantity: acc.kitchenQuantity + state.kitchenQuantity,
+                                kitchenRound: state.kitchenRound || acc.kitchenRound,
+                              };
+                            }, { totalQuantity: 0, kitchenQuantity: 0, kitchenRound: 1 });
+                            return (
+                              <CombinedMenuItemRow
+                                key={`${group[0].id}-${index}`}
+                                items={group}
+                                onImageClick={handleImageClick}
+                                onRowClick={() => handleCombinedItemRowClick(group)}
+                                prefix={'menu-item-image'}
+                                vendor={vendor}
+                                itemRef={el => { if (el) itemRefs.current[group[0].id] = el; }}
+                                totalQuantity={groupCartState.totalQuantity}
+                                kitchenQuantity={groupCartState.kitchenQuantity}
+                                kitchenRound={groupCartState.kitchenRound}
+                                onQuantityChange={handleItemQuantityChange}
+                              />
+                            );
                           } else {
                             const item = group[0];
-                            return <MenuItemRow key={item.id} item={item} onImageClick={handleImageClick} onRowClick={handleItemRowClick} prefix={'menu-item-image'} vendor={vendor} itemRef={el => { if (el) itemRefs.current[item.id] = el; }} />;
+                            const cartState = getItemCartState(item.id);
+                            return (
+                              <MenuItemRow
+                                key={item.id}
+                                item={item}
+                                onImageClick={handleImageClick}
+                                onRowClick={handleItemRowClick}
+                                prefix={'menu-item-image'}
+                                vendor={vendor}
+                                itemRef={el => { if (el) itemRefs.current[item.id] = el; }}
+                                simpleQuantity={cartState.simpleQuantity}
+                                totalQuantity={cartState.totalQuantity}
+                                kitchenQuantity={cartState.kitchenQuantity}
+                                kitchenRound={cartState.kitchenRound}
+                                onQuantityChange={handleItemQuantityChange}
+                              />
+                            );
                           }
                         })}
                       </div>
@@ -1948,19 +2227,27 @@ function VendorMenuContent({
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                      {discountedItems.map((item) => (
-                        <MenuItemRow
-                          key={item.id}
-                          item={item}
-                          vendor={vendor}
-                          onImageClick={handleImageClick}
-                          onRowClick={handleItemRowClick}
-                          prefix={'discount-item-image'}
-                          itemRef={el => {
-                            if (el) itemRefs.current[item.id] = el;
-                          }}
-                        />
-                      ))}
+                      {discountedItems.map((item) => {
+                        const cartState = getItemCartState(item.id);
+                        return (
+                          <MenuItemRow
+                            key={item.id}
+                            item={item}
+                            vendor={vendor}
+                            onImageClick={handleImageClick}
+                            onRowClick={handleItemRowClick}
+                            prefix={'discount-item-image'}
+                            itemRef={el => {
+                              if (el) itemRefs.current[item.id] = el;
+                            }}
+                            simpleQuantity={cartState.simpleQuantity}
+                            totalQuantity={cartState.totalQuantity}
+                            kitchenQuantity={cartState.kitchenQuantity}
+                            kitchenRound={cartState.kitchenRound}
+                            onQuantityChange={handleItemQuantityChange}
+                          />
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -1985,6 +2272,14 @@ function VendorMenuContent({
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                       {itemGroups.map((group, index) => {
                         if (group.length > 1) {
+                          const groupCartState = group.reduce((acc, it) => {
+                            const state = getItemCartState(it.id);
+                            return {
+                              totalQuantity: acc.totalQuantity + state.totalQuantity,
+                              kitchenQuantity: acc.kitchenQuantity + state.kitchenQuantity,
+                              kitchenRound: state.kitchenRound || acc.kitchenRound,
+                            };
+                          }, { totalQuantity: 0, kitchenQuantity: 0, kitchenRound: 1 });
                           return (
                             <CombinedMenuItemRow
                               key={`${group[0].id}-${index}`}
@@ -1996,10 +2291,15 @@ function VendorMenuContent({
                               itemRef={el => {
                                 if (el) itemRefs.current[group[0].id] = el;
                               }}
+                              totalQuantity={groupCartState.totalQuantity}
+                              kitchenQuantity={groupCartState.kitchenQuantity}
+                              kitchenRound={groupCartState.kitchenRound}
+                              onQuantityChange={handleItemQuantityChange}
                             />
                           );
                         } else {
                           const item = group[0];
+                          const cartState = getItemCartState(item.id);
                           return (
                             <MenuItemRow
                               key={item.id}
@@ -2011,6 +2311,11 @@ function VendorMenuContent({
                               itemRef={el => {
                                 if (el) itemRefs.current[item.id] = el;
                               }}
+                              simpleQuantity={cartState.simpleQuantity}
+                              totalQuantity={cartState.totalQuantity}
+                              kitchenQuantity={cartState.kitchenQuantity}
+                              kitchenRound={cartState.kitchenRound}
+                              onQuantityChange={handleItemQuantityChange}
                             />
                           );
                         }
