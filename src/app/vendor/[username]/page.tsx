@@ -1515,7 +1515,7 @@ function VendorMenuContent({
     if (menuSectionsRef.current) {
       const rect = menuSectionsRef.current.getBoundingClientRect();
       if (rect.top < 60 || rect.top > 300) {
-        const yOffset = -130;
+        const yOffset = -150;
         const y = rect.top + window.pageYOffset + yOffset;
         window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
       }
@@ -2029,123 +2029,141 @@ function VendorMenuContent({
 
           {/* Sticky Interactive Category Pills Bar (like /menu page) */}
           {!isSearching && vendorCategories.length > 0 && (
-            <div className={cn("sticky top-[58px] bg-background/95 backdrop-blur-md z-40 -mx-4 px-4 border-y border-border/60 overflow-x-auto hide-scrollbar shadow-xs", isDineInMode ? "py-2 my-2.5 sm:my-3" : "py-2.5 my-4")}>
-              <div className="flex items-center gap-2 max-w-5xl mx-auto w-max py-0.5">
-                {/* "All" Option */}
-                <button
-                  type="button"
-                  onClick={() => handleCategoryClick('all')}
-                  className={cn(
-                    "rounded-full border h-9 sm:h-10 pl-1.5 pr-3.5 shrink-0 transition-all flex items-center gap-2 shadow-2xs group cursor-pointer",
-                    activeCategory === 'all'
-                      ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                      : "bg-card/95 border-border/80 text-foreground hover:bg-muted/80 hover:border-primary/40"
-                  )}
-                >
-                  <div className={cn(
-                    "w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shrink-0 transition-colors",
-                    activeCategory === 'all'
-                      ? "bg-white/20 text-white"
-                      : "bg-primary/10 text-primary group-hover:bg-primary/20"
-                  )}>
-                    <Utensils className="h-3.5 w-3.5" />
-                  </div>
-                  <span className="text-xs sm:text-sm font-bold">All</span>
-                  {totalCategoryItemsCount > 0 && (
-                    <span className={cn(
-                      "text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-bold",
-                      activeCategory === 'all'
-                        ? "bg-white/25 text-white"
-                        : "bg-muted text-muted-foreground"
-                    )}>
-                      {totalCategoryItemsCount}
-                    </span>
-                  )}
-                </button>
-
-                {/* Special Deals Pill */}
-                {discountedItems.length > 0 && (
+            <div className={cn(
+              "sticky top-[58px] bg-background/95 backdrop-blur-md z-40 -mx-4 px-4 border-y border-border/60 shadow-xs",
+              isDineInMode ? "py-1.5 sm:py-2 my-2 sm:my-3" : "py-2 sm:py-2.5 my-3 sm:my-4"
+            )}>
+              <div className={cn(
+                "max-w-5xl mx-auto",
+                discountedItems.length > 0
+                  ? "flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2"
+                  : "overflow-x-auto hide-scrollbar"
+              )}>
+                {/* Global Quick Toggles: All + Special Deals (Line 1 on mobile if deals exist, inline on desktop) */}
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  {/* "All" Option */}
                   <button
                     type="button"
-                    onClick={() => handleCategoryClick('special-deals')}
+                    onClick={() => handleCategoryClick('all')}
                     className={cn(
-                      "rounded-full border h-9 sm:h-10 pl-1.5 pr-3.5 shrink-0 transition-all flex items-center gap-2 shadow-2xs group cursor-pointer",
-                      activeCategory === 'special-deals'
-                        ? "bg-amber-500 text-white border-amber-500 shadow-xs"
-                        : "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
+                      "rounded-full border h-8 sm:h-9 pl-1.5 pr-2.5 sm:pr-3.5 shrink-0 transition-all flex items-center gap-1.5 sm:gap-2 shadow-2xs group cursor-pointer",
+                      activeCategory === 'all'
+                        ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                        : "bg-card/95 border-border/80 text-foreground hover:bg-muted/80 hover:border-primary/40"
                     )}
                   >
                     <div className={cn(
-                      "w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shrink-0 transition-colors",
-                      activeCategory === 'special-deals'
+                      "w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center shrink-0 transition-colors",
+                      activeCategory === 'all'
                         ? "bg-white/20 text-white"
-                        : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                        : "bg-primary/10 text-primary group-hover:bg-primary/20"
                     )}>
-                      <Tag className="h-3.5 w-3.5" />
+                      <Utensils className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                     </div>
-                    <span className="text-xs sm:text-sm font-bold whitespace-nowrap">Special Deals</span>
-                    <span className={cn(
-                      "text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-bold",
-                      activeCategory === 'special-deals'
-                        ? "bg-white/25 text-white"
-                        : "bg-amber-500/20 text-amber-700 dark:text-amber-300"
-                    )}>
-                      {discountedItems.length}
-                    </span>
+                    <span className="text-xs sm:text-sm font-bold">All</span>
+                    {totalCategoryItemsCount > 0 && (
+                      <span className={cn(
+                        "text-[10px] sm:text-[11px] px-1.5 sm:px-2 py-0.5 rounded-full font-bold",
+                        activeCategory === 'all'
+                          ? "bg-white/25 text-white"
+                          : "bg-muted text-muted-foreground"
+                      )}>
+                        {totalCategoryItemsCount}
+                      </span>
+                    )}
                   </button>
-                )}
 
-                {/* Category Items with circular thumbnail and count badge */}
-                {vendorCategories.map((category) => {
-                  const thumb = getCategoryThumbnail(category);
-                  const count = categoryItemCounts[category] || 0;
-                  const isActive = activeCategory === category;
-
-                  return (
+                  {/* Special Deals Pill */}
+                  {discountedItems.length > 0 && (
                     <button
-                      key={category}
                       type="button"
-                      onClick={() => handleCategoryClick(category)}
+                      onClick={() => handleCategoryClick('special-deals')}
                       className={cn(
-                        "rounded-full border h-9 sm:h-10 pl-1.5 pr-3.5 shrink-0 transition-all flex items-center gap-2 shadow-2xs group cursor-pointer",
-                        isActive
-                          ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                          : "bg-card/95 border-border/80 text-foreground hover:bg-muted/80 hover:border-primary/40"
+                        "rounded-full border h-8 sm:h-9 pl-1.5 pr-2.5 sm:pr-3.5 shrink-0 transition-all flex items-center gap-1.5 sm:gap-2 shadow-2xs group cursor-pointer",
+                        activeCategory === 'special-deals'
+                          ? "bg-amber-500 text-white border-amber-500 shadow-xs"
+                          : "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
                       )}
                     >
-                      {thumb ? (
-                        <div className="relative w-6 h-6 sm:w-7 sm:h-7 rounded-full overflow-hidden shrink-0 border border-border/50 shadow-xs bg-muted">
-                          <Image
-                            src={thumb}
-                            alt={category}
-                            fill
-                            sizes="28px"
-                            className="object-cover"
-                            unoptimized
-                          />
-                        </div>
-                      ) : (
-                        <div className={cn(
-                          "w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shrink-0 font-bold text-xs",
-                          isActive ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
-                        )}>
-                          {category.charAt(0)}
-                        </div>
-                      )}
-                      <span className="text-xs sm:text-sm font-bold whitespace-nowrap">{category}</span>
-                      {count > 0 && (
-                        <span className={cn(
-                          "text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-bold",
-                          isActive
-                            ? "bg-white/25 text-white"
-                            : "bg-muted text-muted-foreground"
-                        )}>
-                          {count}
-                        </span>
-                      )}
+                      <div className={cn(
+                        "w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center shrink-0 transition-colors",
+                        activeCategory === 'special-deals'
+                          ? "bg-white/20 text-white"
+                          : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                      )}>
+                        <Tag className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                      </div>
+                      <span className="text-xs sm:text-sm font-bold whitespace-nowrap">Special Deals</span>
+                      <span className={cn(
+                        "text-[10px] sm:text-[11px] px-1.5 sm:px-2 py-0.5 rounded-full font-bold",
+                        activeCategory === 'special-deals'
+                          ? "bg-white/25 text-white"
+                          : "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+                      )}>
+                        {discountedItems.length}
+                      </span>
                     </button>
-                  );
-                })}
+                  )}
+                </div>
+
+                {/* Food Categories Horizontal Scroll Track (Line 2 on mobile, inline on desktop) */}
+                <div className={cn(
+                  "overflow-x-auto hide-scrollbar min-w-0 flex-1",
+                  discountedItems.length > 0 ? "-mx-4 px-4 sm:mx-0 sm:px-0" : ""
+                )}>
+                  <div className="flex items-center gap-1.5 sm:gap-2 w-max py-0.5">
+                    {vendorCategories.map((category) => {
+                      const thumb = getCategoryThumbnail(category);
+                      const count = categoryItemCounts[category] || 0;
+                      const isActive = activeCategory === category;
+
+                      return (
+                        <button
+                          key={category}
+                          type="button"
+                          onClick={() => handleCategoryClick(category)}
+                          className={cn(
+                            "rounded-full border h-8 sm:h-9 pl-1.5 pr-2.5 sm:pr-3.5 shrink-0 transition-all flex items-center gap-1.5 sm:gap-2 shadow-2xs group cursor-pointer",
+                            isActive
+                              ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                              : "bg-card/95 border-border/80 text-foreground hover:bg-muted/80 hover:border-primary/40"
+                          )}
+                        >
+                          {thumb ? (
+                            <div className="relative w-5 h-5 sm:w-6 sm:h-6 rounded-full overflow-hidden shrink-0 border border-border/50 shadow-xs bg-muted">
+                              <Image
+                                src={thumb}
+                                alt={category}
+                                fill
+                                sizes="24px"
+                                className="object-cover"
+                                unoptimized
+                              />
+                            </div>
+                          ) : (
+                            <div className={cn(
+                              "w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center shrink-0 font-bold text-[11px] sm:text-xs",
+                              isActive ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
+                            )}>
+                              {category.charAt(0)}
+                            </div>
+                          )}
+                          <span className="text-xs sm:text-sm font-bold whitespace-nowrap">{category}</span>
+                          {count > 0 && (
+                            <span className={cn(
+                              "text-[10px] sm:text-[11px] px-1.5 sm:px-2 py-0.5 rounded-full font-bold",
+                              isActive
+                                ? "bg-white/25 text-white"
+                                : "bg-muted text-muted-foreground"
+                            )}>
+                              {count}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
           )}
