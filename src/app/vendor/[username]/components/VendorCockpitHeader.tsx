@@ -12,18 +12,24 @@ import {
   Info,
   ShieldCheck,
   AlertCircle,
+  AlertTriangle,
+  MapPinOff,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { VendorStatusManager } from '@/lib/vendorStatusManager';
 import { VendorStatus } from '@/types';
 import type { Vendor } from '@/types';
+import { getLocationBadgeInfo, type DineInLocationVerification } from '@/lib/location-utils';
 
 export interface VendorCockpitHeaderProps {
   vendor: Vendor;
   isDineInMode: boolean;
   activeTableId: string;
-  locationVerified: boolean | null;
+  locationVerified?: boolean | null;
+  locationVerification?: DineInLocationVerification | null;
+  onRetryLocation?: () => void;
   onOpenTablePicker: () => void;
   onDownloadPdf: () => void;
 }
@@ -33,6 +39,8 @@ export function VendorCockpitHeader({
   isDineInMode,
   activeTableId,
   locationVerified,
+  locationVerification,
+  onRetryLocation,
   onOpenTablePicker,
   onDownloadPdf,
 }: VendorCockpitHeaderProps) {
@@ -100,16 +108,53 @@ export function VendorCockpitHeader({
                   <Utensils className="h-3.5 w-3.5 text-primary" />
                   <span>Table {activeTableId}</span>
                 </div>
-                {locationVerified === true && (
-                  <span title="In-store location verified" className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
-                    <ShieldCheck className="h-3 w-3" /> Verified
-                  </span>
-                )}
-                {locationVerified === false && (
-                  <span title="Location unverified" className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                    <AlertCircle className="h-3 w-3" /> Unverified
-                  </span>
-                )}
+                {(() => {
+                  const badgeInfo = getLocationBadgeInfo(
+                    locationVerification !== undefined
+                      ? locationVerification
+                      : locationVerified !== null
+                        ? { verified: locationVerified }
+                        : null
+                  );
+
+                  if (badgeInfo.statusType === 'verified') {
+                    return (
+                      <span
+                        title={badgeInfo.description}
+                        className={cn(
+                          "inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full border shadow-2xs",
+                          badgeInfo.badgeClass
+                        )}
+                      >
+                        <ShieldCheck className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                        <span>{badgeInfo.label}</span>
+                      </span>
+                    );
+                  }
+
+                  if (badgeInfo.statusType !== 'unknown') {
+                    return (
+                      <button
+                        type="button"
+                        onClick={badgeInfo.canRetry && onRetryLocation ? onRetryLocation : undefined}
+                        title={`${badgeInfo.description}${badgeInfo.canRetry ? ' • Click to re-check GPS' : ''}`}
+                        className={cn(
+                          "inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border shadow-2xs transition-all",
+                          badgeInfo.badgeClass,
+                          badgeInfo.canRetry ? "cursor-pointer hover:opacity-90 active:scale-95" : ""
+                        )}
+                      >
+                        {badgeInfo.statusType === 'out_of_range' && <AlertTriangle className="h-3 w-3 text-rose-500 shrink-0" />}
+                        {badgeInfo.statusType === 'permission_denied' && <MapPinOff className="h-3 w-3 text-amber-500 shrink-0" />}
+                        {badgeInfo.statusType === 'timeout' && <Clock className="h-3 w-3 text-amber-500 shrink-0" />}
+                        <span className="truncate max-w-[120px] sm:max-w-none">{badgeInfo.label}</span>
+                        {badgeInfo.canRetry && <RefreshCw className="h-2.5 w-2.5 opacity-70 shrink-0" />}
+                      </button>
+                    );
+                  }
+
+                  return null;
+                })()}
               </div>
             ) : (
               <Button

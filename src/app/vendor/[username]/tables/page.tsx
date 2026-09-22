@@ -41,6 +41,7 @@ import { useVendor } from '@/context/vendor-context';
 import { useOrder } from '@/context/order-context';
 import type { Vendor, Order, MenuItem, Category, OrderStatus } from '@/types';
 import { cn } from '@/lib/utils';
+import { formatLocationDistance } from '@/lib/location-utils';
 import { useToast } from '@/hooks/use-toast';
 import ConfirmationDialog from '@/components/confirmation-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -1260,15 +1261,54 @@ const TableCard = ({
         {isOccupied ? (
           <div className="flex items-center gap-1.5 shrink-0">
             {order.locationVerified === true && (
-              <span title="Diner location verified within 300m" className="text-[9px] bg-white/20 text-white px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0">
+              <span
+                title={order.locationDistanceMeters ? `Diner verified at table (<${formatLocationDistance(order.locationDistanceMeters)})` : "Diner location verified within 300m"}
+                className="text-[9px] bg-emerald-500/30 text-emerald-100 border border-emerald-400/40 px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap shrink-0"
+              >
                 📍 Verified
               </span>
             )}
-            {order.locationVerified === false && (
-              <span title="Diner location unverified - please confirm diner presence at table" className="text-[9px] bg-amber-300 text-amber-950 px-1.5 py-0.5 rounded-full font-extrabold whitespace-nowrap shrink-0">
-                ⚠️ Unverified
-              </span>
-            )}
+            {order.locationVerified === false && (() => {
+              const distStr = formatLocationDistance(order.locationDistanceMeters);
+              if (order.locationReason === 'out_of_range') {
+                return (
+                  <span
+                    title={`ALERT: Diner is ~${distStr || 'far'} away. Possible off-premise spoof order! Verify customer is seated at Table.`}
+                    className="text-[9px] bg-rose-500 text-white font-black px-1.5 py-0.5 rounded-full whitespace-nowrap shrink-0 shadow-xs animate-pulse"
+                  >
+                    🚨 Away ({distStr || '>300m'})
+                  </span>
+                );
+              }
+              if (order.locationReason === 'permission_denied') {
+                return (
+                  <span
+                    title="Diner denied browser GPS permission. Confirm guest is present at table."
+                    className="text-[9px] bg-amber-300 text-amber-950 font-black px-1.5 py-0.5 rounded-full whitespace-nowrap shrink-0"
+                  >
+                    📍 GPS Denied
+                  </span>
+                );
+              }
+              if (order.locationReason === 'timeout') {
+                return (
+                  <span
+                    title="GPS signal timed out. Confirm guest is present at table."
+                    className="text-[9px] bg-amber-300 text-amber-950 font-black px-1.5 py-0.5 rounded-full whitespace-nowrap shrink-0"
+                  >
+                    ⏳ GPS Timeout
+                  </span>
+                );
+              }
+              return (
+                <span
+                  title="Diner location unverified - please confirm diner presence at table"
+                  className="text-[9px] bg-amber-300 text-amber-950 px-1.5 py-0.5 rounded-full font-extrabold whitespace-nowrap shrink-0"
+                >
+                  ⚠️ Unverified
+                </span>
+              );
+            })()}
             <span className="text-sm font-black text-white shrink-0">₹{total.toFixed(0)}</span>
           </div>
         ) : (
@@ -1301,6 +1341,12 @@ const TableCard = ({
 
       {/* Card Content */}
       <CardContent className="p-3.5 flex-grow flex flex-col justify-center min-h-[100px]">
+        {isOccupied && order.locationReason === 'out_of_range' && (
+          <div className="mb-2.5 p-2 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-950 dark:text-rose-200 text-xs font-bold flex items-center gap-2 shadow-2xs">
+            <span className="h-2 w-2 rounded-full bg-rose-500 animate-ping shrink-0" />
+            <span>⚠️ Away Alert: Placed ~{formatLocationDistance(order.locationDistanceMeters) || 'far'} away from restaurant!</span>
+          </div>
+        )}
         {shouldShowAlert && (
           <div className="mb-2.5 p-2 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-900 dark:text-amber-200 text-xs font-bold flex items-center justify-between shadow-2xs">
             <span className="flex items-center gap-1.5">

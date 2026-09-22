@@ -72,7 +72,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useVendor as useAppVendor } from '@/context/vendor-context';
 import { Textarea } from '@/components/ui/textarea';
-import { verifyDineInLocation } from '@/lib/location-utils';
+import { verifyDineInLocation, type DineInLocationVerification } from '@/lib/location-utils';
 import { Badge } from '@/components/ui/badge';
 import {
   ZoomedImageOverlay,
@@ -131,7 +131,8 @@ function VendorMenuContent({
   const [isUniversalPickerOpen, setIsUniversalPickerOpen] = useState(false);
   const [pendingItemToAdd, setPendingItemToAdd] = useState<{ item: MenuItemType; quantity: number } | null>(null);
 
-  const [locationVerified, setLocationVerified] = useState<boolean | null>(null);
+  const [locationVerification, setLocationVerification] = useState<DineInLocationVerification | null>(null);
+  const locationVerified = locationVerification?.verified ?? null;
   const [isVerifyingLocation, setIsVerifyingLocation] = useState(false);
 
   const [graceSecondsLeft, setGraceSecondsLeft] = useState<number>(0);
@@ -194,21 +195,24 @@ function VendorMenuContent({
   }, [allAppVendors, fetchAllVendors]);
 
   // Non-blocking soft geofence check (300m max radius with 2.5s hard timeout)
-  useEffect(() => {
-    if (isDineInMode && vendor && locationVerified === null && !isVerifyingLocation) {
-      setIsVerifyingLocation(true);
-      verifyDineInLocation(vendor, 300)
-        .then(res => {
-          setLocationVerified(res.verified);
-        })
-        .catch(() => {
-          setLocationVerified(false);
-        })
-        .finally(() => {
-          setIsVerifyingLocation(false);
-        });
+  const performLocationCheck = useCallback(async () => {
+    if (!vendor || isVerifyingLocation) return;
+    setIsVerifyingLocation(true);
+    try {
+      const res = await verifyDineInLocation(vendor, 300);
+      setLocationVerification(res);
+    } catch {
+      setLocationVerification({ verified: false, reason: 'unsupported' });
+    } finally {
+      setIsVerifyingLocation(false);
     }
-  }, [isDineInMode, vendor, locationVerified, isVerifyingLocation]);
+  }, [vendor, isVerifyingLocation]);
+
+  useEffect(() => {
+    if (isDineInMode && vendor && locationVerification === null && !isVerifyingLocation) {
+      performLocationCheck();
+    }
+  }, [isDineInMode, vendor, locationVerification, isVerifyingLocation, performLocationCheck]);
 
   // Dine-In Table Session ID persistence
   const [tableSessionId, setTableSessionId] = useState<string>('');
@@ -443,7 +447,9 @@ function VendorMenuContent({
             deliveryOption: 'Dine-In',
             tableId: activeTableId,
             customNotes: notesForOrder,
-            locationVerified: locationVerified === true,
+            locationVerified: locationVerification?.verified === true,
+            locationReason: locationVerification?.reason,
+            locationDistanceMeters: locationVerification?.distanceMeters,
             tableSessionId: sessionId,
             orderRound: 1,
           } as any);
@@ -1198,6 +1204,8 @@ function VendorMenuContent({
             isDineInMode={isDineInMode}
             activeTableId={activeTableId}
             locationVerified={locationVerified}
+            locationVerification={locationVerification}
+            onRetryLocation={performLocationCheck}
             onOpenTablePicker={() => setIsUniversalPickerOpen(true)}
             onDownloadPdf={generatePdf}
           />

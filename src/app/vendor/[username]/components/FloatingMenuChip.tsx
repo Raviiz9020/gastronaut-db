@@ -71,7 +71,7 @@ export function FloatingMenuChip({
         transition={{ duration: 0.22, ease: 'easeOut' }}
         className={cn(
           "fixed left-3.5 sm:left-6 z-40 flex items-center rounded-full transition-all duration-300",
-          "bg-primary text-primary-foreground shadow-[0_12px_32px_hsl(var(--primary)/0.45)]",
+          "bg-primary text-primary-foreground shadow-[0_4px_16px_rgba(0,0,0,0.18)]",
           "border border-white/30 hover:scale-[1.03] active:scale-95",
           hasBottomBar ? "bottom-20 sm:bottom-20" : "bottom-5 sm:bottom-6"
         )}

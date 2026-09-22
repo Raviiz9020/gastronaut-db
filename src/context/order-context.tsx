@@ -38,6 +38,8 @@ interface OrderContextType {
     tableId?: string;
     customNotes?: Record<string, string>;
     locationVerified?: boolean;
+    locationReason?: string;
+    locationDistanceMeters?: number;
     orderRound?: number;
     tableSessionId?: string;
     paymentDetails?: {
@@ -165,7 +167,7 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
   }, [toast]);
 
   const addOrder: OrderContextType['addOrder'] = async ({
-    cartItems, customer: cust, allVendors, paymentMethod, deliveryOptions, tableId, customNotes, locationVerified, orderRound, tableSessionId, paymentDetails, redemption
+    cartItems, customer: cust, allVendors, paymentMethod, deliveryOptions, tableId, customNotes, locationVerified, locationReason, locationDistanceMeters, orderRound, tableSessionId, paymentDetails, redemption
   }) => {
     let user = auth.currentUser;
     const isDineInFlow = !!tableId;
@@ -455,6 +457,8 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
             ...(tableId ? {
               tableId: String(tableId),
               locationVerified: locationVerified ?? false,
+              locationReason: locationReason || (locationVerified ? 'within_range' : 'unverified'),
+              ...(locationDistanceMeters !== undefined && locationDistanceMeters !== null ? { locationDistanceMeters } : {}),
               orderRound: orderRound || 1,
               tableSessionId: tableSessionId || `${v.username}-table-${tableId}-${Date.now()}`,
             } : {}),

@@ -113,3 +113,108 @@ export async function verifyDineInLocation(
     }
 }
 
+/**
+ * Formats a distance in meters to a clean human-readable string (e.g. 450m, 1.2 km).
+ */
+export function formatLocationDistance(distanceMeters?: number | null): string {
+    if (distanceMeters === undefined || distanceMeters === null || isNaN(distanceMeters)) {
+        return '';
+    }
+    if (distanceMeters < 1000) {
+        return `${Math.round(distanceMeters)}m`;
+    }
+    return `${(distanceMeters / 1000).toFixed(1)} km`;
+}
+
+export interface LocationBadgeInfo {
+    label: string;
+    description: string;
+    badgeClass: string;
+    statusType: 'verified' | 'out_of_range' | 'permission_denied' | 'timeout' | 'unknown';
+    canRetry: boolean;
+}
+
+/**
+ * Returns human-readable status, badge styling, and explanation for location verification.
+ */
+export function getLocationBadgeInfo(
+    verification?: { verified?: boolean; reason?: string; distanceMeters?: number } | null
+): LocationBadgeInfo {
+    if (!verification) {
+        return {
+            label: 'Verifying...',
+            description: 'Checking diner location...',
+            badgeClass: 'bg-muted/80 text-muted-foreground border-border',
+            statusType: 'unknown',
+            canRetry: false,
+        };
+    }
+
+    if (verification.verified === true) {
+        const dist = formatLocationDistance(verification.distanceMeters);
+        return {
+            label: dist ? `In-Store (${dist})` : 'In-Store',
+            description: 'Diner location verified at restaurant table',
+            badgeClass: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
+            statusType: 'verified',
+            canRetry: false,
+        };
+    }
+
+    const dist = formatLocationDistance(verification.distanceMeters);
+
+    switch (verification.reason) {
+        case 'out_of_range':
+            return {
+                label: dist ? `~${dist} Away` : 'Outside Restaurant',
+                description: dist
+                    ? `Diner appears to be ~${dist} away. Dine-in orders are for seated guests.`
+                    : 'Diner appears to be far from the restaurant.',
+                badgeClass: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30',
+                statusType: 'out_of_range',
+                canRetry: true,
+            };
+        case 'permission_denied':
+            return {
+                label: 'GPS Blocked',
+                description: 'Location access was denied. Tap to allow so kitchen can verify your table.',
+                badgeClass: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
+                statusType: 'permission_denied',
+                canRetry: true,
+            };
+        case 'timeout':
+            return {
+                label: 'GPS Timeout',
+                description: 'Could not lock GPS location in time. Tap to retry.',
+                badgeClass: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
+                statusType: 'timeout',
+                canRetry: true,
+            };
+        case 'no_vendor_coords':
+            return {
+                label: 'No Geo-Coords',
+                description: 'Restaurant has not set map coordinates.',
+                badgeClass: 'bg-muted text-muted-foreground border-border',
+                statusType: 'unknown',
+                canRetry: false,
+            };
+        case 'unsupported':
+            return {
+                label: 'No Geolocation',
+                description: 'Browser does not support geolocation.',
+                badgeClass: 'bg-muted text-muted-foreground border-border',
+                statusType: 'unknown',
+                canRetry: false,
+            };
+        default:
+            return {
+                label: 'Unverified',
+                description: 'Diner location could not be verified.',
+                badgeClass: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
+                statusType: 'unknown',
+                canRetry: true,
+            };
+    }
+}
+
+

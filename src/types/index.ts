@@ -269,6 +269,8 @@ export interface Order {
     razorpayOrderId?: string;
     tableId?: string;
     locationVerified?: boolean;
+    locationReason?: 'within_range' | 'out_of_range' | 'permission_denied' | 'timeout' | 'no_vendor_coords' | 'unsupported' | string;
+    locationDistanceMeters?: number;
     tableSessionId?: string;
     orderRound?: number;
     
