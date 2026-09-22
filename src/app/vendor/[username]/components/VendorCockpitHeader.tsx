@@ -29,6 +29,7 @@ export interface VendorCockpitHeaderProps {
   activeTableId: string;
   locationVerified?: boolean | null;
   locationVerification?: DineInLocationVerification | null;
+  isVerifyingLocation?: boolean;
   onRetryLocation?: () => void;
   onOpenTablePicker: () => void;
   onDownloadPdf: () => void;
@@ -40,6 +41,7 @@ export function VendorCockpitHeader({
   activeTableId,
   locationVerified,
   locationVerification,
+  isVerifyingLocation,
   onRetryLocation,
   onOpenTablePicker,
   onDownloadPdf,
@@ -109,6 +111,18 @@ export function VendorCockpitHeader({
                   <span>Table {activeTableId}</span>
                 </div>
                 {(() => {
+                  if (isVerifyingLocation) {
+                    return (
+                      <span
+                        title="Acquiring your location..."
+                        className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full border shadow-2xs bg-muted/80 text-muted-foreground border-border"
+                      >
+                        <RefreshCw className="h-3 w-3 animate-spin text-primary shrink-0" />
+                        <span>Locating...</span>
+                      </span>
+                    );
+                  }
+
                   const badgeInfo = getLocationBadgeInfo(
                     locationVerification !== undefined
                       ? locationVerification

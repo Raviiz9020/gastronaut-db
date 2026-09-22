@@ -73,7 +73,15 @@ export async function verifyDineInLocation(
     vendor: { latitude?: number; longitude?: number },
     maxRadiusMeters: number = 300
 ): Promise<DineInLocationVerification> {
-    if (vendor.latitude === undefined || vendor.longitude === undefined) {
+    const vLat = Number(vendor?.latitude);
+    const vLng = Number(vendor?.longitude);
+
+    if (
+        vendor?.latitude === undefined || 
+        vendor?.longitude === undefined || 
+        isNaN(vLat) || 
+        isNaN(vLng)
+    ) {
         return { verified: true, reason: 'no_vendor_coords' };
     }
 
@@ -81,35 +89,71 @@ export async function verifyDineInLocation(
         return { verified: false, reason: 'unsupported' };
     }
 
-    const geoPromise = new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 2500,
-            maximumAge: 30000,
-        });
-    });
+    // Fast check: if browser permissions API exists and explicitly indicates 'denied'
+    if (typeof navigator !== 'undefined' && 'permissions' in navigator) {
+        try {
+            const status = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+            if (status.state === 'denied') {
+                return { verified: false, reason: 'permission_denied' };
+            }
+        } catch {
+            // Ignore if permissions API query is unsupported on this browser
+        }
+    }
 
-    const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('timeout')), 2500);
-    });
+    const getPos = (options: PositionOptions): Promise<GeolocationPosition> => {
+        return new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, options);
+        });
+    };
+
+    let position: GeolocationPosition | null = null;
+    let lastError: any = null;
 
     try {
-        const position = await Promise.race([geoPromise, timeoutPromise]);
-        const userLat = position.coords.latitude;
-        const userLng = position.coords.longitude;
-        const distanceKm = calculateDistanceInKm(userLat, userLng, vendor.latitude, vendor.longitude);
-        const distanceMeters = Math.round(distanceKm * 1000);
-
-        if (distanceMeters <= maxRadiusMeters) {
-            return { verified: true, distanceMeters, reason: 'within_range' };
-        } else {
-            return { verified: false, distanceMeters, reason: 'out_of_range' };
-        }
+        // Attempt 1: Fast network/Wi-Fi triangulation with 8s timeout
+        // enableHighAccuracy: false resolves instantly (<300ms) on mobile indoors and avoids stalling on GPS satellite acquisition
+        position = await getPos({
+            enableHighAccuracy: false,
+            timeout: 8000,
+            maximumAge: 60000, // Reuse cached location from past 60s
+        });
     } catch (err: any) {
-        if (err?.message === 'timeout') {
-            return { verified: false, reason: 'timeout' };
+        lastError = err;
+        // If diner explicitly blocked/denied permission, stop immediately
+        if (err?.code === 1 || err?.code === err?.PERMISSION_DENIED) {
+            return { verified: false, reason: 'permission_denied' };
         }
-        return { verified: false, reason: 'permission_denied' };
+
+        // Attempt 2: High accuracy GPS fallback (5s)
+        try {
+            position = await getPos({
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 10000,
+            });
+        } catch (err2: any) {
+            lastError = err2;
+        }
+    }
+
+    if (!position) {
+        // ONLY classify as 'permission_denied' if error code is explicitly 1 (PERMISSION_DENIED)
+        if (lastError?.code === 1 || lastError?.code === lastError?.PERMISSION_DENIED) {
+            return { verified: false, reason: 'permission_denied' };
+        }
+        return { verified: false, reason: 'timeout' };
+    }
+
+    const userLat = position.coords.latitude;
+    const userLng = position.coords.longitude;
+    const distanceKm = calculateDistanceInKm(userLat, userLng, vLat, vLng);
+    const distanceMeters = Math.round(distanceKm * 1000);
+
+    if (distanceMeters <= maxRadiusMeters) {
+        return { verified: true, distanceMeters, reason: 'within_range' };
+    } else {
+        return { verified: false, distanceMeters, reason: 'out_of_range' };
     }
 }
 
@@ -146,6 +190,16 @@ export function getLocationBadgeInfo(
             description: 'Checking diner location...',
             badgeClass: 'bg-muted/80 text-muted-foreground border-border',
             statusType: 'unknown',
+            canRetry: false,
+        };
+    }
+
+    if (verification.reason === 'no_vendor_coords') {
+        return {
+            label: 'In-Store',
+            description: 'Restaurant coordinates not configured.',
+            badgeClass: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
+            statusType: 'verified',
             canRetry: false,
         };
     }

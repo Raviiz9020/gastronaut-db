@@ -194,9 +194,9 @@ function VendorMenuContent({
     }
   }, [allAppVendors, fetchAllVendors]);
 
-  // Non-blocking soft geofence check (300m max radius with 2.5s hard timeout)
+  // Non-blocking soft geofence check (300m max radius with indoor-friendly resolution)
   const performLocationCheck = useCallback(async () => {
-    if (!vendor || isVerifyingLocation) return;
+    if (!vendor) return;
     setIsVerifyingLocation(true);
     try {
       const res = await verifyDineInLocation(vendor, 300);
@@ -206,7 +206,7 @@ function VendorMenuContent({
     } finally {
       setIsVerifyingLocation(false);
     }
-  }, [vendor, isVerifyingLocation]);
+  }, [vendor]);
 
   useEffect(() => {
     if (isDineInMode && vendor && locationVerification === null && !isVerifyingLocation) {
@@ -1205,6 +1205,7 @@ function VendorMenuContent({
             activeTableId={activeTableId}
             locationVerified={locationVerified}
             locationVerification={locationVerification}
+            isVerifyingLocation={isVerifyingLocation}
             onRetryLocation={performLocationCheck}
             onOpenTablePicker={() => setIsUniversalPickerOpen(true)}
             onDownloadPdf={generatePdf}
