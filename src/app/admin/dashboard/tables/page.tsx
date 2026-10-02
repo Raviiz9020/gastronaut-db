@@ -27,6 +27,7 @@ import {
   Loader2,
   Store,
   Grid,
+  MapPin,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import jsPDF from 'jspdf';
@@ -41,6 +42,10 @@ export default function AdminTablesQRPage() {
   const [tableCount, setTableCount] = useState<number>(6);
   const [isUpdatingCount, setIsUpdatingCount] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
+
+  // Dine-In Geofence Radius (meters, default 300)
+  const [dineInRadius, setDineInRadius] = useState<number>(300);
+  const [isUpdatingRadius, setIsUpdatingRadius] = useState(false);
 
   // QR Data URLs cache
   const [universalQrUrl, setUniversalQrUrl] = useState<string>('');
@@ -58,12 +63,15 @@ export default function AdminTablesQRPage() {
     return `https://hyperdelivery.in/vendor/${vendorIdentifier}`;
   }, [vendorIdentifier]);
 
-  // Sync table count with vendor data
+  // Sync table count and geofence radius with vendor data
   useEffect(() => {
     if (vendor?.dineInTables) {
       setTableCount(vendor.dineInTables);
     }
-  }, [vendor?.dineInTables]);
+    if (vendor?.dineInRadiusMeters) {
+      setDineInRadius(vendor.dineInRadiusMeters);
+    }
+  }, [vendor?.dineInTables, vendor?.dineInRadiusMeters]);
 
   // Generate Universal QR
   useEffect(() => {
@@ -120,6 +128,27 @@ export default function AdminTablesQRPage() {
       });
     } finally {
       setIsUpdatingCount(false);
+    }
+  };
+
+  const handleUpdateRadius = async (newRadius: number) => {
+    const clamped = Math.max(100, Math.min(1000, newRadius));
+    setDineInRadius(clamped);
+    setIsUpdatingRadius(true);
+    try {
+      await updateDetails({ dineInRadiusMeters: clamped });
+      toast({
+        title: 'Geofence Radius Updated',
+        description: `Dine-in boundary set to ${clamped} meters.`,
+      });
+    } catch (e) {
+      toast({
+        title: 'Update failed',
+        description: 'Could not update geofence radius.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdatingRadius(false);
     }
   };
 
@@ -481,43 +510,95 @@ export default function AdminTablesQRPage() {
         </div>
       </div>
 
-      {/* Table Capacity Configuration Bar */}
-      <Card className="rounded-2xl border-primary/20 bg-card shadow-xs">
-        <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-              <Grid className="h-5 w-5" />
+      {/* Table Capacity & Geofence Configuration Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Card 1: Total Tables */}
+        <Card className="rounded-2xl border-primary/20 bg-card shadow-xs">
+          <CardContent className="p-4 sm:p-5 flex flex-col justify-between gap-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <Grid className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-foreground">Total Dine-In Tables</h3>
+                  <p className="text-xs text-muted-foreground">Number of physical tables available for ordering.</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-foreground">Total Dine-In Tables</h3>
-              <p className="text-xs text-muted-foreground">Number of physical tables available for customer self-ordering.</p>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 rounded-full"
-              disabled={tableCount <= 1 || isUpdatingCount}
-              onClick={() => handleUpdateTableCount(tableCount - 1)}
-            >
-              <Minus className="h-3.5 w-3.5" />
-            </Button>
-            <span className="w-10 text-center font-bold text-base">{tableCount}</span>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 rounded-full"
-              disabled={tableCount >= 50 || isUpdatingCount}
-              onClick={() => handleUpdateTableCount(tableCount + 1)}
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
-            <span className="text-xs text-muted-foreground pl-1">tables</span>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="flex items-center gap-2 self-start sm:self-auto pt-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-full"
+                disabled={tableCount <= 1 || isUpdatingCount}
+                onClick={() => handleUpdateTableCount(tableCount - 1)}
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </Button>
+              <span className="w-10 text-center font-bold text-base">{tableCount}</span>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-full"
+                disabled={tableCount >= 50 || isUpdatingCount}
+                onClick={() => handleUpdateTableCount(tableCount + 1)}
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+              <span className="text-xs text-muted-foreground pl-1">tables configured</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Card 2: Dine-In Geofence Radius */}
+        <Card className="rounded-2xl border-primary/20 bg-card shadow-xs">
+          <CardContent className="p-4 sm:p-5 flex flex-col justify-between gap-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                  <MapPin className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-foreground">Geofence Boundary</h3>
+                  <p className="text-xs text-muted-foreground line-clamp-1">Anti-spoof soft verification radius.</p>
+                </div>
+              </div>
+              <Badge variant="outline" className="text-xs font-black px-2.5 py-0.5 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 shrink-0">
+                {dineInRadius}m
+              </Badge>
+            </div>
+
+            {/* Presets */}
+            <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+              {[
+                { label: '150m (Compact)', val: 150 },
+                { label: '300m (Standard)', val: 300 },
+                { label: '500m (Resort)', val: 500 },
+              ].map((preset) => {
+                const isActive = dineInRadius === preset.val;
+                return (
+                  <button
+                    key={preset.val}
+                    type="button"
+                    disabled={isUpdatingRadius}
+                    onClick={() => handleUpdateRadius(preset.val)}
+                    className={cn(
+                      "text-[11px] font-bold px-2.5 py-1 rounded-full border transition-all cursor-pointer",
+                      isActive
+                        ? "bg-primary text-primary-foreground border-primary shadow-2xs"
+                        : "bg-muted/60 text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Main Mode Selector Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full space-y-6">

@@ -70,7 +70,7 @@ export interface DineInLocationVerification {
  * @param maxRadiusMeters Maximum allowed distance in meters (default: 300)
  */
 export async function verifyDineInLocation(
-    vendor: { latitude?: number; longitude?: number },
+    vendor: { latitude?: number; longitude?: number; dineInRadiusMeters?: number },
     maxRadiusMeters: number = 300
 ): Promise<DineInLocationVerification> {
     const vLat = Number(vendor?.latitude);
@@ -84,6 +84,10 @@ export async function verifyDineInLocation(
     ) {
         return { verified: true, reason: 'no_vendor_coords' };
     }
+
+    // Dynamic geofence radius: clamps to minimum 100m to protect against indoor mobile GPS variance
+    const rawRadius = Number(vendor?.dineInRadiusMeters) || maxRadiusMeters || 300;
+    const effectiveRadius = Math.max(100, Math.min(1000, rawRadius));
 
     if (typeof window === 'undefined' || !navigator.geolocation) {
         return { verified: false, reason: 'unsupported' };
@@ -150,7 +154,7 @@ export async function verifyDineInLocation(
     const distanceKm = calculateDistanceInKm(userLat, userLng, vLat, vLng);
     const distanceMeters = Math.round(distanceKm * 1000);
 
-    if (distanceMeters <= maxRadiusMeters) {
+    if (distanceMeters <= effectiveRadius) {
         return { verified: true, distanceMeters, reason: 'within_range' };
     } else {
         return { verified: false, distanceMeters, reason: 'out_of_range' };

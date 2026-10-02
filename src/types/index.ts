@@ -205,6 +205,7 @@ export interface Vendor {
     longitude?: number;
     deliveryRadius?: number; // in km
     freeDeliveryDistanceKm?: number; // in km - free delivery radius funded/fulfilled by vendor
+    dineInRadiusMeters?: number; // in meters - Dine-In soft geofence boundary (default: 300m)
 }
 
 export interface SuperAdmin {

@@ -199,7 +199,7 @@ function VendorMenuContent({
     if (!vendor) return;
     setIsVerifyingLocation(true);
     try {
-      const res = await verifyDineInLocation(vendor, 300);
+      const res = await verifyDineInLocation(vendor, vendor.dineInRadiusMeters || 300);
       setLocationVerification(res);
     } catch {
       setLocationVerification({ verified: false, reason: 'unsupported' });
