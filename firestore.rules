@@ -126,25 +126,34 @@ match /customers/{userId} {
       allow read: if true;
       allow get, list: if true;
       
-      // allow create, update: if isSignedIn() || isSuperAdmin();
-      allow create: if isSignedIn() && (request.auth.uid == request.resource.data.vendorUsername || isSuperAdmin());
-           
-      //allow update: if isSignedIn() || isSuperAdmin();
+      allow create: if isSignedIn() && (
+        request.auth.uid == request.resource.data.vendorUsername ||
+        isVendor() ||
+        isSuperAdmin()
+      );
       
-     // Allow updates for rating OR for owner edits.
+      // Allow updates for customer ratings OR vendor edits
       allow update: if (
-        // Allow a customer to submit/update a rating
+        // 1. Allow customer to submit/update rating (only rating fields affected)
         (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totalRatingSum', 'ratingCount']))
         ||
-        // Allow the vendor owner to edit details (but not ratings)
-        (isSignedIn() && isVendor() && resource.data.vendorUsername == request.auth.uid &&
-          request.resource.data.totalRatingSum == resource.data.totalRatingSum &&
-          request.resource.data.ratingCount == resource.data.ratingCount)
+        // 2. Allow vendor owner to edit dish details (cannot alter ratings)
+        (isSignedIn() && (
+          request.auth.uid == resource.data.vendorUsername ||
+          isVendor() ||
+          (exists(/databases/$(database)/documents/vendors/$(request.auth.uid)) && 
+           get(/databases/$(database)/documents/vendors/$(request.auth.uid)).data.shopName == resource.data.shopName)
+        ) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['totalRatingSum', 'ratingCount']))
         ||
+        // 3. Super admin full access
         isSuperAdmin()
       );
 
-      allow delete: if isSignedIn() && (request.auth.uid == resource.data.vendorUsername || isSuperAdmin());
+      allow delete: if isSignedIn() && (
+        request.auth.uid == resource.data.vendorUsername ||
+        isVendor() ||
+        isSuperAdmin()
+      );
     }
     
     // Menu item rules

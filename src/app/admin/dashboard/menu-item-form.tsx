@@ -515,20 +515,22 @@ export default function MenuItemForm({ isOpen, onOpenChange, menuItem }: MenuIte
         }));
     }
 
-    // Similar mapping for simple items
-    if (finalValues.discountPrice && finalValues.discountPrice > 0 && finalValues.discountPrice < finalValues.price) {
+    // Discount activation mapping
+    if (finalValues.customizations && finalValues.customizations.length > 0) {
+      // For items with variations: activate discount if at least one variation has a sale price, otherwise turn off
+      finalValues.isDiscountActive = hasAnyVariationDiscount;
+    } else {
+      // For simple items: activate discount if a valid sale price was entered, otherwise turn off
+      if (finalValues.discountPrice && finalValues.discountPrice > 0 && finalValues.discountPrice < finalValues.price) {
         const regularPrice = finalValues.price;
         const salePrice = finalValues.discountPrice;
         finalValues.price = salePrice;
         finalValues.discountPrice = regularPrice;
-    } else {
+        finalValues.isDiscountActive = true;
+      } else {
         finalValues.discountPrice = null;
-    }
-
-    // If customizations are present, but none have a valid discount, 
-    // automatically deactivate the discount for this item.
-    if (finalValues.customizations && finalValues.customizations.length > 0 && !hasAnyVariationDiscount) {
         finalValues.isDiscountActive = false;
+      }
     }
 
     try {
