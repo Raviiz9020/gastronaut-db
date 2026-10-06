@@ -51,17 +51,70 @@ const sendOrderEmailFlow = ai.defineFlow(
             },
         });
 
-        const subject = `New Order Received: #${order.orderId}`;
+        const displayOrderId = order.displayId || order.orderId;
+        const subject = `New Order Received: #${displayOrderId}`;
 
-        const itemsList = order.items.map((item: any) =>
-            `<tr style="border-bottom: 1px solid #eee;">
-            <td style="padding: 10px 0;">${item.quantity}x ${item.name}</td>
-            <td style="padding: 10px 0; text-align: right;">₹${(item.price * item.quantity).toFixed(2)}</td>
-         </tr>`
-        ).join('');
+        const itemsList = order.items.map((item: any) => {
+            let customizationsHtml = '';
+            if (item.customizationDetails && Object.keys(item.customizationDetails).length > 0) {
+                const details = Object.entries(item.customizationDetails).map(([custId, value]) => {
+                    const group = item.customizations?.find((c: any) => c.id === custId);
+                    if (!group) return null;
+                    const selectedNames = (Array.isArray(value) ? value : [value])
+                        .map((optId: string) => group.options.find((o: any) => o.id === optId)?.name)
+                        .filter(Boolean);
+                    if (selectedNames.length === 0) return null;
+                    return `<div style="font-size: 11px; color: #666; margin-left: 10px;">• ${group.name}: ${selectedNames.join(', ')}</div>`;
+                }).filter(Boolean).join('');
+                if (details) {
+                    customizationsHtml = `<div style="margin-top: 5px;">${details}</div>`;
+                }
+            } else if (item.customizations && item.customizations.length > 0) {
+                const details = item.customizations.map((group: any) => {
+                    const names = group.options.map((o: any) => o.name).join(', ');
+                    return `<div style="font-size: 11px; color: #666; margin-left: 10px;">• ${group.name}: ${names}</div>`;
+                }).join('');
+                customizationsHtml = `<div style="margin-top: 5px;">${details}</div>`;
+            }
+
+            return `<tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 10px 0;">
+                    <div style="font-weight: bold;">${item.quantity}x ${item.name}</div>
+                    ${customizationsHtml}
+                </td>
+                <td style="padding: 10px 0; text-align: right; vertical-align: top;">₹${(item.price * item.quantity).toFixed(2)}</td>
+             </tr>`;
+        }).join('');
 
         const contact = order.customer.contact;
         const maskedContact = contact && contact.length > 4 ? 'x'.repeat(contact.length - 4) + contact.slice(-4) : contact;
+
+        // Payment mode & status clarification for vendor
+        let paymentModeLabel = 'Online (Prepaid)';
+        if (order.paymentMethod === 'COD') {
+            paymentModeLabel = 'Cash on Delivery (COD)';
+        } else if (order.paymentMethod === 'Pay at Counter') {
+            paymentModeLabel = 'Pay at Counter';
+        } else if (order.paymentGateway === 'Razorpay' || order.paymentMethod === 'Pay Now' || order.paymentMethod === 'UPI') {
+            paymentModeLabel = 'Online (Razorpay / UPI)';
+        } else if (order.paymentMethod) {
+            paymentModeLabel = order.paymentMethod;
+        }
+
+        const isPaid = (
+            order.paymentStatus === 'PAID' || 
+            order.paymentStatus === 'CONFIRMED BY VENDOR' || 
+            order.paymentStatus === 'CONFIRMED BY RIDER' || 
+            ((order.paymentMethod === 'Pay Now' || order.paymentMethod === 'UPI' || order.paymentGateway === 'Razorpay') && order.paymentStatus !== 'PENDING')
+        );
+        const paymentStatusLabel = isPaid 
+            ? 'Paid Online (Do NOT collect cash)' 
+            : (order.paymentMethod === 'Pay at Counter' ? 'Pay at Counter' : 'Pending - Collect Cash on Delivery');
+        const paymentStatusColor = isPaid ? '#16a34a' : '#d97706';
+
+        const paymentRefHtml = (order.razorpayPaymentId || order.razorpayOrderId) ? `
+            <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Payment Reference:</strong> ${order.razorpayPaymentId || order.razorpayOrderId}</p>
+        ` : '';
 
         const customNotesHtml = order.customNotes ? `
         <div style="margin-top: 20px; padding: 15px; background-color: #fffbe6; border: 1px solid #ffe58f; border-radius: 8px;">
@@ -111,12 +164,25 @@ const sendOrderEmailFlow = ai.defineFlow(
       </tr>
     `;
 
-        const discountHtml = rewardsRedeemed ? `
-      <tr style="font-weight: normal; color: #cf1322;">
-        <td style="padding: 5px 0;">Rewards Discount</td>
+        const discountLabel = rewardsRedeemed ? 'Rewards Discount' : 'Discount';
+        const discountHtml = order.discountAmount && order.discountAmount > 0 ? `
+      <tr style="font-weight: normal; color: #08979c;">
+        <td style="padding: 5px 0;">${discountLabel}</td>
         <td style="padding: 5px 0; text-align: right;">- ₹${order.discountAmount.toFixed(2)}</td>
       </tr>
     ` : '';
+
+        const totalRowHtml = isPaid ? `
+      <tr style="border-top: 2px solid #ddd;">
+        <td style="padding-top: 15px; font-weight: bold; font-size: 18px; color: #333;">Total Paid (Online)</td>
+        <td style="padding-top: 15px; font-weight: bold; font-size: 18px; text-align: right; color: #8B5CF6;">₹${(order.amountPaid || order.totalPrice).toFixed(2)}</td>
+      </tr>
+    ` : `
+      <tr style="border-top: 2px solid #ddd;">
+        <td style="padding-top: 15px; font-weight: bold; font-size: 18px; color: #333;">Total to Collect (COD)</td>
+        <td style="padding-top: 15px; font-weight: bold; font-size: 18px; text-align: right; color: #d97706;">₹${order.totalPrice.toFixed(2)}</td>
+      </tr>
+    `;
 
 
         const body = `
@@ -137,12 +203,14 @@ const sendOrderEmailFlow = ai.defineFlow(
                                     
                                     <div style="margin: 20px 0; padding: 20px; background-color: #f9f9f9; border-radius: 8px;">
                                     <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 16px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 10px;">Customer Details</h3>
-                                    <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Order ID:</strong> ${order.orderId}</p>
+                                    <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Order ID:</strong> #${displayOrderId}</p>
                                     <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Name:</strong> ${order.customer.name}</p>
                                     <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Contact:</strong> ${maskedContact}</p>
                                     <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Address:</strong> ${order.customer.address}</p>
                                     <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Delivery Type:</strong> ${order.deliveryOption || 'Home Delivery'}</p>
-                                    <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Payment Mode:</strong> ${order.paymentMethod || 'Online'}</p>
+                                    <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Payment Mode:</strong> ${paymentModeLabel}</p>
+                                    <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Payment Status:</strong> <span style="font-weight: bold; color: ${paymentStatusColor};">${paymentStatusLabel}</span></p>
+                                    ${paymentRefHtml}
                                     </div>
                                     
                                     ${customNotesHtml}
@@ -164,10 +232,7 @@ const sendOrderEmailFlow = ai.defineFlow(
                                             ${deliveryHtml}
                                             ${platformFeeHtml}
                                             ${discountHtml}
-                                            <tr style="border-top: 2px solid #ddd;">
-                                            <td style="padding-top: 15px; font-weight: bold; font-size: 18px; color: #333;">Total Paid</td>
-                                            <td style="padding-top: 15px; font-weight: bold; font-size: 18px; text-align: right; color: #8B5CF6;">₹${(order.amountPaid || order.totalPrice).toFixed(2)}</td>
-                                            </tr>
+                                            ${totalRowHtml}
                                         </tfoot>
                                         </table>
                                     </div>

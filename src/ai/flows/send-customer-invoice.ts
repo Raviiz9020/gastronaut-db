@@ -51,7 +51,8 @@ const sendCustomerInvoiceFlow = ai.defineFlow(
         },
     });
 
-    const subject = `Your HyperDelivery Order Confirmation: #${order.orderId}`;
+    const displayOrderId = order.displayId || order.orderId;
+    const subject = `Your HyperDelivery Order Confirmation: #${displayOrderId}`;
     
     const itemsList = order.items.map((item: any) => {
         let customizationsHtml = '';
@@ -88,6 +89,31 @@ const sendCustomerInvoiceFlow = ai.defineFlow(
     const shopName = order.items[0]?.shopName || 'the shop';
     const contact = order.customer.contact;
     const maskedContact = contact && contact.length > 4 ? 'x'.repeat(contact.length - 4) + contact.slice(-4) : contact;
+    
+    // Payment mode & status clarification
+    let paymentModeLabel = 'Online (Prepaid)';
+    if (order.paymentMethod === 'COD') {
+        paymentModeLabel = 'Cash on Delivery (COD)';
+    } else if (order.paymentMethod === 'Pay at Counter') {
+        paymentModeLabel = 'Pay at Counter';
+    } else if (order.paymentGateway === 'Razorpay' || order.paymentMethod === 'Pay Now' || order.paymentMethod === 'UPI') {
+        paymentModeLabel = 'Online (Razorpay / UPI)';
+    } else if (order.paymentMethod) {
+        paymentModeLabel = order.paymentMethod;
+    }
+
+    const isPaid = (
+        order.paymentStatus === 'PAID' || 
+        order.paymentStatus === 'CONFIRMED BY VENDOR' || 
+        order.paymentStatus === 'CONFIRMED BY RIDER' || 
+        ((order.paymentMethod === 'Pay Now' || order.paymentMethod === 'UPI' || order.paymentGateway === 'Razorpay') && order.paymentStatus !== 'PENDING')
+    );
+    const paymentStatusLabel = isPaid ? 'Paid' : 'Pending (Pay on Delivery)';
+    const paymentStatusColor = isPaid ? '#16a34a' : '#d97706';
+
+    const paymentRefHtml = (order.razorpayPaymentId || order.razorpayOrderId) ? `
+        <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Payment Reference:</strong> ${order.razorpayPaymentId || order.razorpayOrderId}</p>
+    ` : '';
     
     const customNotesHtml = order.customNotes ? `
         <div style="margin-top: 20px; padding: 15px; background-color: #fffbe6; border: 1px solid #ffe58f; border-radius: 8px;">
@@ -130,6 +156,17 @@ const sendCustomerInvoiceFlow = ai.defineFlow(
         </tr>
     ` : '';
 
+    const totalRowHtml = isPaid ? `
+        <tr>
+            <td style="padding-top: 15px; font-weight: bold; font-size: 18px; color: #333; border-top: 2px solid #ddd;">Total Paid</td>
+            <td style="padding-top: 15px; font-weight: bold; font-size: 18px; text-align: right; color: #8B5CF6; border-top: 2px solid #ddd;">₹${(order.amountPaid || order.totalPrice).toFixed(2)}</td>
+        </tr>
+    ` : `
+        <tr>
+            <td style="padding-top: 15px; font-weight: bold; font-size: 18px; color: #333; border-top: 2px solid #ddd;">Total to Pay (COD)</td>
+            <td style="padding-top: 15px; font-weight: bold; font-size: 18px; text-align: right; color: #d97706; border-top: 2px solid #ddd;">₹${order.totalPrice.toFixed(2)}</td>
+        </tr>
+    `;
 
     const body = `
       <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px;">
@@ -149,12 +186,14 @@ const sendCustomerInvoiceFlow = ai.defineFlow(
                                     
                                     <div style="margin: 20px 0; padding: 20px; background-color: #f9f9f9; border-radius: 8px;">
                                     <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 16px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 10px;">Order & Delivery Details</h3>
-                                    <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Order ID:</strong> ${order.orderId}</p>
+                                    <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Order ID:</strong> #${displayOrderId}</p>
                                     <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">From:</strong> ${shopName}</p>
                                     <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Delivery To:</strong> ${order.customer.name}</p>
                                     <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Contact:</strong> ${maskedContact}</p>
                                     <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Address:</strong> ${order.customer.address}</p>
-                                    <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Payment Mode:</strong> ${order.paymentMethod || 'Online'}</p>
+                                    <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Payment Mode:</strong> ${paymentModeLabel}</p>
+                                    <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Payment Status:</strong> <span style="font-weight: bold; color: ${paymentStatusColor};">${paymentStatusLabel}</span></p>
+                                    ${paymentRefHtml}
                                     </div>
                                     
                                     ${customNotesHtml}
@@ -179,10 +218,7 @@ const sendCustomerInvoiceFlow = ai.defineFlow(
                                             ${deliveryHtml}
                                             ${platformFeeHtml}
                                             ${discountHtml}
-                                            <tr>
-                                            <td style="padding-top: 15px; font-weight: bold; font-size: 18px; color: #333; border-top: 2px solid #ddd;">Total Paid</td>
-                                            <td style="padding-top: 15px; font-weight: bold; font-size: 18px; text-align: right; color: #8B5CF6; border-top: 2px solid #ddd;">₹${(order.amountPaid || order.totalPrice).toFixed(2)}</td>
-                                            </tr>
+                                            ${totalRowHtml}
                                         </tfoot>
                                         </table>
                                     </div>
@@ -192,12 +228,6 @@ const sendCustomerInvoiceFlow = ai.defineFlow(
                                     <div style="text-align: center; margin-top: 30px;">
                                     <p style="color: #555;">You can track your order status from your account page.</p>
                                     </div>
-
-                                    <div style="margin-top: 20px; padding: 15px; background-color: #e6f7ff; border: 1px solid #91d5ff; border-radius: 16px; text-align: center;">
-                                        <h4 style="margin: 0; font-weight: bold; color: #0050b3;">Advance Payment Information</h4>
-                                        <p style="margin: 5px 0 0; color: #0060d1;">If you wish to make an advance payment for this order you can do it from your 'Track Order' page. just open QR code and long press the QR code and choose your UPI app</p>
-                                    </div>
-
                                 </div>
                                 <div style="background-color: #f4f4f4; text-align: center; padding: 15px; font-size: 12px; color: #888;">
                                     &copy; ${new Date().getFullYear()} HyperDelivery. All rights reserved.
