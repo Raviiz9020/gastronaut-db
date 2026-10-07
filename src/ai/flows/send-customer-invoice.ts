@@ -115,6 +115,37 @@ const sendCustomerInvoiceFlow = ai.defineFlow(
         <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Payment Reference:</strong> ${order.razorpayPaymentId || order.razorpayOrderId}</p>
     ` : '';
     
+    // Delivery / Pickup / Dining context
+    const deliveryOption = order.deliveryOption || 'Home Delivery';
+    let fulfillmentDetailsHtml = '';
+    let detailsSectionTitle = 'Order & Delivery Details';
+
+    if (deliveryOption === 'Self Pickup') {
+        detailsSectionTitle = 'Order & Pickup Details';
+        fulfillmentDetailsHtml = `
+            <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Order Type:</strong> Self Pickup</p>
+            <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Pickup Location:</strong> ${shopName}${order.vendorAddress ? ` (${order.vendorAddress})` : ''}</p>
+            <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Pickup Person:</strong> ${order.customer.name}</p>
+            <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Contact:</strong> ${maskedContact}</p>
+        `;
+    } else if (deliveryOption === 'Dine-In') {
+        detailsSectionTitle = 'Order & Dining Details';
+        fulfillmentDetailsHtml = `
+            <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Order Type:</strong> Dine-In</p>
+            <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Restaurant:</strong> ${shopName}</p>
+            <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Table:</strong> Table ${order.tableId || 'Dine-In'}</p>
+            ${order.customer?.name && !order.customer.name.startsWith('Table') ? `<p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Customer:</strong> ${order.customer.name}</p>` : ''}
+        `;
+    } else {
+        fulfillmentDetailsHtml = `
+            <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Delivery Type:</strong> Home Delivery</p>
+            <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">From:</strong> ${shopName}</p>
+            <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Delivery To:</strong> ${order.customer.name}</p>
+            <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Contact:</strong> ${maskedContact}</p>
+            <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Address:</strong> ${order.customer.address}</p>
+        `;
+    }
+
     const customNotesHtml = order.customNotes ? `
         <div style="margin-top: 20px; padding: 15px; background-color: #fffbe6; border: 1px solid #ffe58f; border-radius: 8px;">
             <h4 style="margin: 0 0 5px 0; font-weight: bold; color: #d46b08;">Your Special Instructions:</h4>
@@ -185,12 +216,9 @@ const sendCustomerInvoiceFlow = ai.defineFlow(
                                     <p style="color: #555;">We've received your order and are getting it ready for you. Here is a summary of your purchase.</p>
                                     
                                     <div style="margin: 20px 0; padding: 20px; background-color: #f9f9f9; border-radius: 8px;">
-                                    <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 16px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 10px;">Order & Delivery Details</h3>
+                                    <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 16px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 10px;">${detailsSectionTitle}</h3>
                                     <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Order ID:</strong> #${displayOrderId}</p>
-                                    <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">From:</strong> ${shopName}</p>
-                                    <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Delivery To:</strong> ${order.customer.name}</p>
-                                    <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Contact:</strong> ${maskedContact}</p>
-                                    <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Address:</strong> ${order.customer.address}</p>
+                                    ${fulfillmentDetailsHtml}
                                     <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Payment Mode:</strong> ${paymentModeLabel}</p>
                                     <p style="margin: 5px 0; color: #555;"><strong style="color: darkblue;">Payment Status:</strong> <span style="font-weight: bold; color: ${paymentStatusColor};">${paymentStatusLabel}</span></p>
                                     ${paymentRefHtml}
