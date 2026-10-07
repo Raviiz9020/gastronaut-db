@@ -68,7 +68,50 @@ const sendTelegramNotificationFlow = ai.defineFlow(
       }
 
       // 3. Format the message
-      const itemsList = (items as CartItem[]).map(item => `  - ${item.quantity}x ${item.name}`).join('\n');
+      const itemsList = (items as CartItem[]).map((item: any) => {
+        const customLines: string[] = [];
+
+        // Case 1: Customization groups with details
+        if (item.customizationDetails && Object.keys(item.customizationDetails).length > 0 && Array.isArray(item.customizations) && item.customizations.length > 0) {
+          item.customizations.forEach((group: any) => {
+            const selectedVal = item.customizationDetails[group.id];
+            if (!selectedVal) return;
+            const selectedIds = Array.isArray(selectedVal) ? selectedVal : [selectedVal];
+            const matchingOpts = (group.options || []).filter((o: any) => selectedIds.includes(o.id));
+            const names = matchingOpts.map((o: any) => o.name).filter(Boolean).join(', ');
+            if (names) {
+              customLines.push(`    ▫️ ${group.name}: ${names}`);
+            }
+          });
+        }
+
+        // Case 2: Pre-filtered customizations array
+        if (customLines.length === 0 && Array.isArray(item.customizations) && item.customizations.length > 0) {
+          item.customizations.forEach((group: any) => {
+            const names = (group.options || []).map((o: any) => o.name).filter(Boolean).join(', ');
+            if (names) {
+              customLines.push(`    ▫️ ${group.name}: ${names}`);
+            }
+          });
+        }
+
+        // Case 3: Key-value customizationDetails
+        if (customLines.length === 0 && item.customizationDetails && Object.keys(item.customizationDetails).length > 0) {
+          Object.entries(item.customizationDetails).forEach(([k, v]) => {
+            const val = Array.isArray(v) ? v.join(', ') : v;
+            customLines.push(`    ▫️ ${k}: ${val}`);
+          });
+        }
+
+        // Case 4: selectedOptionsText fallback
+        if (customLines.length === 0 && item.selectedOptionsText) {
+          customLines.push(`    ▫️ ${item.selectedOptionsText}`);
+        }
+
+        const customText = customLines.length > 0 ? '\n' + customLines.join('\n') : '';
+        return `• ${item.quantity}x *${item.name}*${customText}`;
+      }).join('\n');
+
       const deliveryInfo = `*Delivery Type:* ${deliveryOption}`;
       const addressInfo = deliveryOption === 'Home Delivery' ? `\n*Address:* ${customerAddress}` : '';
       

@@ -261,8 +261,8 @@ export default function CheckoutPage() {
             }
 
             // 2. Online Payment: Call Cloud Function FIRST (do NOT create order yet)
-            const createOrderUrl = process.env.NEXT_PUBLIC_CREATE_ORDER_URL || 'https://createrazorpayorder-fxqfekas3a-uc.a.run.app';
-            const verifyPaymentUrl = process.env.NEXT_PUBLIC_VERIFY_PAYMENT_URL || 'https://verifyrazorpaypayment-fxqfekas3a-uc.a.run.app';
+            const createOrderUrl = process.env.NEXT_PUBLIC_CREATE_ORDER_URL || 'https://asia-south1-hyperdelivery-c381b.cloudfunctions.net/createRazorpayOrder';
+            const verifyPaymentUrl = process.env.NEXT_PUBLIC_VERIFY_PAYMENT_URL || 'https://asia-south1-hyperdelivery-c381b.cloudfunctions.net/verifyRazorpayPayment';
             const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_YOUR_KEY_ID';
             const tempReceipt = `rcpt_${Date.now()}`;
 
