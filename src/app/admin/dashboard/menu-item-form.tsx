@@ -35,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Upload, Plus, Trash2, GripVertical, Settings2, HelpCircle } from 'lucide-react';
+import { Loader2, Upload, Plus, Trash2, GripVertical, Settings2, HelpCircle, Sparkles } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -56,6 +56,7 @@ const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   description: z.string().optional(),
   price: z.coerce.number().min(0, { message: 'Price must be 0 or greater.' }),
+  dineInPrice: z.preprocess((val) => (val === '' || val === null || val === undefined ? undefined : Number(val)), z.number().min(0).optional()),
   discountPrice: z.preprocess((val) => (val === '' || val === null || val === undefined ? undefined : Number(val)), z.number().optional()),
   category: z.string().min(1, { message: 'Please select a category.' }),
   image: z.string().nullable(),
@@ -72,6 +73,7 @@ const formSchema = z.object({
       id: z.string(),
       name: z.string().min(1, 'Option name is required'),
       price: z.coerce.number().min(0),
+      dineInPrice: z.preprocess((val) => (val === '' || val === null || val === undefined ? undefined : Number(val)), z.number().min(0).optional()),
       originalPrice: z.preprocess((val) => (val === '' || val === null || val === undefined ? undefined : Number(val)), z.number().optional()),
       isAvailable: z.boolean().default(true),
       stock: z.preprocess((val) => (val === '' || val === null || val === undefined ? undefined : Number(val)), z.number().optional())
@@ -88,7 +90,23 @@ const formSchema = z.object({
   path: ['price'],
 });
 
-const CustomizationGroupFields = ({ control, index, removeGroup, isMandatory, isInventoryEnabled }: { control: any, index: number, removeGroup: () => void, isMandatory: boolean, isInventoryEnabled: boolean }) => {
+const CustomizationGroupFields = ({ 
+  control, 
+  index, 
+  removeGroup, 
+  isMandatory, 
+  isInventoryEnabled,
+  isDineInEnabled,
+  setValue
+}: { 
+  control: any, 
+  index: number, 
+  removeGroup: () => void, 
+  isMandatory: boolean, 
+  isInventoryEnabled: boolean,
+  isDineInEnabled: boolean,
+  setValue: any
+}) => {
   const { fields, append, remove } = useFieldArray({
     control,
     name: `customizations.${index}.options`
@@ -177,104 +195,59 @@ const CustomizationGroupFields = ({ control, index, removeGroup, isMandatory, is
                Options
                <HelpCircle className="h-3 w-3" />
             </Label>
-            <Button type="button" variant="outline" size="sm" onClick={() => append({ id: Math.random().toString(36).substr(2, 9), name: '', price: 0, originalPrice: undefined, stock: undefined, isAvailable: true })} className="h-7 text-[10px] px-2">
-              <Plus className="h-3 w-3 mr-1" /> Add Option
-            </Button>
+            <div className="flex items-center gap-1.5">
+              {isDineInEnabled && (
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => {
+                    fields.forEach((_, optIdx) => {
+                      const optPrice = Number(control._formValues?.customizations?.[index]?.options?.[optIdx]?.price) || 0;
+                      if (optPrice > 0) {
+                        setValue(`customizations.${index}.options.${optIdx}.dineInPrice`, Math.round(optPrice * 0.9), { shouldDirty: true });
+                      }
+                    });
+                  }} 
+                  className="h-7 text-[10px] px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 font-medium"
+                >
+                  <Sparkles className="h-3 w-3 mr-1" /> Auto Dine-In (-10%)
+                </Button>
+              )}
+              <Button type="button" variant="outline" size="sm" onClick={() => append({ id: Math.random().toString(36).substr(2, 9), name: '', price: 0, dineInPrice: undefined, originalPrice: undefined, stock: undefined, isAvailable: true })} className="h-7 text-[10px] px-2">
+                <Plus className="h-3 w-3 mr-1" /> Add Option
+              </Button>
+            </div>
           </div>
           
-          <div className="space-y-2 mt-1">
-            {/* Optimized Column headers for option fields */}
-            <div className="hidden md:grid grid-cols-12 gap-2 px-3 pb-1">
-              <div className="col-span-4">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Option Name</span>
-              </div>
-              <div className="col-span-2">
-                <span className="text-[9px] font-bold text-primary uppercase tracking-widest">Price</span>
-              </div>
-              <div className="col-span-2">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Sale</span>
-              </div>
-              {isInventoryEnabled && (
-                <div className="col-span-2">
-                  <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest">Stock</span>
-                </div>
-              )}
-              <div className="col-span-2 text-right pr-4">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Status</span>
-              </div>
-            </div>
+          <div className="space-y-3 mt-1">
             {fields.map((option, optIndex) => (
-              <div key={option.id} className="grid grid-cols-1 md:grid-cols-12 gap-1.5 items-center bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm relative group transition-all hover:border-slate-200">
-                 <div className="col-span-12 md:col-span-4">
+              <div 
+                key={option.id} 
+                className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-sm space-y-2.5 transition-all hover:border-slate-300"
+              >
+                {/* Row 1: Option Name & Actions */}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
                     <FormField
                       control={control}
                       name={`customizations.${index}.options.${optIndex}.name`}
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="space-y-0">
                           <FormControl>
-                            <Input placeholder="Option Name" {...field} className="h-8 text-[11px] border-slate-200 bg-slate-50 focus-visible:bg-white transition-colors shadow-none rounded-xl" />
+                            <Input 
+                              placeholder="Option Name (e.g., Half Kg)" 
+                              {...field} 
+                              className="h-9 text-xs border-slate-200 bg-slate-50 focus-visible:bg-white transition-colors shadow-none rounded-xl font-medium" 
+                            />
                           </FormControl>
                           <FormMessage className="text-[9px]" />
                         </FormItem>
                       )}
                     />
-                 </div>
-                 <div className="col-span-4 md:col-span-2">
-                    <FormField
-                      control={control}
-                      name={`customizations.${index}.options.${optIndex}.price`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <Input type="number" step="1" {...field} className="h-8 text-[11px] px-2 border-primary/20 bg-primary/5 text-primary focus-visible:ring-primary/30 font-bold shadow-none placeholder:text-primary/40 rounded-xl" placeholder="₹ Price" />
-                          </FormControl>
-                          <FormMessage className="text-[9px]" />
-                        </FormItem>
-                      )}
-                    />
-                 </div>
-                 <div className="col-span-4 md:col-span-2">
-                    <FormField
-                      control={control}
-                      name={`customizations.${index}.options.${optIndex}.originalPrice`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <Input type="number" step="1" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} className="h-8 text-[11px] px-2 border-slate-200 bg-slate-50 focus-visible:bg-white transition-colors shadow-none placeholder:text-slate-400 rounded-xl" placeholder="₹ Sale" />
-                          </FormControl>
-                          <FormMessage className="text-[9px]" />
-                        </FormItem>
-                      )}
-                    />
-                 </div>
-                  {isInventoryEnabled && (
-                    <div className="col-span-4 md:col-span-2">
-                       <FormField
-                         control={control}
-                         name={`customizations.${index}.options.${optIndex}.stock`}
-                         render={({ field }) => (
-                           <FormItem>
-                             <FormControl>
-                               <Input 
-                                 type="number" 
-                                 step="1"
-                                 {...field}
-                                 value={field.value === undefined || field.value === null ? '' : field.value} 
-                                 onChange={e => {
-                                   const val = e.target.value;
-                                   field.onChange(val === '' ? null : Number(val));
-                                 }} 
-                                 className="h-8 text-[11px] px-2 border-blue-200 bg-blue-50 focus-visible:bg-white transition-colors shadow-none text-blue-700 font-bold rounded-xl" 
-                                 placeholder="Stock"
-                               />
-                             </FormControl>
-                             <FormMessage className="text-[9px]" />
-                           </FormItem>
-                         )}
-                       />
-                    </div>
-                  )}
-                 <div className="col-span-12 md:col-span-2 flex items-center justify-end gap-1 px-1">
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0 bg-slate-50 p-1 rounded-xl border border-slate-100">
                     <FormField
                       control={control}
                       name={`customizations.${index}.options.${optIndex}.isAvailable`}
@@ -290,10 +263,134 @@ const CustomizationGroupFields = ({ control, index, removeGroup, isMandatory, is
                         </FormItem>
                       )}
                     />
-                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(optIndex)} className="text-slate-300 hover:text-red-500 hover:bg-red-50 h-7 w-7 rounded-full transition-colors" disabled={fields.length <= 1}>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => remove(optIndex)} 
+                      className="text-slate-400 hover:text-red-500 hover:bg-red-50 h-7 w-7 rounded-lg transition-colors" 
+                      disabled={fields.length <= 1}
+                    >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
-                 </div>
+                  </div>
+                </div>
+
+                {/* Row 2: 2x2 Grid of Price / Sale / Dine-In / Stock */}
+                <div className="grid grid-cols-2 gap-2 pt-0.5">
+                  {/* Box 1: Delivery Price */}
+                  <div>
+                    <span className="text-[10px] font-bold text-primary uppercase tracking-wider block mb-1">
+                      Price (Delivery)
+                    </span>
+                    <FormField
+                      control={control}
+                      name={`customizations.${index}.options.${optIndex}.price`}
+                      render={({ field }) => (
+                        <FormItem className="space-y-0">
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              step="1" 
+                              {...field} 
+                              className="h-9 text-xs px-2.5 border-primary/20 bg-primary/5 text-primary focus-visible:ring-primary/30 font-bold shadow-none placeholder:text-primary/40 rounded-xl" 
+                              placeholder="₹ Price" 
+                            />
+                          </FormControl>
+                          <FormMessage className="text-[9px]" />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Box 2: Sale Price */}
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                      Sale Price
+                    </span>
+                    <FormField
+                      control={control}
+                      name={`customizations.${index}.options.${optIndex}.originalPrice`}
+                      render={({ field }) => (
+                        <FormItem className="space-y-0">
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              step="1" 
+                              {...field} 
+                              value={field.value ?? ''} 
+                              onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} 
+                              className="h-9 text-xs px-2.5 border-slate-200 bg-slate-50 focus-visible:bg-white transition-colors shadow-none placeholder:text-slate-400 rounded-xl" 
+                              placeholder="₹ Sale" 
+                            />
+                          </FormControl>
+                          <FormMessage className="text-[9px]" />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Box 3: Dine-In Price (if enabled) */}
+                  {isDineInEnabled && (
+                    <div className={cn(!isInventoryEnabled ? "col-span-2 sm:col-span-1" : "")}>
+                      <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block mb-1">
+                        Dine-In Price
+                      </span>
+                      <FormField
+                        control={control}
+                        name={`customizations.${index}.options.${optIndex}.dineInPrice`}
+                        render={({ field }) => (
+                          <FormItem className="space-y-0">
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="1" 
+                                {...field} 
+                                value={field.value ?? ''} 
+                                onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} 
+                                className="h-9 text-xs px-2.5 border-emerald-200 bg-emerald-50/40 focus-visible:bg-white transition-colors shadow-none text-emerald-800 font-bold placeholder:text-emerald-400/60 rounded-xl" 
+                                placeholder="₹ Dine-in" 
+                              />
+                            </FormControl>
+                            <FormMessage className="text-[9px]" />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  )}
+
+                  {/* Box 4: Stock (if inventory enabled) */}
+                  {isInventoryEnabled && (
+                    <div className={cn(!isDineInEnabled ? "col-span-2 sm:col-span-1" : "")}>
+                      <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block mb-1">
+                        Stock Qty
+                      </span>
+                      <FormField
+                        control={control}
+                        name={`customizations.${index}.options.${optIndex}.stock`}
+                        render={({ field }) => (
+                          <FormItem className="space-y-0">
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="1"
+                                {...field}
+                                value={field.value === undefined || field.value === null ? '' : field.value} 
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  field.onChange(val === '' ? null : Number(val));
+                                }} 
+                                className="h-9 text-xs px-2.5 border-blue-200 bg-blue-50 focus-visible:bg-white transition-colors shadow-none text-blue-700 font-bold rounded-xl" 
+                                placeholder="Unlimited"
+                              />
+                            </FormControl>
+                            <FormMessage className="text-[9px]" />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -306,6 +403,7 @@ const CustomizationGroupFields = ({ control, index, removeGroup, isMandatory, is
 export default function MenuItemForm({ isOpen, onOpenChange, menuItem }: MenuItemFormProps) {
   const { addMenuItem, updateMenuItem, categories } = useMenu();
   const { vendor } = useVendor();
+  const isDineInEnabled = Boolean(vendor?.canAcceptDineIn && (vendor?.dineInTables || 0) > 0);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -316,6 +414,7 @@ export default function MenuItemForm({ isOpen, onOpenChange, menuItem }: MenuIte
       name: '',
       description: '',
       price: 0,
+      dineInPrice: undefined,
       discountPrice: undefined,
       category: '',
       image: '',
@@ -346,6 +445,7 @@ export default function MenuItemForm({ isOpen, onOpenChange, menuItem }: MenuIte
   useEffect(() => {
     if (watchedCustomizations && watchedCustomizations.length > 0) {
       form.setValue('price', 0);
+      form.setValue('dineInPrice', undefined);
       form.setValue('stock', undefined);
     }
   }, [watchedCustomizations, form]);
@@ -385,12 +485,13 @@ export default function MenuItemForm({ isOpen, onOpenChange, menuItem }: MenuIte
             ...group,
             options: group.options.map(opt => {
                 const stockVal = (opt.stock === null || opt.stock === undefined || isNaN(opt.stock as number)) ? undefined : opt.stock;
+                const dineInVal = (opt.dineInPrice === null || opt.dineInPrice === undefined || isNaN(opt.dineInPrice as number)) ? undefined : opt.dineInPrice;
                 if (opt.originalPrice && opt.originalPrice > 0) {
                     // It was on sale: Original (100) -> Price box, Sale (80) -> Sale Price box
-                    return { ...opt, price: opt.originalPrice, originalPrice: opt.price, stock: stockVal };
+                    return { ...opt, price: opt.originalPrice, originalPrice: opt.price, dineInPrice: dineInVal, stock: stockVal };
                 }
                 // No sale: Price (20) -> Price box, Sale Price box empty
-                return { ...opt, price: opt.price, originalPrice: undefined, stock: stockVal };
+                return { ...opt, price: opt.price, originalPrice: undefined, dineInPrice: dineInVal, stock: stockVal };
             })
         })) || [];
 
@@ -401,10 +502,12 @@ export default function MenuItemForm({ isOpen, onOpenChange, menuItem }: MenuIte
             formPrice = menuItem.discountPrice;
             formSalePrice = menuItem.price;
         }
+        const formDineInPrice = (menuItem.dineInPrice === null || menuItem.dineInPrice === undefined || isNaN(menuItem.dineInPrice as number)) ? undefined : menuItem.dineInPrice;
 
         form.reset({
           ...menuItem,
           price: formPrice,
+          dineInPrice: formDineInPrice,
           discountPrice: formSalePrice,
           description: menuItem.description || '',
           imageDataUrl: menuItem.imageDataUrl || '',
@@ -417,6 +520,7 @@ export default function MenuItemForm({ isOpen, onOpenChange, menuItem }: MenuIte
             name: '',
             description: '',
             price: 0,
+            dineInPrice: undefined,
             discountPrice: undefined,
             category: '',
             image: 'https://placehold.co/400x225/222222/4AF0FF',
@@ -505,6 +609,12 @@ export default function MenuItemForm({ isOpen, onOpenChange, menuItem }: MenuIte
                     delete cleanedOpt.originalPrice;
                 }
 
+                if (typeof cleanedOpt.dineInPrice === 'number' && cleanedOpt.dineInPrice > 0) {
+                    cleanedOpt.dineInPrice = Number(cleanedOpt.dineInPrice);
+                } else {
+                    delete cleanedOpt.dineInPrice;
+                }
+
                 // Final safety cleanup: Firestore doesn't like 'undefined'
                 if (cleanedOpt.stock === undefined || cleanedOpt.stock === null || isNaN(cleanedOpt.stock)) {
                     delete cleanedOpt.stock;
@@ -519,7 +629,14 @@ export default function MenuItemForm({ isOpen, onOpenChange, menuItem }: MenuIte
     if (finalValues.customizations && finalValues.customizations.length > 0) {
       // For items with variations: activate discount if at least one variation has a sale price, otherwise turn off
       finalValues.isDiscountActive = hasAnyVariationDiscount;
+      delete finalValues.dineInPrice;
     } else {
+      if (typeof finalValues.dineInPrice === 'number' && finalValues.dineInPrice > 0) {
+        finalValues.dineInPrice = Number(finalValues.dineInPrice);
+      } else {
+        finalValues.dineInPrice = null;
+      }
+
       // For simple items: activate discount if a valid sale price was entered, otherwise turn off
       if (finalValues.discountPrice && finalValues.discountPrice > 0 && finalValues.discountPrice < finalValues.price) {
         const regularPrice = finalValues.price;
@@ -592,38 +709,94 @@ export default function MenuItemForm({ isOpen, onOpenChange, menuItem }: MenuIte
                   </FormItem>
                 )}
               />
-               <FormField
-                  control={form.control}
-                  name="price"
-                  render={({ field }) => (
-                  <FormItem>
-                      <FormLabel>Price (₹)</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">₹</span>
-                           <Input 
-                            type="number" 
-                            step="0.01" 
-                            placeholder="0.00" 
-                            {...field} 
-                            className={cn("pl-7", watchedCustomizations && watchedCustomizations.length > 0 && "bg-slate-50 text-slate-400")}
-                            disabled={watchedCustomizations && watchedCustomizations.length > 0}
-                          />
-                        </div>
-                      </FormControl>
-                      {watchedCustomizations && watchedCustomizations.length > 0 ? (
-                        <FormDescription className="text-amber-600 font-medium text-[10px] leading-tight mt-1">
-                          Base price is disabled because you have added <strong>Variations</strong>. Pricing is now managed individually for each variation below.
-                        </FormDescription>
-                      ) : (
-                        <FormDescription className="text-muted-foreground text-[10px] leading-tight mt-1">
-                            Enter the base selling price for this item.
-                        </FormDescription>
+               <div className={cn(isDineInEnabled ? "grid grid-cols-1 sm:grid-cols-2 gap-4" : "")}>
+                 <FormField
+                    control={form.control}
+                    name="price"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Price (₹) {isDineInEnabled && <span className="text-[10px] text-muted-foreground font-normal">(Delivery)</span>}</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">₹</span>
+                             <Input 
+                              type="number" 
+                              step="0.01" 
+                              placeholder="0.00" 
+                              {...field} 
+                              className={cn("pl-7", watchedCustomizations && watchedCustomizations.length > 0 && "bg-slate-50 text-slate-400")}
+                              disabled={watchedCustomizations && watchedCustomizations.length > 0}
+                            />
+                          </div>
+                        </FormControl>
+                        {watchedCustomizations && watchedCustomizations.length > 0 ? (
+                          <FormDescription className="text-amber-600 font-medium text-[10px] leading-tight mt-1">
+                            Base price is disabled because you have added <strong>Variations</strong>. Pricing is now managed individually for each variation below.
+                          </FormDescription>
+                        ) : (
+                          <FormDescription className="text-muted-foreground text-[10px] leading-tight mt-1">
+                              {isDineInEnabled ? "Base delivery price for this item." : "Enter the base selling price for this item."}
+                          </FormDescription>
+                        )}
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                 />
+
+                 {isDineInEnabled && (
+                   <FormField
+                      control={form.control}
+                      name="dineInPrice"
+                      render={({ field }) => (
+                      <FormItem>
+                          <div className="flex items-center justify-between">
+                            <FormLabel className="text-emerald-700 font-medium">Dine-In Price (₹)</FormLabel>
+                            {(!watchedCustomizations || watchedCustomizations.length === 0) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const regularPrice = Number(form.getValues('price')) || 0;
+                                  if (regularPrice > 0) {
+                                    const calculated = Math.round(regularPrice * 0.9);
+                                    form.setValue('dineInPrice', calculated, { shouldDirty: true });
+                                  }
+                                }}
+                                className="text-[10px] font-semibold text-emerald-600 hover:text-emerald-800 flex items-center gap-0.5 hover:underline"
+                              >
+                                <Sparkles className="h-2.5 w-2.5" /> Auto -10%
+                              </button>
+                            )}
+                          </div>
+                          <FormControl>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">₹</span>
+                               <Input 
+                                type="number" 
+                                step="0.01" 
+                                placeholder="Optional (defaults to Price)" 
+                                {...field} 
+                                value={field.value ?? ''}
+                                onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                                className={cn("pl-7", watchedCustomizations && watchedCustomizations.length > 0 && "bg-slate-50 text-slate-400")}
+                                disabled={watchedCustomizations && watchedCustomizations.length > 0}
+                              />
+                            </div>
+                          </FormControl>
+                          {watchedCustomizations && watchedCustomizations.length > 0 ? (
+                            <FormDescription className="text-amber-600 font-medium text-[10px] leading-tight mt-1">
+                              Managed individually per variation below.
+                            </FormDescription>
+                          ) : (
+                            <FormDescription className="text-muted-foreground text-[10px] leading-tight mt-1">
+                                In-restaurant table price. Leave blank to match delivery price.
+                            </FormDescription>
+                          )}
+                          <FormMessage />
+                      </FormItem>
                       )}
-                      <FormMessage />
-                  </FormItem>
-                  )}
-              />
+                   />
+                 )}
+               </div>
               
                <FormField
                 control={form.control}
@@ -696,7 +869,7 @@ export default function MenuItemForm({ isOpen, onOpenChange, menuItem }: MenuIte
                         name: '', 
                         type: 'SINGLE', 
                         minSelect: 0, 
-                        options: [{ id: Math.random().toString(36).substr(2, 9), name: '', price: 0, originalPrice: undefined, isAvailable: true }] 
+                        options: [{ id: Math.random().toString(36).substr(2, 9), name: '', price: 0, dineInPrice: undefined, originalPrice: undefined, isAvailable: true }] 
                       })}
                       className="rounded-full"
                     >
@@ -726,6 +899,8 @@ export default function MenuItemForm({ isOpen, onOpenChange, menuItem }: MenuIte
                         }} 
                         isMandatory={watchedCustomizations?.[index]?.minSelect === 1}
                         isInventoryEnabled={vendor?.isInventory ?? false}
+                        isDineInEnabled={isDineInEnabled}
+                        setValue={form.setValue}
                       />
                     ))}
                   </div>

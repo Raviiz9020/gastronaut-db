@@ -2,6 +2,7 @@ export interface CustomizationOption {
   id: string;
   name: string;
   price: number;
+  dineInPrice?: number;
   originalPrice?: number;
   isAvailable?: boolean;
   stock?: number;
@@ -20,6 +21,7 @@ export interface MenuItem {
   name:string;
   description: string;
   price: number;
+  dineInPrice?: number;
   discountPrice?: number;
   isDiscountActive?: boolean;
   image: string; // Public URL for sharing and fallback

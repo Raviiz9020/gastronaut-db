@@ -9,6 +9,7 @@ import { MenuItemRow } from './MenuItemRow';
 export interface VendorSpecialsSectionProps {
   special: ActiveSpecialCategory;
   vendor?: Vendor | null;
+  isDineIn?: boolean;
   getItemCartState: (itemId: string) => {
     simpleQuantity: number;
     totalQuantity: number;
@@ -29,6 +30,7 @@ export interface VendorSpecialsSectionProps {
 export function VendorSpecialsSection({
   special,
   vendor,
+  isDineIn = false,
   getItemCartState,
   onImageClick,
   onRowClick,
@@ -50,6 +52,7 @@ export function VendorSpecialsSection({
               key={item.id}
               item={item}
               vendor={vendor}
+              isDineIn={isDineIn}
               onImageClick={onImageClick}
               onRowClick={onRowClick}
               prefix="special-item-image"

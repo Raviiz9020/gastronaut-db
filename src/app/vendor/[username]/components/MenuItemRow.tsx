@@ -17,6 +17,7 @@ export interface MenuItemRowProps {
   prefix: string;
   itemRef?: React.Ref<HTMLDivElement>;
   vendor?: Vendor | null;
+  isDineIn?: boolean;
   simpleQuantity?: number;
   totalQuantity?: number;
   kitchenQuantity?: number;
@@ -31,13 +32,15 @@ export const MenuItemRow: React.FC<MenuItemRowProps> = ({
   prefix,
   itemRef,
   vendor,
+  isDineIn = false,
   simpleQuantity = 0,
   totalQuantity = 0,
   kitchenQuantity = 0,
   kitchenRound = 1,
   onQuantityChange,
 }) => {
-  const hasDiscount =
+  const hasDineInPrice = isDineIn && typeof item.dineInPrice === 'number' && item.dineInPrice > 0;
+  const hasDiscount = !isDineIn &&
     !!(item.isDiscountActive && item.discountPrice && item.discountPrice > 0);
 
   const isCustomizable = item.customizations && item.customizations.length > 0;
@@ -45,15 +48,19 @@ export const MenuItemRow: React.FC<MenuItemRowProps> = ({
 
   const startingPrice = useMemo(() => {
     if (!isCustomizable) {
+      if (hasDineInPrice) return item.dineInPrice!;
       return hasDiscount ? item.discountPrice! : item.price;
     }
 
-    const basePrice = hasMandatoryCustomization ? 0 : (hasDiscount ? item.discountPrice! : item.price);
+    const basePrice = hasMandatoryCustomization ? 0 : (hasDineInPrice ? item.dineInPrice! : (hasDiscount ? item.discountPrice! : item.price));
 
     let mandatoryCustomizationsPrice = 0;
     item.customizations?.forEach(c => {
       if (Number(c.minSelect) > 0) {
         const groupMinOptionPrice = Math.min(...c.options.map(o => {
+          if (isDineIn && typeof o.dineInPrice === 'number' && o.dineInPrice > 0) {
+            return o.dineInPrice;
+          }
           return item.isDiscountActive ? o.price : (o.originalPrice || o.price);
         }));
         if (groupMinOptionPrice !== Infinity) {
@@ -68,7 +75,9 @@ export const MenuItemRow: React.FC<MenuItemRowProps> = ({
       let minOptPrice = Infinity;
       item.customizations?.forEach(group => {
         group.options.forEach(o => {
-          const optPrice = item.isDiscountActive ? o.price : (o.originalPrice || o.price);
+          const optPrice = (isDineIn && typeof o.dineInPrice === 'number' && o.dineInPrice > 0)
+            ? o.dineInPrice
+            : (item.isDiscountActive ? o.price : (o.originalPrice || o.price));
           if (optPrice < minOptPrice) {
             minOptPrice = optPrice;
           }
@@ -80,7 +89,7 @@ export const MenuItemRow: React.FC<MenuItemRowProps> = ({
     }
 
     return calculatedPrice;
-  }, [item, isCustomizable, hasMandatoryCustomization, hasDiscount]);
+  }, [item, isCustomizable, hasMandatoryCustomization, hasDiscount, isDineIn, hasDineInPrice]);
 
   const displayPrice = startingPrice || 0;
   const layoutId = `${prefix}-${item.id}`;

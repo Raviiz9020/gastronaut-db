@@ -17,6 +17,7 @@ export interface CombinedMenuItemRowProps {
   prefix: string;
   itemRef?: React.Ref<HTMLDivElement>;
   vendor?: Vendor | null;
+  isDineIn?: boolean;
   totalQuantity?: number;
   kitchenQuantity?: number;
   kitchenRound?: number;
@@ -30,6 +31,7 @@ export const CombinedMenuItemRow: React.FC<CombinedMenuItemRowProps> = ({
   prefix,
   itemRef,
   vendor,
+  isDineIn = false,
   totalQuantity = 0,
   kitchenQuantity = 0,
   kitchenRound = 1,
@@ -49,8 +51,17 @@ export const CombinedMenuItemRow: React.FC<CombinedMenuItemRowProps> = ({
   const halfPortion = items.find(item => item.name.toLowerCase().includes('half'));
   const fullPortion = items.find(item => item.name.toLowerCase().includes('full'));
 
-  const halfPrice = halfPortion ? (halfPortion.isDiscountActive && halfPortion.discountPrice ? halfPortion.discountPrice : halfPortion.price) : null;
-  const fullPrice = fullPortion ? (fullPortion.isDiscountActive && fullPortion.discountPrice ? fullPortion.discountPrice : fullPortion.price) : null;
+  const halfPrice = halfPortion 
+    ? (isDineIn && typeof halfPortion.dineInPrice === 'number' && halfPortion.dineInPrice > 0 
+        ? halfPortion.dineInPrice 
+        : (halfPortion.isDiscountActive && halfPortion.discountPrice ? halfPortion.discountPrice : halfPortion.price)) 
+    : null;
+
+  const fullPrice = fullPortion 
+    ? (isDineIn && typeof fullPortion.dineInPrice === 'number' && fullPortion.dineInPrice > 0 
+        ? fullPortion.dineInPrice 
+        : (fullPortion.isDiscountActive && fullPortion.discountPrice ? fullPortion.discountPrice : fullPortion.price)) 
+    : null;
 
   const halfStock = halfPortion?.stock;
   const fullStock = fullPortion?.stock;

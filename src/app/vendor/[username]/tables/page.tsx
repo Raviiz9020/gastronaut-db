@@ -268,7 +268,9 @@ const AddItemDialog = ({
         newArr[existingIndex].quantity = newQuantity;
         return newArr;
       } else {
-        const price = menuItem.isDiscountActive && menuItem.discountPrice ? menuItem.discountPrice : menuItem.price;
+        const price = (menuItem.dineInPrice && menuItem.dineInPrice > 0)
+          ? menuItem.dineInPrice
+          : (menuItem.isDiscountActive && menuItem.discountPrice ? menuItem.discountPrice : menuItem.price);
         return [...prev, {
           cartItemId: Math.random().toString(),
           menuItem,
@@ -282,7 +284,11 @@ const AddItemDialog = ({
 
   const handleCustomizedAdd = (menuItem: MenuItem, selectedOptions: Record<string, string | string[]>, quantity: number) => {
     const hasMandatoryCustomization = menuItem.customizations?.some(c => Number(c.minSelect) === 1) ?? false;
-    const basePrice = hasMandatoryCustomization ? 0 : (menuItem.isDiscountActive && menuItem.discountPrice && menuItem.discountPrice > 0 ? menuItem.discountPrice : menuItem.price);
+    const basePrice = hasMandatoryCustomization ? 0 : (
+      (menuItem.dineInPrice && menuItem.dineInPrice > 0)
+        ? menuItem.dineInPrice
+        : (menuItem.isDiscountActive && menuItem.discountPrice && menuItem.discountPrice > 0 ? menuItem.discountPrice : menuItem.price)
+    );
 
     let totalPrice = basePrice;
     Object.entries(selectedOptions).forEach(([customizationId, selected]) => {
@@ -293,13 +299,19 @@ const AddItemDialog = ({
         selected.forEach(optionId => {
           const option = customization.options.find(o => o.id === optionId);
           if (option) {
-            totalPrice += (menuItem.isDiscountActive ? option.price : (option.originalPrice || option.price));
+            const optPrice = (option.dineInPrice && option.dineInPrice > 0)
+              ? option.dineInPrice
+              : (menuItem.isDiscountActive ? option.price : (option.originalPrice || option.price));
+            totalPrice += optPrice;
           }
         });
       } else {
         const option = customization.options.find(o => o.id === selected);
         if (option) {
-          totalPrice += (menuItem.isDiscountActive ? option.price : (option.originalPrice || option.price));
+          const optPrice = (option.dineInPrice && option.dineInPrice > 0)
+            ? option.dineInPrice
+            : (menuItem.isDiscountActive ? option.price : (option.originalPrice || option.price));
+          totalPrice += optPrice;
         }
       }
     });
@@ -443,15 +455,23 @@ const AddItemDialog = ({
                   let startingPrice = 0;
 
                   if (!isCustomizable) {
-                    startingPrice = item.isDiscountActive && item.discountPrice ? item.discountPrice : item.price;
+                    startingPrice = (item.dineInPrice && item.dineInPrice > 0)
+                      ? item.dineInPrice
+                      : (item.isDiscountActive && item.discountPrice ? item.discountPrice : item.price);
                   } else {
-                    const basePrice = hasMandatoryOptions ? 0 : (item.isDiscountActive && item.discountPrice ? item.discountPrice : item.price);
+                    const basePrice = hasMandatoryOptions ? 0 : (
+                      (item.dineInPrice && item.dineInPrice > 0)
+                        ? item.dineInPrice
+                        : (item.isDiscountActive && item.discountPrice ? item.discountPrice : item.price)
+                    );
 
                     let mandatoryCustomizationsPrice = 0;
                     item.customizations?.forEach(c => {
                       if (Number(c.minSelect) > 0) {
                         const groupMinOptionPrice = Math.min(...c.options.map(o => {
-                          return item.isDiscountActive ? o.price : (o.originalPrice || o.price);
+                          return (o.dineInPrice && o.dineInPrice > 0)
+                            ? o.dineInPrice
+                            : (item.isDiscountActive ? o.price : (o.originalPrice || o.price));
                         }));
                         if (groupMinOptionPrice !== Infinity) {
                           mandatoryCustomizationsPrice += groupMinOptionPrice;
@@ -465,7 +485,9 @@ const AddItemDialog = ({
                       let minOptPrice = Infinity;
                       item.customizations?.forEach(group => {
                         group.options.forEach(o => {
-                          const optPrice = item.isDiscountActive ? o.price : (o.originalPrice || o.price);
+                          const optPrice = (o.dineInPrice && o.dineInPrice > 0)
+                            ? o.dineInPrice
+                            : (item.isDiscountActive ? o.price : (o.originalPrice || o.price));
                           if (optPrice < minOptPrice) {
                             minOptPrice = optPrice;
                           }
@@ -646,6 +668,7 @@ const AddItemDialog = ({
           setCustomizingItem(null);
         }}
         vendor={vendor}
+        isDineIn={true}
       />
     </>
   );
@@ -1945,7 +1968,7 @@ export default function TableViewPage() {
       return {
         ...menuItem,
         quantity,
-        price: price ?? (menuItem.isDiscountActive && menuItem.discountPrice ? menuItem.discountPrice : menuItem.price),
+        price: price ?? ((menuItem.dineInPrice && menuItem.dineInPrice > 0) ? menuItem.dineInPrice : (menuItem.isDiscountActive && menuItem.discountPrice ? menuItem.discountPrice : menuItem.price)),
         customizationDetails: details,
         cartItemId
       };

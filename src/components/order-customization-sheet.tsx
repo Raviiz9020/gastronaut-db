@@ -30,9 +30,10 @@ interface OrderCustomizationSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAdd?: (item: MenuItem, selectedOptions: Record<string, string | string[]>, quantity: number) => void;
+  isDineIn?: boolean;
 }
 
-export default function OrderCustomizationSheet({ item, vendor, open, onOpenChange, onAdd }: OrderCustomizationSheetProps) {
+export default function OrderCustomizationSheet({ item, vendor, open, onOpenChange, onAdd, isDineIn = false }: OrderCustomizationSheetProps) {
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string | string[]>>({});
   const [quantity, setQuantity] = useState(1);
   const { toast } = useToast();
@@ -112,8 +113,13 @@ export default function OrderCustomizationSheet({ item, vendor, open, onOpenChan
     if (!item) return { singleItemPrice: 0, singleItemOriginalPrice: 0 };
 
     const hasMandatoryCustomization = item.customizations?.some(c => Number(c.minSelect) === 1) ?? false;
-    const basePrice = hasMandatoryCustomization ? 0 : (item.discountPrice && item.discountPrice > 0 ? item.discountPrice : item.price);
-    const baseOriginalPrice = hasMandatoryCustomization ? 0 : item.price;
+    const hasDineInBase = isDineIn && typeof item.dineInPrice === 'number' && item.dineInPrice > 0;
+    const basePrice = hasMandatoryCustomization 
+      ? 0 
+      : (hasDineInBase ? item.dineInPrice! : (item.discountPrice && item.discountPrice > 0 ? item.discountPrice : item.price));
+    const baseOriginalPrice = hasMandatoryCustomization 
+      ? 0 
+      : (isDineIn ? (hasDineInBase ? item.dineInPrice! : item.price) : item.price);
 
     let total = basePrice;
     let originalTotal = baseOriginalPrice;
@@ -127,23 +133,35 @@ export default function OrderCustomizationSheet({ item, vendor, open, onOpenChan
         uniqueSelected.forEach(optionId => {
           const option = customization.options.find(o => o.id === optionId);
           if (option) {
-            const effectivePrice = isDiscountActive ? option.price : (option.originalPrice || option.price);
+            const hasOptDineIn = isDineIn && typeof option.dineInPrice === 'number' && option.dineInPrice > 0;
+            const effectivePrice = hasOptDineIn
+              ? option.dineInPrice!
+              : (isDiscountActive ? option.price : (option.originalPrice || option.price));
             total += effectivePrice;
-            originalTotal += (option.originalPrice || option.price);
+            const optOriginal = isDineIn
+              ? (hasOptDineIn ? option.dineInPrice! : (option.originalPrice || option.price))
+              : (option.originalPrice || option.price);
+            originalTotal += optOriginal;
           }
         });
       } else {
         const option = customization.options.find(o => o.id === selected);
         if (option) {
-          const effectivePrice = isDiscountActive ? option.price : (option.originalPrice || option.price);
+          const hasOptDineIn = isDineIn && typeof option.dineInPrice === 'number' && option.dineInPrice > 0;
+          const effectivePrice = hasOptDineIn
+            ? option.dineInPrice!
+            : (isDiscountActive ? option.price : (option.originalPrice || option.price));
           total += effectivePrice;
-          originalTotal += (option.originalPrice || option.price);
+          const optOriginal = isDineIn
+            ? (hasOptDineIn ? option.dineInPrice! : (option.originalPrice || option.price))
+            : (option.originalPrice || option.price);
+          originalTotal += optOriginal;
         }
       }
     });
 
     return { singleItemPrice: total, singleItemOriginalPrice: originalTotal };
-  }, [item, selectedOptions, isDiscountActive]);
+  }, [item, selectedOptions, isDiscountActive, isDineIn]);
 
   const totalPrice = useMemo(() => singleItemPrice * quantity, [singleItemPrice, quantity]);
   const totalOriginalPrice = useMemo(() => singleItemOriginalPrice * quantity, [singleItemOriginalPrice, quantity]);
@@ -208,7 +226,7 @@ export default function OrderCustomizationSheet({ item, vendor, open, onOpenChan
 
   const imageToShow = item.imageDataUrl || item.image;
   const showImage = imageToShow && !imageToShow.includes('placehold.co');
-  const hasSaving = totalOriginalPrice > totalPrice;
+  const hasSaving = !isDineIn && totalOriginalPrice > totalPrice;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -279,8 +297,9 @@ export default function OrderCustomizationSheet({ item, vendor, open, onOpenChan
                     >
                       {cust.options.map(opt => {
                         const isSelected = selectedOptions[cust.id] === opt.id;
-                        const displayPrice = isDiscountActive ? opt.price : (opt.originalPrice || opt.price);
-                        const hasOptDiscount = isDiscountActive && opt.originalPrice && opt.originalPrice > opt.price;
+                        const hasOptDineIn = isDineIn && typeof opt.dineInPrice === 'number' && opt.dineInPrice > 0;
+                        const displayPrice = hasOptDineIn ? opt.dineInPrice! : (isDiscountActive ? opt.price : (opt.originalPrice || opt.price));
+                        const hasOptDiscount = !isDineIn && isDiscountActive && opt.originalPrice && opt.originalPrice > opt.price;
                         const discountPct = hasOptDiscount
                           ? Math.round(((opt.originalPrice! - opt.price) / opt.originalPrice!) * 100)
                           : 0;
@@ -359,8 +378,9 @@ export default function OrderCustomizationSheet({ item, vendor, open, onOpenChan
                     <>
                       {cust.options.map(opt => {
                         const isSelected = (selectedOptions[cust.id] as string[] || []).includes(opt.id);
-                        const displayPrice = isDiscountActive ? opt.price : (opt.originalPrice || opt.price);
-                        const hasOptDiscount = isDiscountActive && opt.originalPrice && opt.originalPrice > opt.price;
+                        const hasOptDineIn = isDineIn && typeof opt.dineInPrice === 'number' && opt.dineInPrice > 0;
+                        const displayPrice = hasOptDineIn ? opt.dineInPrice! : (isDiscountActive ? opt.price : (opt.originalPrice || opt.price));
+                        const hasOptDiscount = !isDineIn && isDiscountActive && opt.originalPrice && opt.originalPrice > opt.price;
                         const discountPct = hasOptDiscount
                           ? Math.round(((opt.originalPrice! - opt.price) / opt.originalPrice!) * 100)
                           : 0;

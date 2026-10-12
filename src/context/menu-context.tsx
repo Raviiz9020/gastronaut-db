@@ -155,6 +155,10 @@ export const MenuProvider = ({ children }: { children: ReactNode }) => {
         delete (newItemData as Partial<MenuItem>).discountPrice;
     }
 
+    if (typeof newItemData.dineInPrice !== 'number' || newItemData.dineInPrice <= 0) {
+        delete (newItemData as Partial<MenuItem>).dineInPrice;
+    }
+
     const docId = `${createSlug(vendor.shopName)}-${createSlug(item.name)}`;
     const docRef = doc(db, 'menuItems', docId);
 
@@ -178,6 +182,10 @@ export const MenuProvider = ({ children }: { children: ReactNode }) => {
 
     if (typeof dataToUpdate.discountPrice !== 'number' || dataToUpdate.discountPrice < 0) {
        delete dataToUpdate.discountPrice;
+    }
+
+    if (typeof dataToUpdate.dineInPrice !== 'number' || dataToUpdate.dineInPrice <= 0) {
+       dataToUpdate.dineInPrice = null as any;
     }
 
     if (dataToUpdate.stock === undefined) {

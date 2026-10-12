@@ -83,7 +83,9 @@ export const PortionSelectDialog: React.FC<PortionSelectDialogProps> = ({
           <RadioGroup value={selectedItemId} onValueChange={setSelectedItemId} className="space-y-2">
             {items.map(item => {
               const variation = item.name.match(/\s+(full|half)$/i)?.[1] || 'Portion';
-              const price = (item.isDiscountActive && item.discountPrice) ? item.discountPrice : item.price;
+              const price = (isDineInMode && typeof item.dineInPrice === 'number' && item.dineInPrice > 0)
+                ? item.dineInPrice
+                : ((item.isDiscountActive && item.discountPrice) ? item.discountPrice : item.price);
               const isAvailable = isItemInStock(item, vendor?.isInventory);
               return (
                 <Label

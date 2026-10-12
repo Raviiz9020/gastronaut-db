@@ -566,7 +566,9 @@ function VendorMenuContent({
       return;
     }
 
-    let finalPrice = item.isDiscountActive && item.discountPrice ? item.discountPrice : item.price;
+    let finalPrice = (typeof item.dineInPrice === 'number' && item.dineInPrice > 0)
+      ? item.dineInPrice
+      : (item.isDiscountActive && item.discountPrice ? item.discountPrice : item.price);
     let optionsText = '';
     if (selectedOptions && item.customizations) {
       item.customizations.forEach(cust => {
@@ -576,14 +578,20 @@ function VendorMenuContent({
             sel.forEach(optId => {
               const opt = cust.options.find(o => o.id === optId);
               if (opt) {
-                finalPrice += item.isDiscountActive ? opt.price : (opt.originalPrice || opt.price);
+                const optPrice = (typeof opt.dineInPrice === 'number' && opt.dineInPrice > 0)
+                  ? opt.dineInPrice
+                  : (item.isDiscountActive ? opt.price : (opt.originalPrice || opt.price));
+                finalPrice += optPrice;
                 optionsText += (optionsText ? ', ' : '') + opt.name;
               }
             });
           } else {
             const opt = cust.options.find(o => o.id === sel);
             if (opt) {
-              finalPrice += item.isDiscountActive ? opt.price : (opt.originalPrice || opt.price);
+              const optPrice = (typeof opt.dineInPrice === 'number' && opt.dineInPrice > 0)
+                ? opt.dineInPrice
+                : (item.isDiscountActive ? opt.price : (opt.originalPrice || opt.price));
+              finalPrice += optPrice;
               optionsText += (optionsText ? ', ' : '') + opt.name;
             }
           }
@@ -607,6 +615,7 @@ function VendorMenuContent({
         cartItemId,
         quantity,
         finalPrice,
+        price: finalPrice,
         customizationDetails: selectedOptions,
         selectedOptionsText: optionsText
       }];
@@ -1293,6 +1302,7 @@ function VendorMenuContent({
                                 onRowClick={() => handleCombinedItemRowClick(group)}
                                 prefix={'menu-item-image'}
                                 vendor={vendor}
+                                isDineIn={isVendorOwner || isDineInMode}
                                 itemRef={el => { if (el) itemRefs.current[group[0].id] = el; }}
                                 totalQuantity={groupCartState.totalQuantity}
                                 kitchenQuantity={groupCartState.kitchenQuantity}
@@ -1311,6 +1321,7 @@ function VendorMenuContent({
                                 onRowClick={handleItemRowClick}
                                 prefix={'menu-item-image'}
                                 vendor={vendor}
+                                isDineIn={isVendorOwner || isDineInMode}
                                 itemRef={el => { if (el) itemRefs.current[item.id] = el; }}
                                 simpleQuantity={cartState.simpleQuantity}
                                 totalQuantity={cartState.totalQuantity}
@@ -1335,6 +1346,7 @@ function VendorMenuContent({
                   <VendorSpecialsSection
                     special={activeSpecialsByKey[activeCategory]}
                     vendor={vendor}
+                    isDineIn={isVendorOwner || isDineInMode}
                     getItemCartState={getItemCartState}
                     onImageClick={handleImageClick}
                     onRowClick={handleItemRowClick}
@@ -1365,6 +1377,7 @@ function VendorMenuContent({
                                 key={item.id}
                                 item={item}
                                 vendor={vendor}
+                                isDineIn={isVendorOwner || isDineInMode}
                                 onImageClick={handleImageClick}
                                 onRowClick={handleItemRowClick}
                                 prefix={'discount-item-image'}
@@ -1416,6 +1429,7 @@ function VendorMenuContent({
                                     key={`${group[0].id}-${index}`}
                                     items={group}
                                     vendor={vendor}
+                                    isDineIn={isVendorOwner || isDineInMode}
                                     onImageClick={handleImageClick}
                                     onRowClick={() => handleCombinedItemRowClick(group)}
                                     prefix={'menu-item-image'}
@@ -1436,6 +1450,7 @@ function VendorMenuContent({
                                     key={item.id}
                                     item={item}
                                     vendor={vendor}
+                                    isDineIn={isVendorOwner || isDineInMode}
                                     onImageClick={handleImageClick}
                                     onRowClick={handleItemRowClick}
                                     prefix={'menu-item-image'}
@@ -1490,6 +1505,7 @@ function VendorMenuContent({
         vendor={vendor}
         open={!!selectedItem}
         onOpenChange={handleCloseCustomization}
+        isDineIn={isVendorOwner || isDineInMode}
         onAdd={(isVendorOwner || isDineInMode) ? (item, selectedOptions, quantity) => {
           handleAddToTableOrder(item, quantity, selectedOptions);
         } : undefined}

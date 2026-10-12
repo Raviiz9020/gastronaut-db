@@ -28,11 +28,25 @@ import {
   Store,
   Grid,
   MapPin,
+  Tag,
+  Percent,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import jsPDF from 'jspdf';
 import copy from 'copy-to-clipboard';
 import { cn } from '@/lib/utils';
+import { useMenu } from '@/context/menu-context';
+import { db } from '@/lib/firebase';
+import { writeBatch, doc } from 'firebase/firestore';
+import type { MenuItem } from '@/types';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 export default function AdminTablesQRPage() {
   const { vendor, updateDetails } = useVendor();
@@ -72,6 +86,130 @@ export default function AdminTablesQRPage() {
       setDineInRadius(vendor.dineInRadiusMeters);
     }
   }, [vendor?.dineInTables, vendor?.dineInRadiusMeters]);
+
+  // Menu items and Bulk Dine-In Pricing Generator state
+  const { menuItems: allMenuItems } = useMenu();
+  const vendorMenuItems = useMemo(() => {
+    if (!vendor?.username) return [];
+    return allMenuItems.filter(item => item.vendorUsername === vendor.username);
+  }, [allMenuItems, vendor]);
+
+  const vendorCommission = typeof vendor?.commissionPercentage === 'number' && vendor.commissionPercentage > 0 
+    ? vendor.commissionPercentage 
+    : 10;
+
+  const [selectedReduction, setSelectedReduction] = useState<number>(vendorCommission);
+  const [customReduction, setCustomReduction] = useState<string>('');
+  const [isCustomSelected, setIsCustomSelected] = useState(false);
+  const [overwriteMode, setOverwriteMode] = useState<'unconfigured' | 'all'>('unconfigured');
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [isApplyingBatch, setIsApplyingBatch] = useState(false);
+
+  useEffect(() => {
+    if (!isCustomSelected && vendorCommission) {
+      setSelectedReduction(vendorCommission);
+    }
+  }, [vendorCommission, isCustomSelected]);
+
+  const totalItemsCount = vendorMenuItems.length;
+  const configuredItemsCount = useMemo(() => {
+    return vendorMenuItems.filter(i => typeof i.dineInPrice === 'number' && i.dineInPrice > 0).length;
+  }, [vendorMenuItems]);
+  const unconfiguredItemsCount = totalItemsCount - configuredItemsCount;
+
+  const effectiveReduction = isCustomSelected 
+    ? Math.max(1, Math.min(90, parseInt(customReduction, 10) || 10)) 
+    : selectedReduction;
+
+  const targetItems = useMemo(() => {
+    if (overwriteMode === 'all') return vendorMenuItems;
+    return vendorMenuItems.filter(item => {
+      const isItemMissing = typeof item.dineInPrice !== 'number' || item.dineInPrice <= 0;
+      const hasMissingOption = item.customizations?.some(c => 
+        c.options.some(o => typeof o.dineInPrice !== 'number' || o.dineInPrice <= 0)
+      );
+      return isItemMissing || hasMissingOption;
+    });
+  }, [vendorMenuItems, overwriteMode]);
+
+  const sampleItemsPreview = useMemo(() => {
+    return targetItems.slice(0, 3).map(item => {
+      const currentPrice = item.price || 0;
+      const newDineInPrice = Math.round(currentPrice * (1 - effectiveReduction / 100));
+      return {
+        id: item.id,
+        name: item.name,
+        price: currentPrice,
+        newDineInPrice,
+        saving: currentPrice - newDineInPrice,
+      };
+    });
+  }, [targetItems, effectiveReduction]);
+
+  const handleExecuteBulkUpdate = async () => {
+    if (!vendor?.username || targetItems.length === 0) return;
+    setIsApplyingBatch(true);
+    try {
+      let updatedCount = 0;
+      const CHUNK_SIZE = 400;
+
+      for (let i = 0; i < targetItems.length; i += CHUNK_SIZE) {
+        const chunk = targetItems.slice(i, i + CHUNK_SIZE);
+        const batch = writeBatch(db);
+
+        chunk.forEach(item => {
+          const updateData: Partial<MenuItem> = {};
+
+          if (overwriteMode === 'all' || typeof item.dineInPrice !== 'number' || item.dineInPrice <= 0) {
+            if (item.price > 0) {
+              updateData.dineInPrice = Math.round(item.price * (1 - effectiveReduction / 100));
+            }
+          }
+
+          if (item.customizations && item.customizations.length > 0) {
+            const updatedCustomizations = item.customizations.map(group => ({
+              ...group,
+              options: group.options.map(opt => {
+                if (overwriteMode === 'all' || typeof opt.dineInPrice !== 'number' || opt.dineInPrice <= 0) {
+                  if (opt.price > 0) {
+                    return {
+                      ...opt,
+                      dineInPrice: Math.round(opt.price * (1 - effectiveReduction / 100))
+                    };
+                  }
+                }
+                return opt;
+              })
+            }));
+            updateData.customizations = updatedCustomizations;
+          }
+
+          if (Object.keys(updateData).length > 0) {
+            const docRef = doc(db, 'menuItems', item.id);
+            batch.update(docRef, updateData);
+            updatedCount++;
+          }
+        });
+
+        await batch.commit();
+      }
+
+      toast({
+        title: "⚡ Dine-In Prices Updated!",
+        description: `Successfully updated ${updatedCount} menu items at -${effectiveReduction}%.`,
+      });
+      setIsConfirmModalOpen(false);
+    } catch (error: any) {
+      console.error("Error bulk updating dine-in prices:", error);
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update menu items in bulk.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsApplyingBatch(false);
+    }
+  };
 
   // Generate Universal QR
   useEffect(() => {
@@ -600,6 +738,215 @@ export default function AdminTablesQRPage() {
         </Card>
       </div>
 
+      {/* Bulk Dine-In Pricing Generator Card */}
+      <Card className="rounded-2xl border-primary/20 bg-card shadow-xs overflow-hidden">
+        <CardHeader className="p-4 sm:p-5 pb-3 border-b border-border/50 bg-muted/20">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+                <Tag className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base sm:text-lg font-bold font-headline flex items-center gap-2">
+                  Bulk Dine-In Price Generator
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">
+                  Quickly set fair in-store prices for all menu items and variations without manual entry.
+                </CardDescription>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-xs font-semibold px-2.5 py-1 rounded-full",
+                  configuredItemsCount === totalItemsCount && totalItemsCount > 0
+                    ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
+                    : "bg-amber-500/10 text-amber-600 border-amber-500/30"
+                )}
+              >
+                {configuredItemsCount} of {totalItemsCount} items configured
+              </Badge>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-4 sm:p-5 space-y-5">
+          {/* Platform Commission Notice */}
+          <div className="p-3.5 rounded-xl bg-muted/40 border border-border/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start sm:items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0 mt-0.5 sm:mt-0">
+                <Percent className="h-3.5 w-3.5" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-foreground">
+                  Your Platform Commission: <span className="text-primary font-black">{vendorCommission}%</span>
+                </p>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Online delivery prices usually include this platform markup. We recommend reducing by {vendorCommission}% for in-store diners.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Reduction Rate Selector */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-foreground block">
+              Select Dine-In Reduction Percentage:
+            </label>
+            <div className="flex items-center gap-2 flex-wrap">
+              {[
+                { label: `${vendorCommission}% (Commission Rate)`, val: vendorCommission },
+                { label: '15%', val: 15 },
+                { label: '20%', val: 20 },
+              ].map(opt => {
+                const isActive = !isCustomSelected && selectedReduction === opt.val;
+                return (
+                  <button
+                    key={opt.val}
+                    type="button"
+                    onClick={() => {
+                      setIsCustomSelected(false);
+                      setSelectedReduction(opt.val);
+                    }}
+                    className={cn(
+                      "text-xs font-bold px-3 py-1.5 rounded-full border transition-all cursor-pointer",
+                      isActive
+                        ? "bg-primary text-primary-foreground border-primary shadow-2xs"
+                        : "bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+
+              <button
+                type="button"
+                onClick={() => setIsCustomSelected(true)}
+                className={cn(
+                  "text-xs font-bold px-3 py-1.5 rounded-full border transition-all cursor-pointer",
+                  isCustomSelected
+                    ? "bg-primary text-primary-foreground border-primary shadow-2xs"
+                    : "bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+                )}
+              >
+                Custom %
+              </button>
+
+              {isCustomSelected && (
+                <div className="flex items-center gap-1.5 ml-1">
+                  <Input
+                    type="number"
+                    min="1"
+                    max="90"
+                    placeholder="e.g. 12"
+                    value={customReduction}
+                    onChange={(e) => setCustomReduction(e.target.value)}
+                    className="h-8 w-20 text-xs text-center font-bold"
+                  />
+                  <span className="text-xs font-bold text-muted-foreground">%</span>
+                </div>
+              )}
+            </div>
+
+            {/* Live Rounding Example */}
+            <p className="text-[11px] text-muted-foreground bg-muted/30 px-3 py-2 rounded-lg border border-border/40 inline-block">
+              💡 Example calculation: ₹100 item becomes <strong className="text-foreground">₹{Math.round(100 * (1 - effectiveReduction / 100))}</strong> • ₹95 item becomes <strong className="text-foreground">₹{Math.round(95 * (1 - effectiveReduction / 100))}</strong> (clean whole rupee, zero paise).
+            </p>
+          </div>
+
+          {/* Scope Selector */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-foreground block">
+              Application Scope:
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div
+                onClick={() => setOverwriteMode('unconfigured')}
+                className={cn(
+                  "p-3 rounded-xl border text-left cursor-pointer transition-all flex items-start gap-2.5",
+                  overwriteMode === 'unconfigured'
+                    ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                    : "border-border/70 hover:border-primary/40 bg-card"
+                )}
+              >
+                <div className={cn(
+                  "w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5",
+                  overwriteMode === 'unconfigured' ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40"
+                )}>
+                  {overwriteMode === 'unconfigured' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-foreground">
+                    Only Unconfigured Items ({unconfiguredItemsCount})
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                    Safe mode — keeps any custom Dine-In prices you have already manually set.
+                  </p>
+                </div>
+              </div>
+
+              <div
+                onClick={() => setOverwriteMode('all')}
+                className={cn(
+                  "p-3 rounded-xl border text-left cursor-pointer transition-all flex items-start gap-2.5",
+                  overwriteMode === 'all'
+                    ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                    : "border-border/70 hover:border-primary/40 bg-card"
+                )}
+              >
+                <div className={cn(
+                  "w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5",
+                  overwriteMode === 'all' ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40"
+                )}>
+                  {overwriteMode === 'all' && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-foreground">
+                    Overwrite All Menu Items ({totalItemsCount})
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                    Recalculates and replaces Dine-In prices on every item and variation.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Trigger */}
+          <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-border/50">
+            <span className="text-xs text-muted-foreground">
+              {targetItems.length > 0 ? (
+                <>Ready to apply <strong>-{effectiveReduction}%</strong> to <strong>{targetItems.length}</strong> items.</>
+              ) : (
+                <>All menu items already have Dine-In prices configured.</>
+              )}
+            </span>
+
+            <Button
+              type="button"
+              disabled={targetItems.length === 0 || isApplyingBatch}
+              onClick={() => setIsConfirmModalOpen(true)}
+              className="rounded-full font-bold text-xs gap-1.5 px-5 h-9"
+            >
+              {isApplyingBatch ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Preview & Apply to {targetItems.length} Items
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Main Mode Selector Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full space-y-6">
         <TabsList className="grid grid-cols-2 max-w-md h-11 p-1 rounded-full bg-muted/80">
@@ -805,6 +1152,82 @@ export default function AdminTablesQRPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={isConfirmModalOpen} onOpenChange={setIsConfirmModalOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold font-headline flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Confirm Bulk Price Update
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              You are about to calculate and set in-store Dine-In prices at a <strong>-{effectiveReduction}%</strong> reduction for <strong>{targetItems.length}</strong> menu items and their variations.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Sample items preview */}
+          <div className="py-2 space-y-3">
+            <p className="text-xs font-bold text-foreground">Sample Preview:</p>
+            <div className="rounded-xl border border-border/70 overflow-hidden divide-y divide-border/50 bg-muted/20 text-xs">
+              {sampleItemsPreview.length > 0 ? (
+                sampleItemsPreview.map(sample => (
+                  <div key={sample.id} className="p-2.5 flex items-center justify-between">
+                    <span className="font-medium truncate max-w-[170px] sm:max-w-[200px]">{sample.name}</span>
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <span className="text-muted-foreground line-through">₹{sample.price}</span>
+                      <span className="font-extrabold text-foreground">➔ ₹{sample.newDineInPrice}</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
+                        (-₹{sample.saving})
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-3 text-center text-muted-foreground text-xs">
+                  All items are already configured.
+                </div>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-snug">
+              ✓ All prices are strictly rounded to whole rupees (no paise).<br />
+              ✓ You can still edit individual menu items anytime in your Menu Manager.
+            </p>
+          </div>
+
+          <DialogFooter className="flex-row sm:justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isApplyingBatch}
+              onClick={() => setIsConfirmModalOpen(false)}
+              className="rounded-full text-xs font-bold flex-1 sm:flex-initial"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={isApplyingBatch}
+              onClick={handleExecuteBulkUpdate}
+              className="rounded-full text-xs font-bold gap-1.5 flex-1 sm:flex-initial"
+            >
+              {isApplyingBatch ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Applying Batch...
+                </>
+              ) : (
+                <>
+                  <Check className="h-3.5 w-3.5" />
+                  Confirm & Update {targetItems.length} Items
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
