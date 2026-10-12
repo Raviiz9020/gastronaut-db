@@ -45,7 +45,8 @@ import {
   Loader2,
   Settings2,
   LayoutGrid,
-  Table as TableIcon
+  Table as TableIcon,
+  UtensilsCrossed
 } from 'lucide-react';
 import type { Vendor, Order, CartItem, MenuItem } from '@/types';
 import VendorForm from './vendor-form';
@@ -58,6 +59,7 @@ import { Separator } from '@/components/ui/separator';
 import RewardsConfigDialog from './rewards-config-dialog';
 import CommissionConfigDialog from './commission-config-dialog';
 import BulkUploadDialog from './bulk-upload-dialog';
+import ClearMenuDialog from './clear-menu-dialog';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useMenu } from '@/context/menu-context';
@@ -339,6 +341,7 @@ const CompactVendorCard = ({
   onDelete,
   onManageFeatures,
   onBulkUpload,
+  onClearMenu,
   onToggleApproval
 }: {
   vendor: Vendor;
@@ -350,6 +353,7 @@ const CompactVendorCard = ({
   onDelete: (username: string) => void;
   onManageFeatures: (v: Vendor) => void;
   onBulkUpload: (vendor: Vendor) => void;
+  onClearMenu?: (vendor: Vendor) => void;
   onToggleApproval: (username: string) => void;
 }) => {
   const [isStatsOpen, setIsStatsOpen] = useState(false);
@@ -435,6 +439,15 @@ const CompactVendorCard = ({
               title="Upload Menu Items"
             >
               <Upload className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 rounded-full bg-orange-500/15 text-orange-600 dark:text-orange-400 hover:bg-orange-600 hover:text-white border border-orange-500/30 transition-all"
+              onClick={() => onClearMenu?.(vendor)}
+              title="Clear Store Menu"
+            >
+              <UtensilsCrossed className="h-3.5 w-3.5" />
             </Button>
             <Button
               variant="ghost"
@@ -650,6 +663,15 @@ export default function SuperAdminDashboardPage() {
     if (!featuresVendor) return null;
     return allVendors.find(v => v.username === featuresVendor.username) || featuresVendor;
   }, [allVendors, featuresVendor]);
+
+  // Clear Menu Dialog State
+  const [clearMenuVendor, setClearMenuVendor] = useState<Vendor | null>(null);
+  const [isClearMenuOpen, setIsClearMenuOpen] = useState(false);
+
+  const handleOpenClearMenu = (vendor: Vendor) => {
+    setClearMenuVendor(vendor);
+    setIsClearMenuOpen(true);
+  };
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -1082,6 +1104,7 @@ export default function SuperAdminDashboardPage() {
                 onDelete={setVendorToDelete}
                 onManageFeatures={handleOpenFeaturesDialog}
                 onBulkUpload={handleBulkUpload}
+                onClearMenu={handleOpenClearMenu}
                 onToggleApproval={handleApprovalToggle}
               />
             ))}
@@ -1168,6 +1191,15 @@ export default function SuperAdminDashboardPage() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-7 w-7 rounded-full bg-orange-500/15 text-orange-600 dark:text-orange-400 hover:bg-orange-600 hover:text-white border border-orange-500/30 transition-all"
+                          onClick={() => handleOpenClearMenu(vendor)}
+                          title="Clear Store Menu"
+                        >
+                          <UtensilsCrossed className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-7 w-7 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white border border-rose-500/30 transition-all"
                           onClick={() => setVendorToDelete(vendor.username)}
                           title="Delete Store"
@@ -1228,6 +1260,15 @@ export default function SuperAdminDashboardPage() {
         isOpen={isBulkUploadOpen}
         onOpenChange={setIsBulkUploadOpen}
         vendor={selectedVendor}
+      />
+
+      <ClearMenuDialog
+        isOpen={isClearMenuOpen}
+        onOpenChange={setIsClearMenuOpen}
+        vendor={clearMenuVendor}
+        onSuccess={() => {
+          fetchAllItems();
+        }}
       />
 
       <RewardsConfigDialog

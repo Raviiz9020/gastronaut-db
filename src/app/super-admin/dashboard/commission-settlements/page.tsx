@@ -258,9 +258,8 @@ export default function CommissionSettlementsPage() {
       const markedAt = orders[0]?.adminSettlementMarkedAt || orders[0]?.createdAt;
 
       const totalSubtotal = Number(orders.reduce((sum, ord) => sum + (ord.subtotal || ord.totalPrice || 0), 0).toFixed(2));
-      const totalCommissionOnly = Number(orders.reduce((sum, ord) => sum + (ord.commissionAmount || 0), 0).toFixed(2));
-      const totalCommissionAmount = Number(orders.reduce((sum, ord) => sum + (ord.commissionAmount || 0) + (ord.platformFee || 0), 0).toFixed(2));
-      const totalNetPayout = Math.max(0, Number((totalSubtotal - totalCommissionOnly).toFixed(2)));
+      const totalCommissionAmount = Number(orders.reduce((sum, ord) => sum + (ord.commissionAmount || 0), 0).toFixed(2));
+      const totalNetPayout = Math.max(0, Number((totalSubtotal - totalCommissionAmount).toFixed(2)));
 
       return {
         vendorUsername,
@@ -297,9 +296,8 @@ export default function CommissionSettlementsPage() {
       const vendorImage = vendorObj?.shopImage || vendorObj?.imageUrl || '';
 
       const totalSubtotal = Number(orders.reduce((sum, ord) => sum + (ord.subtotal || ord.totalPrice || 0), 0).toFixed(2));
-      const totalCommissionOnly = Number(orders.reduce((sum, ord) => sum + (ord.commissionAmount || 0), 0).toFixed(2));
-      const totalCommissionAmount = Number(orders.reduce((sum, ord) => sum + (ord.commissionAmount || 0) + (ord.platformFee || 0), 0).toFixed(2));
-      const totalNetPayout = Math.max(0, Number((totalSubtotal - totalCommissionOnly).toFixed(2)));
+      const totalCommissionAmount = Number(orders.reduce((sum, ord) => sum + (ord.commissionAmount || 0), 0).toFixed(2));
+      const totalNetPayout = Math.max(0, Number((totalSubtotal - totalCommissionAmount).toFixed(2)));
 
       return {
         vendorUsername,
@@ -413,8 +411,9 @@ export default function CommissionSettlementsPage() {
   }, [riderOwedBalances]);
 
   const handleConfirmVendorSettlement = async (targetVendor?: VendorSettlementClaim | VendorOwedBalance) => {
-    const activeTarget = targetVendor || settlingVendor || qrPayoutVendor;
-    if (!activeTarget) return;
+    const validTarget = (targetVendor && 'orders' in targetVendor && Array.isArray(targetVendor.orders)) ? targetVendor : undefined;
+    const activeTarget = validTarget || settlingVendor || qrPayoutVendor;
+    if (!activeTarget || !Array.isArray(activeTarget.orders)) return;
 
     setIsProcessing(true);
     try {
@@ -514,8 +513,9 @@ export default function CommissionSettlementsPage() {
   };
 
   const handleConfirmRiderSettlement = async (targetRider?: RiderSettlementClaim | RiderOwedBalance) => {
-    const activeRider = targetRider || settlingRider || qrPayoutRider;
-    if (!activeRider) return;
+    const validRider = (targetRider && 'orders' in targetRider && Array.isArray(targetRider.orders)) ? targetRider : undefined;
+    const activeRider = validRider || settlingRider || qrPayoutRider;
+    if (!activeRider || !Array.isArray(activeRider.orders)) return;
 
     setIsProcessing(true);
     try {
@@ -685,7 +685,7 @@ export default function CommissionSettlementsPage() {
           <Card className="bg-gradient-to-br from-amber-500/10 to-orange-500/5 border-amber-500/20 rounded-3xl p-6 shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Admin Commission & Platform Fees
+                Admin Commission Earned
               </span>
               <div className="p-2 rounded-xl bg-amber-500/20 text-amber-600">
                 <TrendingUp className="h-5 w-5" />
@@ -694,7 +694,7 @@ export default function CommissionSettlementsPage() {
             <div className="mt-3">
               <span className="text-3xl font-black text-amber-600 dark:text-amber-400">₹{totalVendorCommissionSum}</span>
               <p className="text-xs text-muted-foreground mt-1 font-medium">
-                Platform revenue retained across {unclaimedOrders.length} order{unclaimedOrders.length === 1 ? '' : 's'}
+                Admin commission retained across {unclaimedOrders.length} order{unclaimedOrders.length === 1 ? '' : 's'}
               </p>
             </div>
           </Card>
@@ -1639,7 +1639,7 @@ export default function CommissionSettlementsPage() {
       <ConfirmationDialog
         isOpen={!!settlingVendor}
         onOpenChange={(open) => !open && setSettlingVendor(null)}
-        onConfirm={handleConfirmVendorSettlement}
+        onConfirm={() => handleConfirmVendorSettlement()}
         title="Confirm Vendor Payout Settlement?"
         description={`Are you sure you want to confirm settlement for ${settlingVendor?.vendorShopName}? This will settle a Net Payout of ₹${settlingVendor?.totalNetPayout.toFixed(2)} (Gross Sales: ₹${settlingVendor?.totalSubtotal.toFixed(2)} minus Commission: ₹${settlingVendor?.totalCommissionAmount.toFixed(2)}) across ${settlingVendor?.orders.length} order(s) and email the official settlement statement.`}
       />
@@ -1648,7 +1648,7 @@ export default function CommissionSettlementsPage() {
       <ConfirmationDialog
         isOpen={!!settlingRider}
         onOpenChange={(open) => !open && setSettlingRider(null)}
-        onConfirm={handleConfirmRiderSettlement}
+        onConfirm={() => handleConfirmRiderSettlement()}
         title="Confirm Rider Delivery Payout Settlement?"
         description={`Are you sure you want to confirm settlement for ${settlingRider?.riderName}? This will mark ₹${settlingRider && ('totalPayoutAmount' in settlingRider ? settlingRider.totalPayoutAmount : settlingRider.totalOwedAmount)} across ${settlingRider?.orders.length} delivered order(s) as settled.`}
       />
