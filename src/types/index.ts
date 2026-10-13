@@ -282,6 +282,7 @@ export interface Order {
     adminSettlementPaymentMode?: string;
     adminSettlementMarkedAt?: string;
     adminSettlementConfirmedAt?: string;
+    adminSettlementId?: string;
     
     // Additional home-delivery settlement/vendor fields (Android Parity)
     riderPayout?: number;
@@ -291,6 +292,7 @@ export interface Order {
     riderSettlementPaymentMode?: string;
     riderSettlementRejectedReason?: string;
     riderSettlementStatus?: string;
+    riderSettlementId?: string;
     vendorAddress?: string;
     vendorLatitude?: number;
     vendorLongitude?: number;
@@ -436,4 +438,23 @@ export interface EmailTemplate {
   body: string;
   imageUrl?: string;
   imagePrompt?: string;
+}
+
+export interface SettlementRecord {
+  id: string;
+  settlementId: string;
+  type: 'vendor' | 'rider';
+  vendorUsername?: string;
+  vendorShopName?: string;
+  riderId?: string;
+  riderName?: string;
+  settledAt: string;
+  settledBy?: string;
+  paymentMode: string;
+  totalOrders: number;
+  grossSales?: number;
+  commissionRetained?: number;
+  netPayoutPaid: number;
+  orderIds: string[];
+  status: 'completed';
 }

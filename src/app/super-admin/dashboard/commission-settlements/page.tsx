@@ -5,7 +5,7 @@ import { collection, query, where, onSnapshot, writeBatch, doc } from 'firebase/
 import { db } from '@/lib/firebase';
 import { useVendor } from '@/context/vendor-context';
 import { useRiderManagement } from '@/context/rider-management-context';
-import type { Order, Vendor, Rider } from '@/types';
+import type { Order, Vendor, Rider, SettlementRecord } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,7 +35,8 @@ import {
   UserCheck,
   Copy,
   Check,
-  QrCode
+  QrCode,
+  History
 } from 'lucide-react';
 import { format } from 'date-fns';
 import ConfirmationDialog from '@/components/confirmation-dialog';
@@ -115,7 +116,28 @@ export default function CommissionSettlementsPage() {
   const [settlingRider, setSettlingRider] = useState<RiderSettlementClaim | RiderOwedBalance | null>(null);
   const [qrPayoutRider, setQrPayoutRider] = useState<RiderSettlementClaim | RiderOwedBalance | null>(null);
 
+  // Settlement History States
+  const [settlementHistory, setSettlementHistory] = useState<SettlementRecord[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
+  const [copiedSettlementId, setCopiedSettlementId] = useState<string | null>(null);
+
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const vendorSettlementHistory = useMemo(() => {
+    return settlementHistory.filter((s) => s.type === 'vendor' || !s.type);
+  }, [settlementHistory]);
+
+  const riderSettlementHistory = useMemo(() => {
+    return settlementHistory.filter((s) => s.type === 'rider');
+  }, [settlementHistory]);
+
+  const handleCopySettlementId = (id: string) => {
+    navigator.clipboard.writeText(id);
+    setCopiedSettlementId(id);
+    toast({ title: 'Copied!', description: `Settlement ID ${id} copied to clipboard.` });
+    setTimeout(() => setCopiedSettlementId(null), 2000);
+  };
 
   useEffect(() => {
     fetchAllRiders();
@@ -233,6 +255,32 @@ export default function CommissionSettlementsPage() {
     );
 
     return () => unsubRiderUnsettled();
+  }, []);
+
+  // 5. Realtime query for Settlements History (all completed settlement batches)
+  useEffect(() => {
+    setIsLoadingHistory(true);
+    const settlementsRef = collection(db, 'settlements');
+
+    const unsubHistory = onSnapshot(
+      settlementsRef,
+      (snapshot) => {
+        const records = snapshot.docs.map((docSnap) => ({
+          ...docSnap.data(),
+          id: docSnap.id,
+        })) as SettlementRecord[];
+
+        records.sort((a, b) => new Date(b.settledAt).getTime() - new Date(a.settledAt).getTime());
+        setSettlementHistory(records);
+        setIsLoadingHistory(false);
+      },
+      (error) => {
+        console.error('Error fetching settlement history:', error);
+        setIsLoadingHistory(false);
+      }
+    );
+
+    return () => unsubHistory();
   }, []);
 
   // Group claimed payouts by vendor
@@ -419,13 +467,36 @@ export default function CommissionSettlementsPage() {
     try {
       const batch = writeBatch(db);
       const nowIso = new Date().toISOString();
+      const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const settlementId = `SETTLE-${format(new Date(), 'yyyyMMdd')}-${activeTarget.vendorUsername.slice(0, 6).toUpperCase()}-${randomSuffix}`;
 
       activeTarget.orders.forEach((ord) => {
         const orderRef = doc(db, 'orders', ord.orderId);
         batch.update(orderRef, {
           adminSettlementStatus: 'settled',
           adminSettlementConfirmedAt: nowIso,
+          adminSettlementId: settlementId,
         });
+      });
+
+      const paymentMode = ('paymentMode' in activeTarget && typeof (activeTarget as any).paymentMode === 'string')
+        ? (activeTarget as any).paymentMode
+        : 'UPI Transfer';
+
+      const settlementRef = doc(db, 'settlements', settlementId);
+      batch.set(settlementRef, {
+        settlementId,
+        type: 'vendor',
+        vendorUsername: activeTarget.vendorUsername,
+        vendorShopName: activeTarget.vendorShopName,
+        settledAt: nowIso,
+        paymentMode,
+        totalOrders: activeTarget.orders.length,
+        grossSales: activeTarget.totalSubtotal,
+        commissionRetained: activeTarget.totalCommissionAmount,
+        netPayoutPaid: activeTarget.totalNetPayout,
+        orderIds: activeTarget.orders.map((o) => o.displayId || o.orderId),
+        status: 'completed',
       });
 
       await batch.commit();
@@ -440,8 +511,6 @@ export default function CommissionSettlementsPage() {
         const totalSubtotal = Number(activeTarget.orders.reduce((sum, ord) => sum + (ord.subtotal || 0), 0).toFixed(2));
         const totalCommission = Number(activeTarget.orders.reduce((sum, ord) => sum + (ord.commissionAmount || 0), 0).toFixed(2));
         const netPayout = Math.max(0, Number((totalSubtotal - totalCommission).toFixed(2)));
-
-        const settlementId = `SETTLE-${format(new Date(), 'yyyyMMdd')}-${activeTarget.vendorUsername.slice(0, 6).toUpperCase()}`;
 
         const sortedVendorOrders = [...activeTarget.orders].sort((a, b) => {
           const idA = a.displayId || a.orderId || '';
@@ -473,7 +542,7 @@ export default function CommissionSettlementsPage() {
           settlementDetails: {
             settlementId,
             settledAt: nowIso,
-            paymentMode: 'paymentMode' in activeTarget && typeof (activeTarget as any).paymentMode === 'string' ? (activeTarget as any).paymentMode : 'UPI Transfer',
+            paymentMode,
             totalSubtotal,
             totalCommission,
             netPayout,
@@ -489,12 +558,12 @@ export default function CommissionSettlementsPage() {
 
         toast({
           title: 'Settlement Confirmed!',
-          description: `Settled ₹${amount} for ${activeTarget.vendorShopName} & statement emailed to ${vendorEmail}.`,
+          description: `Settled ₹${amount.toFixed(2)} for ${activeTarget.vendorShopName} (ID: ${settlementId}) & statement emailed to ${vendorEmail}.`,
         });
       } else {
         toast({
           title: 'Settlement Confirmed!',
-          description: `Successfully settled ₹${amount} payout for ${activeTarget.vendorShopName}.`,
+          description: `Successfully settled ₹${amount.toFixed(2)} payout for ${activeTarget.vendorShopName} (ID: ${settlementId}).`,
         });
       }
 
@@ -521,19 +590,39 @@ export default function CommissionSettlementsPage() {
     try {
       const batch = writeBatch(db);
       const nowIso = new Date().toISOString();
+      const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const settlementId = `RIDER-SETTLE-${format(new Date(), 'yyyyMMdd')}-${activeRider.riderId.slice(0, 6).toUpperCase()}-${randomSuffix}`;
 
       activeRider.orders.forEach((ord) => {
         const orderRef = doc(db, 'orders', ord.orderId);
         batch.update(orderRef, {
           riderSettlementStatus: 'settled',
           riderSettlementConfirmedAt: nowIso,
+          riderSettlementId: settlementId,
         });
+      });
+
+      const amount = 'totalPayoutAmount' in activeRider ? activeRider.totalPayoutAmount : activeRider.totalOwedAmount;
+      const paymentMode = ('paymentMode' in activeRider && typeof (activeRider as any).paymentMode === 'string')
+        ? (activeRider as any).paymentMode
+        : 'UPI Transfer';
+
+      const settlementRef = doc(db, 'settlements', settlementId);
+      batch.set(settlementRef, {
+        settlementId,
+        type: 'rider',
+        riderId: activeRider.riderId,
+        riderName: activeRider.riderName,
+        settledAt: nowIso,
+        paymentMode,
+        totalOrders: activeRider.orders.length,
+        netPayoutPaid: amount,
+        orderIds: activeRider.orders.map((o) => o.displayId || o.orderId),
+        status: 'completed',
       });
 
       await batch.commit();
 
-      const amount = 'totalPayoutAmount' in activeRider ? activeRider.totalPayoutAmount : activeRider.totalOwedAmount;
-      
       // Look up rider details for email dispatch
       const riderObj = riders.find(r => r.id === activeRider.riderId);
       const riderEmail = riderObj?.email;
@@ -549,7 +638,6 @@ export default function CommissionSettlementsPage() {
         });
 
         const totalPayout = Number(activeRider.orders.reduce((sum, ord) => sum + (ord.riderPayout || 0), 0).toFixed(2));
-        const settlementId = `RIDER-SETTLE-${format(new Date(), 'yyyyMMdd')}-${activeRider.riderId.slice(0, 6).toUpperCase()}`;
 
         const orderSummaries = sortedRiderOrders.map(ord => ({
           displayId: ord.displayId || ord.orderId || 'HYPER',
@@ -571,7 +659,7 @@ export default function CommissionSettlementsPage() {
           settlementDetails: {
             settlementId,
             settledAt: nowIso,
-            paymentMode: 'paymentMode' in activeRider && typeof (activeRider as any).paymentMode === 'string' ? (activeRider as any).paymentMode : 'UPI Transfer',
+            paymentMode,
             totalDeliveries: orderSummaries.length,
             totalPayout,
             orders: orderSummaries
@@ -586,12 +674,12 @@ export default function CommissionSettlementsPage() {
 
         toast({
           title: 'Rider Settlement Confirmed!',
-          description: `Settled ₹${amount} for ${activeRider.riderName} & statement emailed to ${riderEmail}.`,
+          description: `Settled ₹${amount.toFixed(2)} for ${activeRider.riderName} (ID: ${settlementId}) & statement emailed to ${riderEmail}.`,
         });
       } else {
         toast({
           title: 'Rider Settlement Confirmed!',
-          description: `Successfully settled ₹${amount} delivery payout for ${activeRider.riderName}.`,
+          description: `Successfully settled ₹${amount.toFixed(2)} delivery payout for ${activeRider.riderName} (ID: ${settlementId}).`,
         });
       }
 
@@ -772,12 +860,15 @@ export default function CommissionSettlementsPage() {
       {/* ========================================================================= */}
       {mainTab === 'vendor' && (
         <Tabs defaultValue="owed" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2 rounded-2xl p-1 bg-muted/60 border mb-6">
+          <TabsList className="grid w-full max-w-xl grid-cols-3 rounded-2xl p-1 bg-muted/60 border mb-6">
             <TabsTrigger value="owed" className="rounded-xl text-xs font-bold py-2">
-              Pending / Owed Balances ({owedBalances.length})
+              Pending / Owed ({owedBalances.length})
             </TabsTrigger>
             <TabsTrigger value="claims" className="rounded-xl text-xs font-bold py-2">
               Claimed Payouts ({settlementClaims.length})
+            </TabsTrigger>
+            <TabsTrigger value="history" className="rounded-xl text-xs font-bold py-2">
+              Settlement History ({vendorSettlementHistory.length})
             </TabsTrigger>
           </TabsList>
 
@@ -1232,6 +1323,97 @@ export default function CommissionSettlementsPage() {
               </Card>
             )}
           </TabsContent>
+
+          {/* Vendor Tab 3: Settlement History */}
+          <TabsContent value="history" className="space-y-6">
+            {isLoadingHistory ? (
+              <div className="flex justify-center items-center h-48">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : vendorSettlementHistory.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4">
+                {vendorSettlementHistory.map((rec) => {
+                  const isExpanded = expandedHistory === rec.settlementId;
+                  return (
+                    <Card key={rec.settlementId} className="bg-card/80 backdrop-blur-sm border rounded-2xl overflow-hidden shadow-sm">
+                      <div className="p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-sm text-primary">{rec.settlementId}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                              onClick={() => handleCopySettlementId(rec.settlementId)}
+                              title="Copy Settlement ID"
+                            >
+                              {copiedSettlementId === rec.settlementId ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                            </Button>
+                            <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/30 font-semibold">
+                              {rec.paymentMode || 'UPI Transfer'}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Store className="h-3.5 w-3.5 text-primary" />
+                            <strong className="text-foreground">{rec.vendorShopName || rec.vendorUsername}</strong>
+                            <span>•</span>
+                            <Calendar className="h-3.5 w-3.5" />
+                            <span>{rec.settledAt ? format(new Date(rec.settledAt), 'MMM dd, yyyy HH:mm') : '-'}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-6">
+                          <div className="text-right text-xs">
+                            <div className="text-muted-foreground">
+                              Gross: <strong>₹{(rec.grossSales ?? 0).toFixed(2)}</strong> · Comm: <strong className="text-destructive">-₹{(rec.commissionRetained ?? 0).toFixed(2)}</strong>
+                            </div>
+                            <div className="text-base font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                              Net Paid: ₹{(rec.netPayoutPaid ?? 0).toFixed(2)}
+                            </div>
+                          </div>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setExpandedHistory(isExpanded ? null : rec.settlementId)}
+                            className="rounded-xl text-xs font-semibold gap-1.5"
+                          >
+                            <span>{rec.totalOrders} Order{rec.totalOrders === 1 ? '' : 's'}</span>
+                            {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {isExpanded && rec.orderIds && rec.orderIds.length > 0 && (
+                        <div className="border-t bg-muted/20 px-5 py-3 text-xs">
+                          <span className="text-muted-foreground font-semibold block mb-2">Orders Included in this Settlement:</span>
+                          <div className="flex flex-wrap gap-2">
+                            {rec.orderIds.map((id) => (
+                              <Badge key={id} variant="secondary" className="font-mono text-[11px] px-2 py-0.5 bg-background border">
+                                {id}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <Card className="text-center py-16 bg-card/60 border-dashed rounded-3xl">
+                <CardContent className="space-y-3 pt-6">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+                    <Receipt className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-lg font-bold">No Past Settlements Yet</h3>
+                  <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                    When you settle balances with vendors, the completed settlements and payout records will be archived here.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
         </Tabs>
       )}
 
@@ -1240,12 +1422,15 @@ export default function CommissionSettlementsPage() {
       {/* ========================================================================= */}
       {mainTab === 'rider' && (
         <Tabs defaultValue="owed" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2 rounded-2xl p-1 bg-muted/60 border mb-6">
+          <TabsList className="grid w-full max-w-xl grid-cols-3 rounded-2xl p-1 bg-muted/60 border mb-6">
             <TabsTrigger value="owed" className="rounded-xl text-xs font-bold py-2">
               Pending Rider Payouts ({riderOwedBalances.length})
             </TabsTrigger>
             <TabsTrigger value="claims" className="rounded-xl text-xs font-bold py-2">
               Claimed by Riders ({riderClaims.length})
+            </TabsTrigger>
+            <TabsTrigger value="history" className="rounded-xl text-xs font-bold py-2">
+              Settlement History ({riderSettlementHistory.length})
             </TabsTrigger>
           </TabsList>
 
@@ -1627,6 +1812,94 @@ export default function CommissionSettlementsPage() {
                   <h3 className="text-lg font-bold">No Pending Rider Claims</h3>
                   <p className="text-sm text-muted-foreground max-w-sm mx-auto">
                     There are no rider submitted payment claims awaiting verification.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Rider Tab 3: Settlement History */}
+          <TabsContent value="history" className="space-y-6">
+            {isLoadingHistory ? (
+              <div className="flex justify-center items-center h-48">
+                <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+              </div>
+            ) : riderSettlementHistory.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4">
+                {riderSettlementHistory.map((rec) => {
+                  const isExpanded = expandedHistory === rec.settlementId;
+                  return (
+                    <Card key={rec.settlementId} className="bg-card/80 backdrop-blur-sm border rounded-2xl overflow-hidden shadow-sm">
+                      <div className="p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-sm text-orange-600 dark:text-orange-400">{rec.settlementId}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                              onClick={() => handleCopySettlementId(rec.settlementId)}
+                              title="Copy Settlement ID"
+                            >
+                              {copiedSettlementId === rec.settlementId ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                            </Button>
+                            <Badge variant="outline" className="text-[10px] bg-orange-500/10 text-orange-600 border-orange-500/30 font-semibold">
+                              {rec.paymentMode || 'UPI Transfer'}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Bike className="h-3.5 w-3.5 text-orange-500" />
+                            <strong className="text-foreground">{rec.riderName || rec.riderId}</strong>
+                            <span>•</span>
+                            <Calendar className="h-3.5 w-3.5" />
+                            <span>{rec.settledAt ? format(new Date(rec.settledAt), 'MMM dd, yyyy HH:mm') : '-'}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-6">
+                          <div className="text-right text-xs">
+                            <div className="text-base font-extrabold text-orange-600 dark:text-orange-400">
+                              Payout Paid: ₹{(rec.netPayoutPaid ?? 0).toFixed(2)}
+                            </div>
+                          </div>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setExpandedHistory(isExpanded ? null : rec.settlementId)}
+                            className="rounded-xl text-xs font-semibold gap-1.5"
+                          >
+                            <span>{rec.totalOrders} Deliver{rec.totalOrders === 1 ? 'y' : 'ies'}</span>
+                            {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {isExpanded && rec.orderIds && rec.orderIds.length > 0 && (
+                        <div className="border-t bg-muted/20 px-5 py-3 text-xs">
+                          <span className="text-muted-foreground font-semibold block mb-2">Orders Included in this Delivery Payout:</span>
+                          <div className="flex flex-wrap gap-2">
+                            {rec.orderIds.map((id) => (
+                              <Badge key={id} variant="secondary" className="font-mono text-[11px] px-2 py-0.5 bg-background border">
+                                {id}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <Card className="text-center py-16 bg-card/60 border-dashed rounded-3xl">
+                <CardContent className="space-y-3 pt-6">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+                    <Bike className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-lg font-bold">No Past Rider Settlements Yet</h3>
+                  <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                    When delivery payouts are settled with riders, their settlement records will be archived here.
                   </p>
                 </CardContent>
               </Card>

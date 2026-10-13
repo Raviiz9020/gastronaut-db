@@ -313,5 +313,19 @@ match /riders/{riderUid} {
       allow read: if true;
       allow create, update, delete: if isSuperAdmin();
     }
+
+    // =========================
+    // Settlements
+    // =========================
+    match /settlements/{settlementId} {
+      // Superadmins can read all. Vendors can only read their own settlements. Riders can read their own payouts.
+      allow read: if isSuperAdmin() || 
+                  (isSignedIn() && (
+                    resource.data.vendorUsername == request.auth.uid || 
+                    resource.data.riderId == request.auth.uid
+                  ));
+      // Only superadmin can create/update/delete settlements
+      allow write: if isSuperAdmin();
+    }
   }
 }
