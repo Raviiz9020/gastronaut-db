@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,7 @@ import {
   Play,
   RotateCcw,
   XCircle,
+  ArrowRight,
 } from 'lucide-react';
 import { createSlug } from '@/lib/utils';
 import { doc, getDocs, query, collection, where, writeBatch, updateDoc } from 'firebase/firestore';
@@ -33,6 +34,7 @@ import { db } from '@/lib/firebase';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Slider } from '@/components/ui/slider';
 import {
   Select,
   SelectContent,
@@ -91,7 +93,11 @@ function parseCSV(text: string): string[][] {
 }
 
 // Parses customizations string formatted as: GroupName|Type|MinSelect|OptionName:Price:OriginalPrice:Stock:IsAvailable
-function parseCustomizations(customizationsStr: string, onDiscountDetected: () => void): Customization[] {
+function parseCustomizations(
+  customizationsStr: string,
+  markupPercentage: number,
+  onDiscountDetected: () => void
+): Customization[] {
   if (!customizationsStr) return [];
   
   const groups: Customization[] = [];
@@ -142,14 +148,24 @@ function parseCustomizations(customizationsStr: string, onDiscountDetected: () =
           onDiscountDetected();
         }
       }
+
+      // Raw CSV price is preserved as the authentic in-store rate
+      const optDineInPrice = optPrice;
+      const optDeliveryPrice = markupPercentage > 0
+        ? Math.round(optPrice * (1 + markupPercentage / 100))
+        : optPrice;
+      const optDeliveryOriginalPrice = optOriginalPrice !== undefined
+        ? (markupPercentage > 0 ? Math.round(optOriginalPrice * (1 + markupPercentage / 100)) : optOriginalPrice)
+        : undefined;
       
       const optionObj: CustomizationOption = {
         id: Math.random().toString(36).substring(2, 11),
         name: optName,
-        price: optPrice,
+        price: optDeliveryPrice,
+        dineInPrice: optDineInPrice,
         isAvailable: optIsAvailable,
       };
-      if (optOriginalPrice !== undefined) optionObj.originalPrice = optOriginalPrice;
+      if (optDeliveryOriginalPrice !== undefined) optionObj.originalPrice = optDeliveryOriginalPrice;
       if (optStock !== undefined && !isNaN(optStock)) optionObj.stock = optStock;
 
       options.push(optionObj);
@@ -199,6 +215,17 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
   const [duplicateSkipped, setDuplicateSkipped] = useState<string[]>([]);
   const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
 
+  // Delivery Commission Markup slider state (defaults to vendor commission or 10%)
+  const [markupPercentage, setMarkupPercentage] = useState<number>(
+    vendor?.commissionPercentage || 10
+  );
+
+  useEffect(() => {
+    if (isOpen) {
+      setMarkupPercentage(vendor?.commissionPercentage || 10);
+    }
+  }, [isOpen, vendor]);
+
   const vendorCategories = useMemo(() => {
     if (!vendor) return [];
     return allCategories
@@ -215,8 +242,8 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
 
   const handleDownloadTemplate = () => {
     const headers = 'name,price,discountPrice,category,description,isVeg,stock,isPopular,customizations';
-    const sampleRow1 = 'Chicken Tikka,250,299,Starters,Juicy tandoori chicken chunks,false,100,true,"Portion|SINGLE|1|Half:130:150:50:true,Full:250:299:50:true"';
-    const sampleRow2 = 'Paneer Butter Masala,220,,Main Course,Rich creamy cottage cheese curry,true,50,false,';
+    const sampleRow1 = 'Chicken Tikka,250,299,Starters,Juicy tandoori chicken chunks (In-store menu price),false,100,true,"Portion|SINGLE|1|Half:130:150:50:true,Full:250:299:50:true"';
+    const sampleRow2 = 'Paneer Butter Masala,220,,Main Course,Rich creamy cottage cheese curry (In-store menu price),true,50,false,';
     const csvContent = `data:text/csv;charset=utf-8,${headers}\n${sampleRow1}\n${sampleRow2}`;
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -330,8 +357,17 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
             else if (parsedPrice > parsedDiscountPrice) { isDiscountActive = true; activePrice = parsedDiscountPrice; originalPrice = parsedPrice; }
           }
           let hasAnyVariationDiscount = false;
-          const customizations = parseCustomizations(customizationsStr, () => { hasAnyVariationDiscount = true; });
+          const customizations = parseCustomizations(customizationsStr, markupPercentage, () => { hasAnyVariationDiscount = true; });
           if (customizations.length > 0) isDiscountActive = hasAnyVariationDiscount;
+
+          // Delivery markup calculation (strict whole-rupee rounding: zero decimals)
+          const deliveryActivePrice = markupPercentage > 0
+            ? Math.round(activePrice * (1 + markupPercentage / 100))
+            : activePrice;
+          const deliveryOriginalPrice = originalPrice !== undefined
+            ? (markupPercentage > 0 ? Math.round(originalPrice * (1 + markupPercentage / 100)) : originalPrice)
+            : undefined;
+
           const isVeg = isVegStr ? (isVegStr.toLowerCase() === 'true' || isVegStr.toLowerCase() === 'yes' || isVegStr === '1') : false;
           const isPopular = isPopularStr ? (isPopularStr.toLowerCase() === 'true' || isPopularStr.toLowerCase() === 'yes' || isPopularStr === '1') : false;
           const stock = stockStr ? parseInt(stockStr, 10) : undefined;
@@ -339,11 +375,23 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
           const docId = `${createSlug(vendor.shopName || vendor.username)}-${slug}`;
           const itemRef = doc(db, 'menuItems', docId);
           const newItemData: Omit<MenuItem, 'id'> = {
-            name, price: activePrice, discountPrice: originalPrice || undefined, isDiscountActive,
-            category: categoryStr, description: description || '', image: 'https://placehold.co/400x225/222222/4AF0FF',
-            isAvailable: true, isVeg, isPopular, stock: (stock === undefined || isNaN(stock)) ? undefined : stock,
+            name,
+            price: deliveryActivePrice,
+            dineInPrice: parsedPrice,
+            discountPrice: deliveryOriginalPrice || undefined,
+            isDiscountActive,
+            category: categoryStr,
+            description: description || '',
+            image: 'https://placehold.co/400x225/222222/4AF0FF',
+            isAvailable: true,
+            isVeg,
+            isPopular,
+            stock: (stock === undefined || isNaN(stock)) ? undefined : stock,
             customizations: customizations.length > 0 ? customizations : undefined,
-            vendorUsername: vendor.username, shopName: vendor.shopName || vendor.name, aiHint: name, slug,
+            vendorUsername: vendor.username,
+            shopName: vendor.shopName || vendor.name,
+            aiHint: name,
+            slug,
           };
           batch.set(itemRef, Object.fromEntries(Object.entries(newItemData).filter(([_, v]) => v !== undefined)));
           successfulUploads++;
@@ -459,6 +507,66 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
             </div>
 
             <div className="space-y-3">
+              {/* Delivery Commission Markup Slider */}
+              <div className="p-3.5 rounded-xl border bg-muted/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-semibold text-foreground">Delivery Commission Markup</span>
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal">
+                        Paper ➔ Online
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Markup applied over authentic physical menu (in-store) rates
+                    </p>
+                  </div>
+                  <Badge
+                    variant={markupPercentage > 0 ? "default" : "secondary"}
+                    className="text-xs font-bold px-2.5 py-0.5"
+                  >
+                    {markupPercentage > 0 ? `+${markupPercentage}%` : '0% (In-Store)'}
+                  </Badge>
+                </div>
+
+                <div className="space-y-1.5 pt-1">
+                  <Slider
+                    value={[markupPercentage]}
+                    onValueChange={(val) => setMarkupPercentage(val[0])}
+                    min={0}
+                    max={30}
+                    step={1}
+                    className="py-1 cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-muted-foreground font-medium">
+                    <span>0% (In-Store)</span>
+                    <span>10% (Default)</span>
+                    <span>20%</span>
+                    <span>30%</span>
+                  </div>
+                </div>
+
+                {/* Live Preview Indicator */}
+                <div className="space-y-1.5 text-xs px-3 py-2 rounded-lg bg-background border border-border/80">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <span>CSV In-Store Price:</span>
+                      <span className="font-semibold text-foreground">₹100</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-primary font-semibold">
+                      <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                      <span>Online Delivery ({markupPercentage > 0 ? `+${markupPercentage}%` : '0%'}): ₹{Math.round(100 * (1 + markupPercentage / 100))}</span>
+                    </div>
+                  </div>
+                  {markupPercentage > 0 && (
+                    <div className="text-[10px] text-muted-foreground flex items-center justify-between pt-1 border-t border-border/40">
+                      <span>Whole-rupee rounding:</span>
+                      <span>₹95 paper menu ➔ ₹{Math.round(95 * (1 + markupPercentage / 100))} online (zero decimals)</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Drop zone */}
               <div
                 className="relative border-2 border-dashed border-border hover:border-primary/60 transition-colors rounded-2xl p-6 text-center cursor-pointer group bg-muted/20 hover:bg-primary/5"
@@ -488,7 +596,7 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-foreground">Drop your CSV file here</p>
-                      <p className="text-xs text-muted-foreground mt-1">or click to browse · Columns: name, price, category, description, isVeg, stock, isPopular, customizations</p>
+                      <p className="text-xs text-muted-foreground mt-1">or click to browse · price column = physical paper menu rate</p>
                     </div>
                   </div>
                 )}
@@ -500,7 +608,7 @@ export default function BulkUploadDialog({ isOpen, onOpenChange, vendor }: BulkU
                 className="w-full flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors py-1"
               >
                 <Download className="h-3.5 w-3.5" />
-                Download sample CSV template
+                Download sample CSV template (In-store menu prices)
               </button>
 
               {/* Upload errors */}
