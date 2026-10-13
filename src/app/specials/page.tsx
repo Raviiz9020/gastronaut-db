@@ -210,10 +210,10 @@ const MenuItemCard = ({
   const isEffectivelyAvailable = item.isAvailable && isShopOpen && isEffectivelyInStock;
 
   return (
-    <div className="w-40 sm:w-44 shrink-0 snap-start">
-      <Link href={getItemUrl(item)} prefetch={true} passHref>
+    <div className="w-full shrink-0 snap-start h-full">
+      <Link href={getItemUrl(item)} prefetch={true} passHref className="block h-full">
         <Card className={cn(
-          "flex flex-col overflow-hidden rounded-2xl border border-border/60 hover:border-primary/40 bg-card shadow-xs hover:shadow-md transition-all duration-300 h-full group relative",
+          "flex flex-col overflow-hidden rounded-xl sm:rounded-2xl border border-border/60 hover:border-primary/40 bg-card shadow-xs hover:shadow-md transition-all duration-300 h-full group relative",
           !isEffectivelyAvailable && "opacity-60 grayscale-[30%]"
         )}>
           {/* Dish Image Container (4:3 aspect ratio) */}
@@ -222,14 +222,14 @@ const MenuItemCard = ({
               src={item.image || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&auto=format&fit=crop&q=80'}
               alt={item.name}
               fill
-              sizes="(max-width: 640px) 160px, 176px"
+              sizes="(max-width: 640px) 140px, 160px"
               className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
               placeholder={item.blurDataUrl ? 'blur' : 'empty'}
               blurDataURL={item.blurDataUrl}
             />
 
             {/* Veg / Non-Veg Indicator */}
-            <div className="absolute top-2 left-2 z-10 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md rounded-md p-0.5 shadow-xs flex items-center justify-center">
+            <div className="absolute top-1.5 left-1.5 z-10 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md rounded-md p-0.5 shadow-xs flex items-center justify-center">
               <span className={cn(
                 "w-2 h-2 rounded-full",
                 item.isVeg ? "bg-emerald-500" : "bg-red-500"
@@ -238,24 +238,24 @@ const MenuItemCard = ({
 
             {/* Discount Badge */}
             {discountPercentage > 0 && isEffectivelyAvailable && (
-              <div className="absolute top-2 right-2 z-10 bg-destructive text-destructive-foreground rounded-full px-2 py-0.5 text-[9px] font-bold flex items-center justify-center shadow-xs">
-                <Tag className="h-2.5 w-2.5 mr-0.5" />
+              <div className="absolute top-1.5 right-1.5 z-10 bg-destructive text-destructive-foreground rounded-full px-1.5 py-0.5 text-[8.5px] font-bold flex items-center justify-center shadow-xs">
+                <Tag className="h-2 w-2 mr-0.5" />
                 <span>{discountPercentage}% OFF</span>
               </div>
             )}
 
             {/* Rating Pill if available */}
             {ratingCount > 0 && isEffectivelyAvailable && (
-              <div className="absolute bottom-2 left-2 z-10 bg-black/75 backdrop-blur-md text-amber-400 rounded-md px-1.5 py-0.5 text-[10px] font-bold flex items-center gap-0.5 shadow-xs">
-                <Star className="h-2.5 w-2.5 fill-amber-400" />
+              <div className="absolute bottom-1.5 left-1.5 z-10 bg-black/75 backdrop-blur-md text-amber-400 rounded-md px-1.5 py-0.5 text-[9px] font-bold flex items-center gap-0.5 shadow-xs">
+                <Star className="h-2 w-2 fill-amber-400" />
                 <span>{averageRating.toFixed(1)}</span>
               </div>
             )}
 
             {/* Closed / Out of Stock Overlay */}
             {!isEffectivelyAvailable && (
-              <div className="absolute inset-0 bg-background/85 backdrop-blur-[1px] flex items-center justify-center p-2 z-20">
-                <span className="text-foreground font-bold text-[10px] text-center px-2 py-0.5 rounded-full bg-muted border border-border shadow-xs">
+              <div className="absolute inset-0 bg-background/85 backdrop-blur-[1px] flex items-center justify-center p-1.5 z-20">
+                <span className="text-foreground font-bold text-[9px] text-center px-2 py-0.5 rounded-full bg-muted border border-border shadow-xs">
                   {!isShopOpen ? (shopStatus?.msg || 'Closed') : (!isEffectivelyInStock ? 'Out of Stock' : 'Unavailable')}
                 </span>
               </div>
@@ -263,51 +263,51 @@ const MenuItemCard = ({
           </div>
 
           {/* Dish Details */}
-          <CardContent className="p-2.5 flex-1 flex flex-col justify-between">
+          <CardContent className="p-2 sm:p-2.5 flex-1 flex flex-col justify-between">
             <div>
               <h3
-                className="font-bold text-[11px] sm:text-xs text-foreground line-clamp-2 leading-tight min-h-[2.4em] group-hover:text-primary transition-colors"
+                className="font-bold text-[11px] sm:text-xs text-foreground line-clamp-2 leading-tight break-words min-h-[2.4em] group-hover:text-primary transition-colors"
                 title={item.name}
               >
                 {item.name}
               </h3>
               {!isCustomizable && item.stock !== undefined && item.stock > 0 && (vendor?.category === 'Bakery' || item.stock <= 5) && (
-                <p className="text-[9px] text-destructive font-semibold mt-0.5">
+                <p className="text-[8.5px] text-destructive font-semibold mt-0.5">
                   {item.stock} available
                 </p>
               )}
             </div>
 
             {/* Price & Action Row */}
-            <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-border/40">
-              <div className="flex items-baseline gap-1">
+            <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-border/40 gap-1">
+              <div className="flex items-baseline gap-0.5 min-w-0">
                 {isCustomizable && (
-                  <span className="text-[9px] text-muted-foreground font-normal">From</span>
+                  <span className="text-[8.5px] text-muted-foreground font-normal shrink-0">From</span>
                 )}
-                <span className="font-bold text-xs sm:text-sm text-foreground">
+                <span className="font-bold text-xs sm:text-sm text-foreground truncate">
                   ₹{startingPrice.toFixed(0)}
                 </span>
                 {hasDiscount && item.price > (item.discountPrice || 0) && (
-                  <span className="text-[9px] text-muted-foreground line-through">
+                  <span className="text-[8.5px] text-muted-foreground line-through shrink-0">
                     ₹{item.price.toFixed(0)}
                   </span>
                 )}
               </div>
 
               {simpleQuantityInCart > 0 && !isCustomizable ? (
-                <div className="flex items-center bg-primary text-primary-foreground rounded-full h-6 px-1 shadow-xs">
+                <div className="flex items-center bg-primary text-primary-foreground rounded-full h-5.5 px-1 shadow-xs shrink-0">
                   <button
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       handleQuantityChange(-1);
                     }}
-                    className="w-4 h-full flex items-center justify-center hover:bg-black/10 rounded-full transition-colors"
+                    className="w-3.5 h-full flex items-center justify-center hover:bg-black/10 rounded-full transition-colors"
                     aria-label="Decrease quantity"
                   >
                     <Minus className="h-2 w-2" />
                   </button>
-                  <span className="font-bold text-[10px] w-3.5 text-center">
+                  <span className="font-bold text-[10px] w-3 text-center">
                     {simpleQuantityInCart}
                   </span>
                   <button
@@ -316,7 +316,7 @@ const MenuItemCard = ({
                       e.stopPropagation();
                       handleQuantityChange(1);
                     }}
-                    className="w-4 h-full flex items-center justify-center hover:bg-black/10 rounded-full transition-colors"
+                    className="w-3.5 h-full flex items-center justify-center hover:bg-black/10 rounded-full transition-colors"
                     aria-label="Increase quantity"
                   >
                     <Plus className="h-2 w-2" />
@@ -326,7 +326,7 @@ const MenuItemCard = ({
                 <Button
                   size="sm"
                   onClick={handleAddClick}
-                  className="h-6 text-[11px] px-3 font-bold rounded-full shadow-xs transition-all hover:scale-105"
+                  className="h-5.5 text-[10px] sm:text-[11px] px-2.5 font-bold rounded-full shadow-xs transition-all hover:scale-105 shrink-0"
                   disabled={!isEffectivelyAvailable}
                 >
                   Add
@@ -434,6 +434,11 @@ function SpecialsPageContent() {
     };
   }, [specialMenus]);
 
+  const targetedVendor = useMemo(() => {
+    if (!vendorIdentifier || !vendors) return null;
+    return vendors.find((v) => (v.slug === vendorIdentifier || v.username === vendorIdentifier) && v.isApproved) || null;
+  }, [vendorIdentifier, vendors]);
+
   // Approved & Serviceable Vendors sorted by proximity
   const approvedVendors = useMemo(() => {
     if (!vendors) return [];
@@ -441,6 +446,11 @@ function SpecialsPageContent() {
 
     if (userLocation) {
       list = list.filter((v) => isVendorServiceable(v, userLocation));
+
+      // If user arrived via a targeted link, ensure that vendor is preserved in the view (parity with /menu)
+      if (targetedVendor && !list.some((v) => v.username === targetedVendor.username)) {
+        list = [targetedVendor, ...list];
+      }
 
       list.sort((a, b) => {
         if (a.latitude === undefined || a.longitude === undefined || b.latitude === undefined || b.longitude === undefined) return 0;
@@ -451,7 +461,7 @@ function SpecialsPageContent() {
     }
 
     return list;
-  }, [vendors, userLocation]);
+  }, [vendors, userLocation, targetedVendor]);
 
   // Filter specials to show based on selected meal tab, serviceable vendors, dietary choice and search
   const specialsToShow = useMemo(() => {
@@ -460,7 +470,9 @@ function SpecialsPageContent() {
 
     const specialsWithItemsAndVendor = specialsToFilter
       .map((special) => {
-        const specialVendor = approvedVendors.find((v) => v.username === special.vendorUsername);
+        const specialVendor = approvedVendors.find((v) => v.username === special.vendorUsername) || (
+          targetedVendor && (special.vendorUsername === targetedVendor.username || special.vendorUsername === targetedVendor.slug) ? targetedVendor : null
+        );
         if (!specialVendor) return null;
 
         let items = special.itemIds
@@ -761,9 +773,12 @@ function SpecialsPageContent() {
                     </Button>
                   </div>
 
-                  {/* Horizontal Scrollable Shelf of Special Dishes */}
+                  {/* Horizontal Scrollable Shelf of Special Dishes (2-row grid for compact layout) */}
                   <div className="w-full overflow-x-auto hide-scrollbar scroll-smooth pb-1 -mx-1 px-1">
-                    <div className="flex items-stretch gap-2.5 sm:gap-3 w-max">
+                    <div className={cn(
+                      "grid gap-2 sm:gap-2.5 grid-flow-col auto-cols-[136px] sm:auto-cols-[148px] w-max",
+                      special.items.length > 2 ? "grid-rows-2" : "grid-rows-1"
+                    )}>
                       {special.items.map((item) => (
                         <MenuItemCard
                           key={item.id}

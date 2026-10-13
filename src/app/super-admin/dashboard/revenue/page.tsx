@@ -22,11 +22,12 @@ interface VendorRevenue {
   vendor: Vendor;
   revenue: number;
   orderCount: number;
+  dineInCount: number;
   activeOrders: number;
   avgOrderValue: number;
   uniqueCustomers: number;
   onboardedSince: string;
-  weeklyRevenue: { date: string; revenue: number, expenses: 0 }[];
+  weeklyRevenue: { date: string; revenue: number; expenses: number }[];
 }
 
 const activeStatuses: OrderStatus[] = ['Order Placed', 'Processing', 'Out for Delivery', 'Accepted', 'Order Ready'];
@@ -63,7 +64,14 @@ const VendorRevenueCard = ({
                                 <Package className="h-4 w-4 text-muted-foreground" />
                                 <div>
                                     <p className="text-muted-foreground">Completed</p>
-                                    <p className="font-bold">{data.orderCount} orders</p>
+                                    <p className="font-bold">
+                                      {data.orderCount} orders
+                                      {data.dineInCount > 0 && (
+                                        <span className="text-xs font-normal text-muted-foreground ml-1">
+                                          ({data.dineInCount} dine-in)
+                                        </span>
+                                      )}
+                                    </p>
                                 </div>
                             </div>
                              <div className="flex items-center gap-2">
@@ -162,6 +170,7 @@ export default function SuperAdminRevenuePage() {
 
     const revenue = vendorFilteredCompletedOrders.reduce((sum, order) => sum + order.totalPrice, 0);
     const orderCount = vendorFilteredCompletedOrders.length;
+    const dineInCount = vendorFilteredCompletedOrders.filter(o => o.deliveryOption === 'Dine-In').length;
     const activeOrders = allOrders.filter(o => o.vendorUsername === vendor.username && activeStatuses.includes(o.status)).length;
     const avgOrderValue = orderCount > 0 ? revenue / orderCount : 0;
     const uniqueCustomers = new Set(vendorFilteredCompletedOrders.map(o => o.customerUsername)).size;
@@ -205,6 +214,7 @@ export default function SuperAdminRevenuePage() {
     return {
         revenue,
         orderCount,
+        dineInCount,
         activeOrders,
         avgOrderValue,
         uniqueCustomers,
@@ -249,6 +259,10 @@ export default function SuperAdminRevenuePage() {
     return Object.values(vendorRevenueData).reduce((sum, data) => sum + (data?.orderCount || 0), 0);
   }, [vendorRevenueData]);
 
+  const totalDineInCount = useMemo(() => {
+    return Object.values(vendorRevenueData).reduce((sum, data) => sum + (data?.dineInCount || 0), 0);
+  }, [vendorRevenueData]);
+
   const handleExport = () => {
     const dataToExport = Object.entries(vendorRevenueData).map(([username, data]) => {
         const vendor = allVendors.find(v => v.username === username);
@@ -257,6 +271,7 @@ export default function SuperAdminRevenuePage() {
           "Vendor Shop Name": vendor.shopName || vendor.name,
           "Total Revenue": data.revenue.toFixed(2),
           "Completed Orders": data.orderCount,
+          "Dine-In Orders": data.dineInCount,
           "Active Orders": data.activeOrders,
           "Avg. Order Value": data.avgOrderValue.toFixed(2),
           "Unique Customers": data.uniqueCustomers,
@@ -318,7 +333,14 @@ export default function SuperAdminRevenuePage() {
         <div>
             <h2 className="text-3xl font-bold tracking-tight">Revenue Dashboard</h2>
             <CardDescription>
-                Total Fetched Revenue: <span className="font-bold text-destructive">₹{totalRevenueAllVendors.toFixed(2)}</span> from {totalOrdersCount} orders.
+                Total Fetched Revenue:{' '}
+                <span className="font-bold text-destructive">₹{totalRevenueAllVendors.toFixed(2)}</span> from{' '}
+                {totalOrdersCount} completed orders
+                {totalOrdersCount > 0 && (
+                  <span className="text-muted-foreground">
+                    {' '}({totalDineInCount} dine-in · {totalOrdersCount - totalDineInCount} delivery/pickup)
+                  </span>
+                )}.
             </CardDescription>
         </div>
         <div className="flex w-full sm:w-auto items-center gap-2">

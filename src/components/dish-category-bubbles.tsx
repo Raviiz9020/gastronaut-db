@@ -160,7 +160,7 @@ export default function DishCategoryBubbles() {
                   />
                   <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
                 </div>
-                <span className="text-xs font-semibold text-center text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                <span className="text-xs font-semibold text-center text-foreground group-hover:text-primary transition-colors line-clamp-2 leading-tight break-words">
                   {category.name}
                 </span>
               </Link>

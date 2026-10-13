@@ -47,19 +47,12 @@ export const SpecialMenuProvider = ({
     return false;
   }, [vendor, toast]);
 
-  // This listener is now intended for the admin context.
-  // Public pages will use fetchAllSpecialMenus.
+  // Real-time listener for special menus across all vendors
   useEffect(() => {
-    if (!vendor) {
-        // If not a logged-in vendor, don't attach a listener.
-        // Data will be fetched on-demand.
-        return;
-    }
     const specialsRef = collection(db, 'specialMenus');
-    const q = query(specialsRef, where('vendorUsername', '==', vendor.username));
 
     const unsubscribe = onSnapshot(
-      q,
+      specialsRef,
       (snapshot) => {
         const menus = snapshot.docs.map(
           (doc) => ({ id: doc.id, ...doc.data() } as SpecialMenu)
@@ -68,16 +61,11 @@ export const SpecialMenuProvider = ({
       },
       (error) => {
         console.error('Error fetching special menus in real-time:', error);
-        toast({
-          title: 'Error',
-          description: 'Could not sync special menus.',
-          variant: 'destructive',
-        });
       }
     );
 
     return () => unsubscribe();
-  }, [vendor, toast]);
+  }, []);
   
   const fetchAllSpecialMenus = useCallback(async () => {
     try {

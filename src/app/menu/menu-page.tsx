@@ -2310,7 +2310,7 @@ export default function MenuPageContent() {
                                 unoptimized={typeof category.imageUrl === 'string' && category.imageUrl.startsWith('data:')}
                               />
                             </div>
-                            <p className="text-xs text-center font-semibold text-foreground group-hover/item:text-primary transition-colors line-clamp-1">{category.name}</p>
+                            <p className="text-xs text-center font-semibold text-foreground group-hover/item:text-primary transition-colors line-clamp-2 leading-tight break-words">{category.name}</p>
                           </Link>
                         ))}
                       </div>
