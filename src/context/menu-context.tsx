@@ -6,6 +6,8 @@ import React, { createContext, useContext, useState, ReactNode, useEffect, useCa
 import { useVendor } from './vendor-context';
 import { useCustomer } from './customer-context';
 import { useSuperAdmin } from './super-admin-context';
+import { useLocation } from './location-context';
+import { isVendorServiceable } from '@/lib/location-utils';
 import { db, storage } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, where, getDocs, limit, startAfter, getCountFromServer, orderBy, QueryDocumentSnapshot, DocumentData, setDoc, writeBatch, getDoc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -35,20 +37,20 @@ interface MenuContextType {
 
 const MenuContext = createContext<MenuContextType | undefined>(undefined);
 
-// Singleton listener to prevent multiple real-time connections
-let unsubscribeGlobalListener: (() => void) | null = null;
-let hasListenerBeenActivated = false;
-
 export const MenuProvider = ({ children }: { children: ReactNode }) => {
   const { vendor, vendors } = useVendor();
   const { customer } = useCustomer();
+  const { superAdmin } = useSuperAdmin();
+  const { userLocation } = useLocation();
   const { toast } = useToast();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [globalCategories, setGlobalCategories] = useState<Category[]>([]);
   const [isFetchingItems, setIsFetchingItems] = useState(false);
-  
-  const unsubscribeMenuItemsRef = useRef<() => void | null>(null);
+  const [isFetchRequested, setIsFetchRequested] = useState(true);
+
+  const activeUnsubscribersRef = useRef<(() => void)[]>([]);
+  const batchResultsRef = useRef<Map<number, MenuItem[]>>(new Map());
 
   const checkRestricted = useCallback(() => {
     if (vendor?.isMenuEditDisabled) {
@@ -85,32 +87,126 @@ export const MenuProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [fetchCategories]);
 
-  
-  const fetchAllItems = useCallback(async () => {
-    if (hasListenerBeenActivated) return; // Prevent re-activating the listener
+  const cleanupActiveListeners = useCallback(() => {
+    activeUnsubscribersRef.current.forEach(unsub => unsub());
+    activeUnsubscribersRef.current = [];
+    batchResultsRef.current.clear();
+  }, []);
 
+  const isSuperAdminUser = !!superAdmin;
+
+  // Determine which vendors are serviceable based on customer location and role
+  const serviceableVendorUsernames = useMemo(() => {
+    if (!vendors || vendors.length === 0) return [];
+
+    // Vendor Dashboard: only their own items
+    if (vendor?.username) {
+      return [vendor.username];
+    }
+
+    const approved = vendors.filter(v => v.isApproved);
+    if (approved.length === 0) return [];
+
+    if (userLocation) {
+      const serviceable = approved.filter(v => isVendorServiceable(v, userLocation));
+      return serviceable.map(v => v.username);
+    }
+
+    // When location is not set yet, limit to top 15 approved vendors as preview
+    // to avoid querying thousands of items across all cities before location is chosen
+    return approved.slice(0, 15).map(v => v.username);
+  }, [vendors, vendor?.username, userLocation]);
+
+  const vendorBatchKey = useMemo(() => {
+    if (isSuperAdminUser) return '__SUPER_ADMIN__';
+    if (vendor?.username) return `VENDOR_${vendor.username}`;
+    return [...serviceableVendorUsernames].sort().join(',');
+  }, [isSuperAdminUser, vendor?.username, serviceableVendorUsernames]);
+
+  useEffect(() => {
+    if (!isFetchRequested) return;
+
+    cleanupActiveListeners();
     setIsFetchingItems(true);
-    hasListenerBeenActivated = true; // Set flag immediately
 
     try {
-        const menuItemsCollection = collection(db, 'menuItems');
-        // This sets up the one and only real-time listener for the entire app session
-        unsubscribeGlobalListener = onSnapshot(menuItemsCollection, (snapshot) => {
-            const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem));
-            setMenuItems(items);
-            setIsFetchingItems(false); // Stop loading indicator once data arrives
+      // 1. Super Admin: full access
+      if (isSuperAdminUser) {
+        const q = collection(db, 'menuItems');
+        const unsub = onSnapshot(q, (snapshot) => {
+          const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem));
+          setMenuItems(items);
+          setIsFetchingItems(false);
         }, (error) => {
-            console.error("Error with global menu listener:", error);
-            toast({ title: "Error", description: "Could not sync the menu in real-time.", variant: "destructive"});
-            setIsFetchingItems(false);
+          console.error("Super Admin menu listener error:", error);
+          toast({ title: "Error", description: "Could not fetch full menu items.", variant: "destructive" });
+          setIsFetchingItems(false);
         });
-    } catch (error) {
-        console.error("Error setting up global menu listener:", error);
-        toast({ title: "Error", description: "Could not fetch the full menu.", variant: "destructive"});
+        activeUnsubscribersRef.current = [unsub];
+        return () => cleanupActiveListeners();
+      }
+
+      // 2. Vendor Dashboard: only their own items
+      if (vendor?.username) {
+        const q = query(collection(db, 'menuItems'), where('vendorUsername', '==', vendor.username));
+        const unsub = onSnapshot(q, (snapshot) => {
+          const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem));
+          setMenuItems(items);
+          setIsFetchingItems(false);
+        }, (error) => {
+          console.error("Vendor menu listener error:", error);
+          toast({ title: "Error", description: "Could not sync your menu items.", variant: "destructive" });
+          setIsFetchingItems(false);
+        });
+        activeUnsubscribersRef.current = [unsub];
+        return () => cleanupActiveListeners();
+      }
+
+      // 3. Customer / Browsing: only serviceable vendors in batches of 30
+      if (serviceableVendorUsernames.length === 0) {
+        setMenuItems([]);
         setIsFetchingItems(false);
-        hasListenerBeenActivated = false; // Reset flag on error
+        return () => cleanupActiveListeners();
+      }
+
+      const batches: string[][] = [];
+      for (let i = 0; i < serviceableVendorUsernames.length; i += 30) {
+        batches.push(serviceableVendorUsernames.slice(i, i + 30));
+      }
+
+      const updateMergedItems = () => {
+        const merged: MenuItem[] = [];
+        batchResultsRef.current.forEach(items => {
+          merged.push(...items);
+        });
+        setMenuItems(merged);
+        setIsFetchingItems(false);
+      };
+
+      const unsubs = batches.map((batch, batchIndex) => {
+        const q = query(collection(db, 'menuItems'), where('vendorUsername', 'in', batch));
+        return onSnapshot(q, (snapshot) => {
+          const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem));
+          batchResultsRef.current.set(batchIndex, items);
+          updateMergedItems();
+        }, (error) => {
+          console.error(`Error with menu listener for batch ${batchIndex}:`, error);
+          setIsFetchingItems(false);
+        });
+      });
+
+      activeUnsubscribersRef.current = unsubs;
+      return () => cleanupActiveListeners();
+    } catch (error) {
+      console.error("Error setting up menu listeners:", error);
+      toast({ title: "Error", description: "Could not fetch menu items.", variant: "destructive" });
+      setIsFetchingItems(false);
     }
-  }, [toast]);
+  }, [isFetchRequested, vendorBatchKey, isSuperAdminUser, vendor?.username, cleanupActiveListeners, toast]);
+
+  const fetchAllItems = useCallback(async () => {
+    setIsFetchRequested(true);
+  }, []);
   
 
   const generateUniqueSlug = async (name: string, vendorUsername: string): Promise<string> => {
