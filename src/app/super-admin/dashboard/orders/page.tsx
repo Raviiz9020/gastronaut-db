@@ -38,7 +38,8 @@ import {
   Clock,
   AlertCircle,
   Truck,
-  FileText
+  FileText,
+  UtensilsCrossed
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Combobox } from '@/components/ui/combobox';
@@ -51,6 +52,14 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { motion } from 'framer-motion';
+
+const formatTableDisplay = (tableId?: string, customerName?: string) => {
+  const val = (tableId || customerName || '').trim();
+  if (!val) return 'Dine-In';
+  if (val.toLowerCase().startsWith('take away')) return 'Take Away';
+  if (val.toLowerCase().startsWith('table')) return val;
+  return `Table ${val}`;
+};
 
 const statusColors: Record<OrderStatus, string> = {
   'Order Placed': 'bg-blue-500 shadow-blue-500/50 text-white',
@@ -380,7 +389,9 @@ export default function SuperAdminOrdersPage() {
                 {displayedOrders.map((order) => {
                   const vendorInfo = getVendorInfo(order.vendorUsername);
                   const riderInfo = getRiderInfo(order.assignedDeliveryBoyId);
-                  const hasCustomizations = order.items.some(
+                  const isDineIn = order.deliveryOption === 'Dine-In' || Boolean(order.tableId);
+                  const currentRound = order.orderRound || 1;
+                  const hasCustomizations = order.items?.some(
                     (i: any) =>
                       (i.customizationDetails && Object.keys(i.customizationDetails).length > 0) ||
                       (i.selectedOptions && Object.keys(i.selectedOptions).length > 0) ||
@@ -400,7 +411,7 @@ export default function SuperAdminOrdersPage() {
                         {/* 1. Header with IDs, Status, and Action Delete */}
                         <div className="p-6 bg-muted/20 border-b border-border/50 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                           <div className="space-y-1.5">
-                            <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-2.5">
                               <span className="text-2xl font-black font-mono tracking-tight text-foreground">
                                 {order.displayId || `#${order.orderId}`}
                               </span>
@@ -411,6 +422,20 @@ export default function SuperAdminOrdersPage() {
                               <Badge variant="outline" className="text-xs font-semibold px-2.5 py-0.5 rounded-lg border-primary/30 text-primary bg-primary/5">
                                 {order.deliveryOption || 'Home Delivery'}
                               </Badge>
+
+                              {/* Dine-In Table Badge & Round Badge */}
+                              {isDineIn && (
+                                <>
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 font-bold text-xs tracking-tight shadow-xs">
+                                    <UtensilsCrossed className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                                    {formatTableDisplay(order.tableId, order.customer?.name)}
+                                  </span>
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/30">
+                                    <span>Round {currentRound}</span>
+                                    <span className="text-[10px] font-mono opacity-80">(R{currentRound})</span>
+                                  </span>
+                                </>
+                              )}
                             </div>
                             <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
                               <div className="flex items-center gap-1.5">
@@ -445,43 +470,97 @@ export default function SuperAdminOrdersPage() {
                             <div className="p-5 rounded-2xl bg-muted/30 border border-border/60 space-y-3">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                  <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                                    <User className="h-4 w-4" />
+                                  <div className={`p-2 rounded-xl ${isDineIn ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'}`}>
+                                    {isDineIn ? <UtensilsCrossed className="h-4 w-4" /> : <User className="h-4 w-4" />}
                                   </div>
-                                  <h4 className="font-bold text-sm text-foreground">Customer Details</h4>
+                                  <h4 className="font-bold text-sm text-foreground">
+                                    {isDineIn ? 'Dine-In Customer & Table' : 'Customer Details'}
+                                  </h4>
                                 </div>
-                                <Badge variant="secondary" className="text-[10px] uppercase font-bold">User</Badge>
+                                <Badge variant="secondary" className="text-[10px] uppercase font-bold">
+                                  {isDineIn ? 'Dine-In' : 'User'}
+                                </Badge>
                               </div>
 
                               <div className="space-y-2 pt-1 text-sm">
-                                <div>
-                                  <p className="font-bold text-foreground text-base">{order.customer?.name || 'Guest Customer'}</p>
-                                  {order.customer?.email && (
-                                    <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                                      <Mail className="h-3 w-3" />
-                                      {order.customer.email}
-                                    </p>
-                                  )}
-                                </div>
+                                {isDineIn ? (
+                                  <>
+                                    <div className="space-y-1">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 font-bold text-sm tracking-tight shadow-xs">
+                                          <UtensilsCrossed className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                                          {formatTableDisplay(order.tableId, order.customer?.name)}
+                                        </span>
+                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-bold bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/30">
+                                          <span>Round {currentRound}</span>
+                                          <span className="text-[10px] font-mono opacity-80">(R{currentRound})</span>
+                                        </span>
+                                      </div>
 
-                                {order.customer?.contact && (
-                                  <div className="flex items-center gap-2">
-                                    <Phone className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                                    <a
-                                      href={`tel:${order.customer.contact}`}
-                                      className="font-semibold text-foreground hover:text-primary transition-colors text-xs"
-                                    >
-                                      {order.customer.contact}
-                                    </a>
-                                  </div>
+                                      {order.customer?.name && !order.customer.name.toLowerCase().startsWith('table') && (
+                                        <p className="text-xs text-muted-foreground flex items-center gap-1.5 pt-1 font-medium">
+                                          <User className="h-3 w-3 text-muted-foreground/70" />
+                                          Guest: {order.customer.name}
+                                        </p>
+                                      )}
+
+                                      {order.customer?.email && (
+                                        <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                                          <Mail className="h-3 w-3" />
+                                          {order.customer.email}
+                                        </p>
+                                      )}
+                                    </div>
+
+                                    {order.customer?.contact && (
+                                      <div className="flex items-center gap-2">
+                                        <Phone className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                        <a
+                                          href={`tel:${order.customer.contact}`}
+                                          className="font-semibold text-foreground hover:text-primary transition-colors text-xs"
+                                        >
+                                          {order.customer.contact}
+                                        </a>
+                                      </div>
+                                    )}
+
+                                    <div className="flex items-center gap-2 pt-0.5 text-xs text-muted-foreground">
+                                      <MapPin className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                                      <span>In-restaurant table seating service</span>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div>
+                                      <p className="font-bold text-foreground text-base">{order.customer?.name || 'Guest Customer'}</p>
+                                      {order.customer?.email && (
+                                        <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                                          <Mail className="h-3 w-3" />
+                                          {order.customer.email}
+                                        </p>
+                                      )}
+                                    </div>
+
+                                    {order.customer?.contact && (
+                                      <div className="flex items-center gap-2">
+                                        <Phone className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                        <a
+                                          href={`tel:${order.customer.contact}`}
+                                          className="font-semibold text-foreground hover:text-primary transition-colors text-xs"
+                                        >
+                                          {order.customer.contact}
+                                        </a>
+                                      </div>
+                                    )}
+
+                                    <div className="flex items-start gap-2 pt-1">
+                                      <MapPin className="h-3.5 w-3.5 text-rose-500 shrink-0 mt-0.5" />
+                                      <p className="text-xs text-muted-foreground leading-relaxed">
+                                        {order.customer?.address || 'No address provided'}
+                                      </p>
+                                    </div>
+                                  </>
                                 )}
-
-                                <div className="flex items-start gap-2 pt-1">
-                                  <MapPin className="h-3.5 w-3.5 text-rose-500 shrink-0 mt-0.5" />
-                                  <p className="text-xs text-muted-foreground leading-relaxed">
-                                    {order.customer?.address || 'No address provided'}
-                                  </p>
-                                </div>
                               </div>
                             </div>
 
@@ -541,12 +620,16 @@ export default function SuperAdminOrdersPage() {
                             <div className="p-5 rounded-2xl bg-muted/30 border border-border/60 space-y-3">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                  <div className="p-2 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400">
-                                    <Bike className="h-4 w-4" />
+                                  <div className={`p-2 rounded-xl ${isDineIn ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-orange-500/10 text-orange-600 dark:text-orange-400'}`}>
+                                    {isDineIn ? <UtensilsCrossed className="h-4 w-4" /> : <Bike className="h-4 w-4" />}
                                   </div>
-                                  <h4 className="font-bold text-sm text-foreground">Delivery & Rider</h4>
+                                  <h4 className="font-bold text-sm text-foreground">
+                                    {isDineIn ? 'Service & Fulfillment' : 'Delivery & Rider'}
+                                  </h4>
                                 </div>
-                                <Badge variant="secondary" className="text-[10px] uppercase font-bold">Logistics</Badge>
+                                <Badge variant="secondary" className="text-[10px] uppercase font-bold">
+                                  {isDineIn ? 'Dine-In' : 'Logistics'}
+                                </Badge>
                               </div>
 
                               <div className="space-y-2 pt-1 text-sm">
@@ -584,12 +667,22 @@ export default function SuperAdminOrdersPage() {
                                       </div>
                                     )}
                                   </>
+                                ) : isDineIn ? (
+                                  <div className="py-2 text-center text-muted-foreground space-y-1.5">
+                                    <div className="p-2 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 w-9 h-9 mx-auto flex items-center justify-center">
+                                      <UtensilsCrossed className="h-4 w-4" />
+                                    </div>
+                                    <p className="text-xs font-bold text-foreground">Dine-In Table Service</p>
+                                    <p className="text-[11px] text-muted-foreground font-medium">
+                                      {formatTableDisplay(order.tableId, order.customer?.name)} • Round {currentRound} (R{currentRound})
+                                    </p>
+                                  </div>
                                 ) : (
                                   <div className="py-2 text-center text-muted-foreground space-y-1">
                                     <Clock className="h-5 w-5 mx-auto text-muted-foreground/50" />
                                     <p className="text-xs font-medium">No rider assigned yet</p>
                                     <p className="text-[10px] text-muted-foreground/70">
-                                      {order.deliveryOption === 'Self Pickup' ? 'Customer Self-Pickup' : order.deliveryOption === 'Dine-In' ? 'Dine-In Order' : 'Awaiting assignment'}
+                                      {order.deliveryOption === 'Self Pickup' ? 'Customer Self-Pickup' : 'Awaiting assignment'}
                                     </p>
                                   </div>
                                 )}
@@ -620,53 +713,79 @@ export default function SuperAdminOrdersPage() {
                                   Ordered Items ({order.items?.length || 0})
                                 </h3>
                               </div>
-                              {hasCustomizations && (
-                                <Badge variant="secondary" className="text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                                  Customized Items Included
-                                </Badge>
-                              )}
+                              <div className="flex items-center gap-2">
+                                {isDineIn && (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/30">
+                                    <UtensilsCrossed className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                                    <span>Round {currentRound}</span>
+                                    <span className="text-[10px] font-mono opacity-80">(R{currentRound})</span>
+                                  </span>
+                                )}
+                                {hasCustomizations && (
+                                  <Badge variant="secondary" className="text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                    Customized Items Included
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
 
                             <div className="rounded-2xl border border-border/60 overflow-hidden bg-background divide-y divide-border/40">
                               {order.items && order.items.length > 0 ? (
-                                order.items.map((item, index) => (
-                                  <div key={item.cartItemId || index} className="p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-muted/10 transition-colors">
-                                    <div className="flex items-start gap-3.5">
-                                      <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary font-black text-sm flex items-center justify-center shrink-0 border border-primary/20">
-                                        {item.quantity}x
-                                      </div>
-                                      <div className="space-y-1">
-                                        <div className="flex items-center gap-2">
-                                          <p className="font-bold text-base text-foreground">{item.name}</p>
-                                          {item.isVeg !== undefined && (
-                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${item.isVeg ? 'border-green-600 text-green-600' : 'border-red-600 text-red-600'}`}>
-                                              {item.isVeg ? 'VEG' : 'NON-VEG'}
-                                            </span>
+                                order.items.map((item, index) => {
+                                  const itemRound = item.round || currentRound;
+                                  return (
+                                    <div key={item.cartItemId || index} className="p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-muted/10 transition-colors">
+                                      <div className="flex items-start gap-3.5">
+                                        <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary font-black text-sm flex items-center justify-center shrink-0 border border-primary/20">
+                                          {item.quantity}x
+                                        </div>
+                                        <div className="space-y-1">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <p className="font-bold text-base text-foreground">{item.name}</p>
+                                            {item.isVeg !== undefined && (
+                                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${item.isVeg ? 'border-green-600 text-green-600' : 'border-red-600 text-red-600'}`}>
+                                                {item.isVeg ? 'VEG' : 'NON-VEG'}
+                                              </span>
+                                            )}
+                                            {/* Item Round Tag R1, R2 */}
+                                            {(isDineIn || item.round) && (
+                                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-mono font-bold bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/30 shadow-xs">
+                                                R{itemRound}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <p className="text-xs text-muted-foreground font-medium flex items-center gap-2">
+                                            <span>₹{item.price.toFixed(2)} per unit</span>
+                                            {(isDineIn || item.round) && (
+                                              <>
+                                                <span>•</span>
+                                                <span className="text-amber-700 dark:text-amber-300 font-semibold text-[11px]">
+                                                  Round {itemRound}
+                                                </span>
+                                              </>
+                                            )}
+                                          </p>
+
+                                          {/* RENDER FULL CUSTOMIZATIONS */}
+                                          {renderItemCustomizations(item)}
+
+                                          {/* Item feedback / rating if available */}
+                                          {(item.feedback || item.rating) && (
+                                            <div className="text-xs text-muted-foreground mt-2 italic bg-muted/40 p-2 rounded-lg">
+                                              <span>Feedback: {item.feedback || `${item.rating}★`}</span>
+                                            </div>
                                           )}
                                         </div>
-                                        <p className="text-xs text-muted-foreground font-medium">
-                                          ₹{item.price.toFixed(2)} per unit
-                                        </p>
+                                      </div>
 
-                                        {/* RENDER FULL CUSTOMIZATIONS */}
-                                        {renderItemCustomizations(item)}
-
-                                        {/* Item feedback / rating if available */}
-                                        {(item.feedback || item.rating) && (
-                                          <div className="text-xs text-muted-foreground mt-2 italic bg-muted/40 p-2 rounded-lg">
-                                            <span>Feedback: {item.feedback || `${item.rating}★`}</span>
-                                          </div>
-                                        )}
+                                      <div className="text-right shrink-0">
+                                        <span className="font-bold text-lg text-foreground">
+                                          ₹{(item.quantity * item.price).toFixed(2)}
+                                        </span>
                                       </div>
                                     </div>
-
-                                    <div className="text-right shrink-0">
-                                      <span className="font-bold text-lg text-foreground">
-                                        ₹{(item.quantity * item.price).toFixed(2)}
-                                      </span>
-                                    </div>
-                                  </div>
-                                ))
+                                  );
+                                })
                               ) : (
                                 <div className="p-6 text-center text-muted-foreground text-sm">
                                   No items registered for this order.
@@ -877,7 +996,16 @@ export default function SuperAdminOrdersPage() {
                                     {order.displayId || order.orderId}
                                   </span>
                                 </TableCell>
-                                <TableCell className="font-medium">{order.customer.name}</TableCell>
+                                <TableCell className="font-medium text-xs">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span>{(order.deliveryOption === 'Dine-In' || order.tableId) ? formatTableDisplay(order.tableId, order.customer?.name) : (order.customer?.name || 'Customer')}</span>
+                                    {(order.deliveryOption === 'Dine-In' || order.tableId) && (
+                                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20">
+                                        R{order.orderRound || 1}
+                                      </span>
+                                    )}
+                                  </div>
+                                </TableCell>
                                 <TableCell className="text-muted-foreground text-xs">{order.createdAt ? format(new Date(order.createdAt), 'dd/MM/yyyy HH:mm') : 'N/A'}</TableCell>
                                 <TableCell className="text-destructive/80 italic text-xs max-w-[200px] truncate pr-6">
                                   {order.cancellationReason || 'No cancellation reason provided.'}
