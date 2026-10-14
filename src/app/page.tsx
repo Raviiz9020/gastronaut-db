@@ -872,11 +872,11 @@ export default function LandingPage() {
                         Quick Onboarding Support:
                       </span>
                       <a
-                        href="mailto:hyperlabsupport@gmail.com"
+                        href="mailto:support@hyperdelivery.in"
                         className="inline-flex items-center gap-1.5 font-semibold text-foreground hover:text-primary transition-colors bg-card/80 hover:bg-card px-3 py-1.5 rounded-full border border-border/80 shadow-sm text-xs"
                       >
                         <Mail className="h-3.5 w-3.5 text-primary" />
-                        hyperlabsupport@gmail.com
+                        support@hyperdelivery.in
                       </a>
                       <a
                         href="https://wa.me/917083609020"

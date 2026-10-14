@@ -4,18 +4,18 @@ import React from 'react';
 import Header from '@/components/header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  HelpCircle, 
-  ArrowLeft, 
-  MessageCircle, 
-  Phone, 
-  Mail, 
-  Package, 
-  Store, 
-  CreditCard, 
-  Clock, 
-  CheckCircle2, 
-  AlertCircle, 
+import {
+  HelpCircle,
+  ArrowLeft,
+  MessageCircle,
+  Phone,
+  Mail,
+  Package,
+  Store,
+  CreditCard,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
   FileText,
   ChevronRight,
   ExternalLink,
@@ -29,7 +29,7 @@ export default function SupportPage() {
   const whatsappNumber = "917083609020";
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Hi HyperDelivery Support, I need help regarding my order.")}`;
   const phoneUrl = "tel:+917083609020";
-  const emailAddress = "hyperlabsupport@gmail.com";
+  const emailAddress = "support@hyperdelivery.in";
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground pb-20 lg:pb-12">
@@ -39,9 +39,9 @@ export default function SupportPage() {
         {/* Back navigation button */}
         <div className="mb-4">
           <Link href="/track" passHref>
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               className="rounded-full border-border/70 hover:border-primary/50 hover:bg-primary/10 transition-all text-xs flex items-center gap-1.5 shadow-xs"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
@@ -72,9 +72,9 @@ export default function SupportPage() {
           {/* Direct 1-Tap Quick Action Buttons */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
             {/* WhatsApp */}
-            <a 
-              href={whatsappUrl} 
-              target="_blank" 
+            <a
+              href={whatsappUrl}
+              target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition-all active:scale-[0.98] group"
             >
@@ -92,7 +92,7 @@ export default function SupportPage() {
             </a>
 
             {/* Direct Call */}
-            <a 
+            <a
               href={phoneUrl}
               className="flex items-center gap-3 p-4 rounded-2xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 transition-all active:scale-[0.98] group"
             >
@@ -107,7 +107,7 @@ export default function SupportPage() {
             </a>
 
             {/* Email Support */}
-            <a 
+            <a
               href={`mailto:${emailAddress}`}
               className="flex items-center gap-3 p-4 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 transition-all active:scale-[0.98] group"
             >
@@ -297,8 +297,8 @@ export default function SupportPage() {
                 </div>
 
                 <div className="pt-2">
-                  <Link 
-                    href="/cancellation-refund-policy" 
+                  <Link
+                    href="/cancellation-refund-policy"
                     className="inline-flex items-center gap-1.5 text-xs text-primary font-semibold hover:underline"
                   >
                     <FileText className="h-3.5 w-3.5" />
@@ -347,9 +347,9 @@ export default function SupportPage() {
               Our operations support team is available during delivery hours to ensure your food experience is seamless.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              <a 
-                href={whatsappUrl} 
-                target="_blank" 
+              <a
+                href={whatsappUrl}
+                target="_blank"
                 rel="noopener noreferrer"
               >
                 <Button className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 h-9 gap-1.5 shadow-xs">

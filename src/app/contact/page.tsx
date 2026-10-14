@@ -124,13 +124,13 @@ export default function ContactUsPage() {
                 </a>
 
                 <a
-                  href="mailto:hyperlabsupport@gmail.com"
+                  href="mailto:support@hyperdelivery.in"
                   className="flex items-center gap-3 p-3 rounded-xl bg-background/60 border border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-all group"
                 >
                   <Mail className="h-4 w-4 text-primary flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-foreground">Email Support</p>
-                    <p className="text-[11px] text-muted-foreground truncate">hyperlabsupport@gmail.com</p>
+                    <p className="text-[11px] text-muted-foreground truncate">support@hyperdelivery.in</p>
                   </div>
                   <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
                 </a>
@@ -223,13 +223,13 @@ export default function ContactUsPage() {
 
               <div className="space-y-3 mb-6">
                 <a
-                  href="mailto:hyperlabsupport@gmail.com"
+                  href="mailto:support@hyperdelivery.in"
                   className="flex items-center gap-3 p-3 rounded-xl bg-background/60 border border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-all group"
                 >
                   <Mail className="h-4 w-4 text-primary flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-foreground">Technical & Business</p>
-                    <p className="text-[11px] text-muted-foreground truncate">hyperlabsupport@gmail.com</p>
+                    <p className="text-[11px] text-muted-foreground truncate">support@hyperdelivery.in</p>
                   </div>
                   <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
                 </a>
@@ -244,7 +244,7 @@ export default function ContactUsPage() {
               </div>
             </div>
 
-            <a href="mailto:hyperlabsupport@gmail.com" className="w-full">
+            <a href="mailto:support@hyperdelivery.in" className="w-full">
               <Button
                 variant="outline"
                 className="w-full rounded-full gap-2 font-semibold text-xs sm:text-sm h-10 sm:h-11 border-border hover:bg-muted shadow-xs"

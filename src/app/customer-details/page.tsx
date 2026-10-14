@@ -124,7 +124,7 @@ const TermsDialog = ({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChange: 
 
                 <h3>10. Contact Us</h3>
                 <p>If you have questions about these Terms of Service, please contact us:</p>
-                <p>Email: <strong>hyperlabsupport@gmail.com</strong></p>
+                <p>Email: <strong>support@hyperdelivery.in</strong></p>
               </div>
             </ScrollArea>
           </TabsContent>
@@ -225,7 +225,7 @@ const TermsDialog = ({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChange: 
 
                 <h3>10. Contact Us</h3>
                 <p>If you have any questions or concerns about this Privacy Policy or how your information is handled, please contact us:</p>
-                <p>Email: <strong>hyperlabsupport@gmail.com</strong></p>
+                <p>Email: <strong>support@hyperdelivery.in</strong></p>
               </div>
             </ScrollArea>
           </TabsContent>

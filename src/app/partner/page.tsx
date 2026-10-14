@@ -4,27 +4,27 @@ import React from 'react';
 import Header from '@/components/header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Store, 
-  Sparkles, 
-  Clock, 
-  Bell, 
-  Send, 
-  Zap, 
-  ShieldCheck, 
-  TrendingUp, 
-  Gift, 
-  Truck, 
-  Layers, 
-  Bot, 
-  ReceiptText, 
-  Users, 
-  CheckCircle2, 
-  ArrowRight, 
-  ArrowLeft, 
-  HelpCircle, 
-  Phone, 
-  Mail, 
+import {
+  Store,
+  Sparkles,
+  Clock,
+  Bell,
+  Send,
+  Zap,
+  ShieldCheck,
+  TrendingUp,
+  Gift,
+  Truck,
+  Layers,
+  Bot,
+  ReceiptText,
+  Users,
+  CheckCircle2,
+  ArrowRight,
+  ArrowLeft,
+  HelpCircle,
+  Phone,
+  Mail,
   MessageCircle,
   ChefHat,
   Utensils,
@@ -159,9 +159,9 @@ export default function PartnerBusinessPage() {
         {/* Back Button Container */}
         <div className="container mx-auto px-4 pt-6">
           <Link href="/" passHref>
-            <Button 
-              variant="outline" 
-              size="icon" 
+            <Button
+              variant="outline"
+              size="icon"
               className="h-9 w-9 rounded-full border-border/70 hover:border-primary/50 hover:bg-primary/10 transition-all shadow-xs"
               aria-label="Back to Home"
             >
@@ -430,7 +430,7 @@ export default function PartnerBusinessPage() {
             </div>
 
             <div className="pt-4 flex flex-wrap items-center justify-center gap-6 text-xs text-blue-200/60">
-              <span>📧 hyperlabsupport@gmail.com</span>
+              <span>📧 support@hyperdelivery.in</span>
               <span>📱 +917083609020</span>
               <span>📍 Pune / Marunji / Life Republic Area</span>
             </div>

@@ -92,11 +92,11 @@ const sendVendorSettlementEmailFlow = ai.defineFlow(
         const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
         const dateFormatted = ord.createdAt
           ? new Date(ord.createdAt).toLocaleDateString('en-IN', {
-              day: '2-digit',
-              month: 'short',
-              hour: '2-digit',
-              minute: '2-digit',
-            })
+            day: '2-digit',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
           : 'N/A';
 
         return `
@@ -235,7 +235,7 @@ const sendVendorSettlementEmailFlow = ai.defineFlow(
         <div class="footer">
           <p style="margin: 0 0 4px 0; font-weight: 600; color: #334155;">Hyper Delivery Partner Support</p>
           <p style="margin: 0; color: #94a3b8;">
-            Have questions regarding this statement? Email us at <a href="mailto:hyperlabsupport@gmail.com" style="color: #2563eb; text-decoration: none;">hyperlabsupport@gmail.com</a> or WhatsApp at <strong>+917083609020</strong>.
+            Have questions regarding this statement? Email us at <a href="mailto:support@hyperdelivery.in" style="color: #2563eb; text-decoration: none;">support@hyperdelivery.in</a> or WhatsApp at <strong>+917083609020</strong>.
           </p>
         </div>
       </div>

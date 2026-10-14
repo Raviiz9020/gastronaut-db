@@ -139,7 +139,7 @@ export default function TermsOfServicePage() {
 
             <h3 className="text-lg sm:text-xl font-bold mt-8 pt-4 border-t border-border/60">10. Contact Us</h3>
             <p>If you have questions about these Terms of Service, please contact us:</p>
-            <p>Email: <a href="mailto:hyperlabsupport@gmail.com" className="text-primary hover:underline font-semibold">hyperlabsupport@gmail.com</a></p>
+            <p>Email: <a href="mailto:support@hyperdelivery.in" className="text-primary hover:underline font-semibold">support@hyperdelivery.in</a></p>
           </CardContent>
         </Card>
       </main>

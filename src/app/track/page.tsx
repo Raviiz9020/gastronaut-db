@@ -51,33 +51,33 @@ const statusConfig: Record<OrderStatus, { name: OrderStatus; icon: React.ReactNo
 };
 
 const homeDeliveryStatuses = [
-    statusConfig['Order Placed'], 
-    statusConfig['Accepted'],
-    statusConfig['Processing'], 
-    statusConfig['Out for Delivery'], 
-    statusConfig['Delivered']
+  statusConfig['Order Placed'],
+  statusConfig['Accepted'],
+  statusConfig['Processing'],
+  statusConfig['Out for Delivery'],
+  statusConfig['Delivered']
 ];
 const selfPickupStatuses = [
-    statusConfig['Order Placed'],
-    statusConfig['Accepted'],
-    statusConfig['Order Ready'],
-    statusConfig['Picked Up']
+  statusConfig['Order Placed'],
+  statusConfig['Accepted'],
+  statusConfig['Order Ready'],
+  statusConfig['Picked Up']
 ];
 const activeStatuses: OrderStatus[] = ['Order Placed', 'Accepted', 'Processing', 'Out for Delivery', 'Order Ready'];
 const completedStatuses: OrderStatus[] = ['Delivered', 'Cancelled', 'Picked Up'];
 const ORDERS_PER_PAGE = 4;
 
 const AutoSizingTextarea = (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => {
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    useEffect(() => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
-            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-        }
-    }, [props.value]);
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [props.value]);
 
-    return <Textarea ref={textareaRef} rows={1} {...props} />;
+  return <Textarea ref={textareaRef} rows={1} {...props} />;
 };
 
 
@@ -103,13 +103,13 @@ const OrderItemRating = ({
 
   const handleSubmitClick = () => {
     if (feedback.trim()) {
-        setIsConfirmOpen(true);
+      setIsConfirmOpen(true);
     }
   }
 
   const handleRatingAndShowFeedback = (rating: number) => {
     onRating(rating);
-    if(rating < 3) {
+    if (rating < 3) {
       setShowFeedback(true);
     } else {
       setShowFeedback(false);
@@ -118,128 +118,128 @@ const OrderItemRating = ({
 
   return (
     <div className="mt-2 space-y-2">
-        <div className="flex items-center gap-4">
-            <span className="text-xs">{item.quantity}x {item.name}</span>
-            <StarRating rating={item.rating || 0} onRate={handleRatingAndShowFeedback} starSize="h-4 w-4" />
+      <div className="flex items-center gap-4">
+        <span className="text-xs">{item.quantity}x {item.name}</span>
+        <StarRating rating={item.rating || 0} onRate={handleRatingAndShowFeedback} starSize="h-4 w-4" />
+      </div>
+      {showFeedback && (
+        <div className="space-y-2 pt-1 pl-6">
+          {item.feedback ? (
+            <p className="text-sm text-muted-foreground italic">"{item.feedback}"</p>
+          ) : (
+            <>
+              <AutoSizingTextarea
+                placeholder="Tell us what went wrong..."
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+              />
+              <Button size="sm" onClick={handleSubmitClick} disabled={!feedback}>
+                Submit
+              </Button>
+            </>
+          )}
         </div>
-        {showFeedback && (
-            <div className="space-y-2 pt-1 pl-6">
-                {item.feedback ? (
-                    <p className="text-sm text-muted-foreground italic">"{item.feedback}"</p>
-                ) : (
-                    <>
-                        <AutoSizingTextarea 
-                            placeholder="Tell us what went wrong..." 
-                            value={feedback} 
-                            onChange={(e) => setFeedback(e.target.value)}
-                        />
-                        <Button size="sm" onClick={handleSubmitClick} disabled={!feedback}>
-                            Submit
-                        </Button>
-                    </>
-                )}
-            </div>
-        )}
-        {item.vendorResponse && (
-            <div className="mt-3 pl-6 text-sm">
-                <div className="flex items-center gap-2 font-semibold text-foreground">
-                    <MessageSquareReply className="h-4 w-4 text-primary"/>
-                    Vendor's Response
-                </div>
-                <p className="mt-1 text-muted-foreground italic">"{item.vendorResponse}"</p>
-            </div>
-        )}
-        <ConfirmationDialog
-            isOpen={isConfirmOpen}
-            onOpenChange={setIsConfirmOpen}
-            onConfirm={() => {
-                onFeedbackSubmit(feedback);
-                setIsConfirmOpen(false);
-            }}
-            title="Confirm Feedback Submission"
-            description={`Are you sure you want to submit the following feedback? "${feedback}"`}
-        />
+      )}
+      {item.vendorResponse && (
+        <div className="mt-3 pl-6 text-sm">
+          <div className="flex items-center gap-2 font-semibold text-foreground">
+            <MessageSquareReply className="h-4 w-4 text-primary" />
+            Vendor's Response
+          </div>
+          <p className="mt-1 text-muted-foreground italic">"{item.vendorResponse}"</p>
+        </div>
+      )}
+      <ConfirmationDialog
+        isOpen={isConfirmOpen}
+        onOpenChange={setIsConfirmOpen}
+        onConfirm={() => {
+          onFeedbackSubmit(feedback);
+          setIsConfirmOpen(false);
+        }}
+        title="Confirm Feedback Submission"
+        description={`Are you sure you want to submit the following feedback? "${feedback}"`}
+      />
     </div>
   );
 };
 
 
 const VendorRating = ({ order, vendor }: { order: Order; vendor?: Vendor }) => {
-    const { addRatingToVendor } = useOrder();
-    const { toast } = useToast();
-    const [feedback, setFeedback] = useState(order.vendorFeedback || '');
-    const [showFeedback, setShowFeedback] = useState(!!order.vendorFeedback || (order.vendorRating !== undefined && order.vendorRating < 3));
-    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const { addRatingToVendor } = useOrder();
+  const { toast } = useToast();
+  const [feedback, setFeedback] = useState(order.vendorFeedback || '');
+  const [showFeedback, setShowFeedback] = useState(!!order.vendorFeedback || (order.vendorRating !== undefined && order.vendorRating < 3));
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
-    useEffect(() => {
-        setFeedback(order.vendorFeedback || '');
-        setShowFeedback(!!order.vendorFeedback || (order.vendorRating !== undefined && order.vendorRating < 3));
-    }, [order.vendorFeedback, order.vendorRating]);
+  useEffect(() => {
+    setFeedback(order.vendorFeedback || '');
+    setShowFeedback(!!order.vendorFeedback || (order.vendorRating !== undefined && order.vendorRating < 3));
+  }, [order.vendorFeedback, order.vendorRating]);
 
-    const handleRating = async (rating: number) => {
-        await addRatingToVendor(order.orderId, rating);
-        if (rating < 3) {
-            setShowFeedback(true);
-        } else {
-             setShowFeedback(false);
-             setFeedback('');
-             if (!order.vendorFeedback) {
-                toast({ title: 'Vendor Rating Submitted!', description: 'Thank you for helping us improve.' });
-            }
-        }
+  const handleRating = async (rating: number) => {
+    await addRatingToVendor(order.orderId, rating);
+    if (rating < 3) {
+      setShowFeedback(true);
+    } else {
+      setShowFeedback(false);
+      setFeedback('');
+      if (!order.vendorFeedback) {
+        toast({ title: 'Vendor Rating Submitted!', description: 'Thank you for helping us improve.' });
+      }
     }
+  }
 
-    const handleFeedbackSubmit = async () => {
-        if (order.vendorRating === undefined) return;
-        await addRatingToVendor(order.orderId, order.vendorRating, feedback);
-        toast({ title: 'Vendor Feedback Submitted!', description: 'Thank you for helping us improve.' });
-    }
-    
-    return (
-        <>
-        <div className="text-right">
-             <div className="flex items-center justify-end gap-2">
-                <h4 className="whitespace-nowrap text-xs">
-                   Rate {vendor?.shopName || vendor?.name || 'Vendor'}:
-                </h4>
-                <StarRating rating={order.vendorRating || 0} onRate={handleRating} starSize="h-4 w-4"/>
-            </div>
-            <div className="mt-2 space-y-2">
-                {showFeedback && (
-                    <div className="space-y-2 pt-1 text-left">
-                         {order.vendorFeedback ? (
-                            <p className="text-sm text-muted-foreground italic">"{order.vendorFeedback}"</p>
-                         ) : (
-                            <>
-                                <AutoSizingTextarea 
-                                    placeholder="Tell us about your experience with the vendor..." 
-                                    value={feedback} 
-                                    onChange={(e) => setFeedback(e.target.value)}
-                                />
-                                <Button size="sm" onClick={() => setIsConfirmOpen(true)} disabled={!feedback}>Submit</Button>
-                            </>
-                         )}
-                    </div>
-                )}
-            </div>
+  const handleFeedbackSubmit = async () => {
+    if (order.vendorRating === undefined) return;
+    await addRatingToVendor(order.orderId, order.vendorRating, feedback);
+    toast({ title: 'Vendor Feedback Submitted!', description: 'Thank you for helping us improve.' });
+  }
+
+  return (
+    <>
+      <div className="text-right">
+        <div className="flex items-center justify-end gap-2">
+          <h4 className="whitespace-nowrap text-xs">
+            Rate {vendor?.shopName || vendor?.name || 'Vendor'}:
+          </h4>
+          <StarRating rating={order.vendorRating || 0} onRate={handleRating} starSize="h-4 w-4" />
         </div>
-        <ConfirmationDialog
-            isOpen={isConfirmOpen}
-            onOpenChange={setIsConfirmOpen}
-            onConfirm={() => {
-                handleFeedbackSubmit();
-                setIsConfirmOpen(false);
-            }}
-            title="Confirm Feedback Submission"
-            description={`Are you sure you want to submit the following feedback? "${feedback}"`}
-        />
-        </>
-    )
+        <div className="mt-2 space-y-2">
+          {showFeedback && (
+            <div className="space-y-2 pt-1 text-left">
+              {order.vendorFeedback ? (
+                <p className="text-sm text-muted-foreground italic">"{order.vendorFeedback}"</p>
+              ) : (
+                <>
+                  <AutoSizingTextarea
+                    placeholder="Tell us about your experience with the vendor..."
+                    value={feedback}
+                    onChange={(e) => setFeedback(e.target.value)}
+                  />
+                  <Button size="sm" onClick={() => setIsConfirmOpen(true)} disabled={!feedback}>Submit</Button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+      <ConfirmationDialog
+        isOpen={isConfirmOpen}
+        onOpenChange={setIsConfirmOpen}
+        onConfirm={() => {
+          handleFeedbackSubmit();
+          setIsConfirmOpen(false);
+        }}
+        title="Confirm Feedback Submission"
+        description={`Are you sure you want to submit the following feedback? "${feedback}"`}
+      />
+    </>
+  )
 }
 
 const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; vendor?: Vendor, onPayClick: (order: Order) => void, onOrderAgain: (order: Order) => void }) => {
   const { addRatingToOrderItem } = useOrder();
-  
+
   const handleRating = async (itemIndex: number, rating: number) => {
     await addRatingToOrderItem(order.orderId, itemIndex, rating);
   };
@@ -250,7 +250,7 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
       await addRatingToOrderItem(order.orderId, itemIndex, item.rating, feedback);
     }
   };
-  
+
   const currentStatusIndex = statusConfig[order.status]?.index ?? -1;
   const progressStatuses = order.deliveryOption === 'Self Pickup' ? selfPickupStatuses : homeDeliveryStatuses;
   const progress = currentStatusIndex !== -1 ? ((currentStatusIndex + 1) / progressStatuses.length) * 100 : 0;
@@ -272,23 +272,23 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
     const restaurantName = vendor?.shopName || vendor?.name || 'Kitchen';
     const restaurantPhone = vendor?.contact ? ` (${vendor.contact.replace('+91', '')})` : '';
 
-    const method = order.paymentMethod === 'Pay at Counter' 
-      ? 'Pay at Counter' 
+    const method = order.paymentMethod === 'Pay at Counter'
+      ? 'Pay at Counter'
       : (order.paymentMethod === 'Pay Now' || order.paymentMethod === 'UPI' || order.paymentGateway === 'Razorpay')
-      ? 'Pay Now'
-      : 'COD';
-      
+        ? 'Pay Now'
+        : 'COD';
+
     const status = (order.paymentStatus === 'PAID' || order.paymentStatus === 'CONFIRMED BY VENDOR' || order.paymentStatus === 'CONFIRMED BY RIDER')
       ? 'Paid'
       : order.paymentStatus === 'AWAITING_CONFIRMATION'
-      ? 'Awaiting Verification'
-      : method === 'COD'
-      ? 'Pay on Delivery'
-      : 'Pending';
+        ? 'Awaiting Verification'
+        : method === 'COD'
+          ? 'Pay on Delivery'
+          : 'Pending';
 
     const paymentInfo = `${method} - ${status}`;
     const itemsList = order.items.map(i => `${i.quantity}x ${i.name}`).join(', ');
-    const riderInfo = order.assignedDeliveryBoyName 
+    const riderInfo = order.assignedDeliveryBoyName
       ? `\n• *Rider:* ${order.assignedDeliveryBoyName}${order.assignedDeliveryBoyContact ? ` (${order.assignedDeliveryBoyContact.replace('+91', '')})` : ''}`
       : '';
 
@@ -393,7 +393,7 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
     doc.setTextColor(100, 116, 139);
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'normal');
-    
+
     if (customerDisplayContact) {
       doc.text(`Phone: ${customerDisplayContact.replace('+91', '')}`, 14 + cardWidth + 10, cardY + 17);
     } else {
@@ -553,353 +553,353 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
   return (
     <>
       <Card className="rounded-3xl bg-card/80 backdrop-blur-sm border-primary/10">
-          <CardHeader className="flex flex-col">
-              <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-xs text-primary">{order.displayId || order.orderId}</h3>
-                    {vendor && (
-                         <div className="text-xs mt-1 flex items-center gap-3 flex-wrap">
-                            <div className="flex items-center gap-1.5">
-                                <Building className="h-3 w-3 text-muted-foreground"/>
-                                <span className="text-xs text-foreground font-semibold">From: {vendor.shopName || vendor.name}</span>
-                            </div>
-                            {vendor.contact && (
-                                <div className="flex items-center gap-1.5">
-                                    <Phone className="h-3 w-3 text-muted-foreground"/>
-                                    <a href={`tel:${vendor.contact}`} className="text-xs text-muted-foreground hover:underline">{vendor.contact.replace('+91','')}</a>
-                                </div>
-                            )}
-                            {directionsUrl && order.deliveryOption === 'Self Pickup' && (
-                                <div className="flex items-center gap-1">
-                                    <MapPin className="h-3 w-3 text-purple-500"/>
-                                    <a 
-                                        href={directionsUrl} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer" 
-                                        className="text-xs text-purple-600 dark:text-purple-400 font-semibold hover:underline flex items-center gap-0.5"
-                                    >
-                                        Map <ExternalLink className="h-2.5 w-2.5 opacity-70" />
-                                    </a>
-                                </div>
-                            )}
-                        </div>
-                    )}
+        <CardHeader className="flex flex-col">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="text-xs text-primary">{order.displayId || order.orderId}</h3>
+              {vendor && (
+                <div className="text-xs mt-1 flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <Building className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-xs text-foreground font-semibold">From: {vendor.shopName || vendor.name}</span>
                   </div>
-                   <div className="text-right">
-                        <span className="text-sm font-semibold text-foreground">
-                          ₹{(order.amountPaid || order.totalPrice).toFixed(2)}
-                        </span>
-                        {typeof order.pointsEarned === 'number' && order.pointsEarned > 0 && (
-                            <div className={cn(
-                                "flex justify-end items-center gap-1 mt-1 text-xs",
-                                order.status === 'Cancelled'
-                                    ? "text-muted-foreground line-through"
-                                    : "text-green-600 dark:text-green-400"
-                            )}>
-                                <Award className="h-3 w-3" />
-                                <span>+ {order.pointsEarned} HP</span>
-                            </div>
-                        )}
-                   </div>
-              </div>
-               <CardDescription className="space-y-1 !mt-2">
-                  <div className="text-xs">
-                    Status: <span className="text-foreground">{order.status}</span>
-                    {order.createdAt && (
-                        <span className="text-xs text-muted-foreground ml-2">
-                            ({format(new Date(order.createdAt), "dd/MM/yy HH:mm")})
-                        </span>
-                    )}
-                  </div>
-                  {order.assignedDeliveryBoyName && order.status !== 'Cancelled' && (
-                      <div className="text-xs text-muted-foreground pt-1.5 flex items-center gap-2">
-                          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-medium text-xs shadow-xs">
-                              <Bike className="h-3.5 w-3.5 shrink-0"/>
-                              <span>Rider Assigned: <strong className="text-foreground font-bold">{order.assignedDeliveryBoyName}</strong></span>
-                              {order.assignedDeliveryBoyContact && (
-                                  <a
-                                      href={`tel:${order.assignedDeliveryBoyContact}`}
-                                      className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-transform active:scale-90 ml-0.5"
-                                      title={`Call ${order.assignedDeliveryBoyName}`}
-                                      aria-label={`Call ${order.assignedDeliveryBoyName}`}
-                                  >
-                                      <Phone className="h-2.5 w-2.5 fill-current" />
-                                  </a>
-                              )}
-                          </div>
-                      </div>
-                  )}
-                </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-              {isOrderActive && (
-                 <div className="space-y-3">
-                    <Progress value={progress} className="h-2 bg-primary/20" />
-                    <div className="flex justify-between text-muted-foreground">
-                        {progressStatuses.map((status) => (
-                        <div key={status.name} className={cn("flex flex-col items-center transition-colors w-20 text-center", currentStatusIndex >= status.index ? 'text-primary' : 'text-muted-foreground')}>
-                            {status.icon}
-                            <p className="mt-1 text-[10px]">{status.name}</p>
-                        </div>
-                        ))}
+                  {vendor.contact && (
+                    <div className="flex items-center gap-1.5">
+                      <Phone className="h-3 w-3 text-muted-foreground" />
+                      <a href={`tel:${vendor.contact}`} className="text-xs text-muted-foreground hover:underline">{vendor.contact.replace('+91', '')}</a>
                     </div>
+                  )}
+                  {directionsUrl && order.deliveryOption === 'Self Pickup' && (
+                    <div className="flex items-center gap-1">
+                      <MapPin className="h-3 w-3 text-purple-500" />
+                      <a
+                        href={directionsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-purple-600 dark:text-purple-400 font-semibold hover:underline flex items-center gap-0.5"
+                      >
+                        Map <ExternalLink className="h-2.5 w-2.5 opacity-70" />
+                      </a>
+                    </div>
+                  )}
                 </div>
               )}
-               {order.status === 'Cancelled' && (
-                <div className="flex items-center gap-3 p-3 rounded-2xl bg-destructive/10 text-destructive">
-                    <XCircle className="h-6 w-6"/>
-                    <div>
-                        <h4 className="text-xs font-semibold">Order Cancelled</h4>
-                        {order.cancellationReason && <p className="text-xs">Reason: {order.cancellationReason}</p>}
-                    </div>
+            </div>
+            <div className="text-right">
+              <span className="text-sm font-semibold text-foreground">
+                ₹{(order.amountPaid || order.totalPrice).toFixed(2)}
+              </span>
+              {typeof order.pointsEarned === 'number' && order.pointsEarned > 0 && (
+                <div className={cn(
+                  "flex justify-end items-center gap-1 mt-1 text-xs",
+                  order.status === 'Cancelled'
+                    ? "text-muted-foreground line-through"
+                    : "text-green-600 dark:text-green-400"
+                )}>
+                  <Award className="h-3 w-3" />
+                  <span>+ {order.pointsEarned} HP</span>
                 </div>
-               )}
-                {order.customNotes && (
-                    <div className="flex items-start gap-3 p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
-                        <MessageSquare className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <div>
-                            <h4 className="text-xs font-semibold text-current">Your Notes</h4>
-                            <p className="text-xs text-current/80 italic">"{order.customNotes}"</p>
-                        </div>
-                    </div>
-                )}
-               <Separator/>
-                <div className="space-y-4">
-                     {order.status === 'Delivered' || order.status === 'Picked Up' ? (
-                        <>
-                           <div className="flex justify-end items-start">
-                                <VendorRating order={order} vendor={vendor} />
-                           </div>
-                            <div className="text-muted-foreground space-y-4">
-                                {order.items.map((item, index) => (
-                                  <OrderItemRating
-                                      key={`${order.orderId}-${item.cartItemId || index}`}
-                                      orderId={order.orderId}
-                                      item={item}
-                                      onRating={(rating) => handleRating(index, rating)}
-                                      onFeedbackSubmit={(feedback) => handleFeedbackSubmit(index, feedback)}
-                                  />
-                                ))}
-                            </div>
-                        </>
-                    ) : (
-                         <div className="space-y-2">
-                            <h4 className="text-xs">Items</h4>
-                            <ul className="text-xs text-muted-foreground list-disc pl-5">
-                            {order.items.map((item, index) => (
-                                    <li key={`${order.orderId}-item-${item.cartItemId || index}`} className="flex flex-col gap-0.5">
-                                        <div className="flex justify-between">
-                                          <span>{item.quantity}x {item.name}</span>
-                                          <span className="text-muted-foreground italic">₹{(item.price * item.quantity).toFixed(0)}</span>
-                                        </div>
-                                        {(item.customizationDetails && Object.entries(item.customizationDetails).length > 0) ? (
-                                          <div className="flex flex-wrap gap-1 mt-0.5">
-                                            {Object.entries(item.customizationDetails).map(([custId, value]) => {
-                                                const group = item.customizations?.find(c => c.id === custId);
-                                                if (!group) return null;
-                                                const selectedNames = (Array.isArray(value) ? value : [value])
-                                                    .map(optId => group.options.find(o => o.id === optId)?.name)
-                                                    .filter(Boolean);
-                                                if (selectedNames.length === 0) return null;
-                                                return (
-                                                    <span key={custId} className="text-[10px] text-muted-foreground/70">
-                                                        • {selectedNames.join(', ')}
-                                                    </span>
-                                                );
-                                            })}
-                                          </div>
-                                        ) : (
-                                          item.customizations && item.customizations.length > 0 && (
-                                            <div className="flex flex-wrap gap-1 mt-0.5">
-                                              {item.customizations.map((group: any) => (
-                                                <span key={group.id} className="text-[10px] text-muted-foreground/70">
-                                                  • {group.options.map((o: any) => o.name).join(', ')}
-                                                </span>
-                                              ))}
-                                            </div>
-                                          )
-                                        )}
-                                    </li>
-                            ))}
-                            </ul>
-                        </div>
-                    )}
+              )}
+            </div>
+          </div>
+          <CardDescription className="space-y-1 !mt-2">
+            <div className="text-xs">
+              Status: <span className="text-foreground">{order.status}</span>
+              {order.createdAt && (
+                <span className="text-xs text-muted-foreground ml-2">
+                  ({format(new Date(order.createdAt), "dd/MM/yy HH:mm")})
+                </span>
+              )}
+            </div>
+            {order.assignedDeliveryBoyName && order.status !== 'Cancelled' && (
+              <div className="text-xs text-muted-foreground pt-1.5 flex items-center gap-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-medium text-xs shadow-xs">
+                  <Bike className="h-3.5 w-3.5 shrink-0" />
+                  <span>Rider Assigned: <strong className="text-foreground font-bold">{order.assignedDeliveryBoyName}</strong></span>
+                  {order.assignedDeliveryBoyContact && (
+                    <a
+                      href={`tel:${order.assignedDeliveryBoyContact}`}
+                      className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-transform active:scale-90 ml-0.5"
+                      title={`Call ${order.assignedDeliveryBoyName}`}
+                      aria-label={`Call ${order.assignedDeliveryBoyName}`}
+                    >
+                      <Phone className="h-2.5 w-2.5 fill-current" />
+                    </a>
+                  )}
                 </div>
-
-                <Separator className="my-4 bg-primary/10" />
-                
-                {/* Delivery Option, Distance, and Payment Status Badges */}
-                <div className="flex flex-wrap items-center justify-between gap-4 py-2 bg-muted/5 rounded-2xl p-4 border border-purple-500/5">
-                    <div className="space-y-1">
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider block font-bold">Delivery Details</span>
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                            {order.deliveryOption === 'Home Delivery' ? (
-                                <div className="space-y-0.5">
-                                    <div className="flex items-center gap-1.5">
-                                        <Bike className="h-4 w-4 text-purple-500" />
-                                        <span>Home Delivery</span>
-                                    </div>
-                                    {order.assignedDeliveryBoyName && (
-                                        <div className="text-[11px] text-muted-foreground font-normal flex items-center gap-1.5 pt-0.5">
-                                            <span>Rider: <span className="font-semibold text-foreground">{order.assignedDeliveryBoyName}</span></span>
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <div className="flex items-center gap-1">
-                                        <Home className="h-4 w-4 text-purple-500" />
-                                        <span>Self Pickup</span>
-                                    </div>
-                                    {directionsUrl && (
-                                        <a
-                                            href={directionsUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 text-[11px] font-bold transition-colors shadow-xs"
-                                        >
-                                            <Navigation className="h-3 w-3" />
-                                            Directions
-                                            <ExternalLink className="h-2.5 w-2.5 opacity-70" />
-                                        </a>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="space-y-1 text-right">
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider block font-bold">Payment Method & Status</span>
-                        <div className="flex items-center gap-2 justify-end">
-                            {(order.paymentMethod === 'Pay Now' || order.paymentMethod === 'UPI' || order.paymentGateway === 'Razorpay') ? (
-                                <>
-                                    <span className="text-xs bg-purple-500/10 text-purple-600 px-2 py-0.5 rounded-full font-bold">Online</span>
-                                    {(order.paymentStatus === 'PAID' || order.paymentStatus === 'CONFIRMED BY VENDOR' || order.paymentStatus === 'CONFIRMED BY RIDER') ? (
-                                        <span className="text-xs bg-green-500/10 text-green-500 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
-                                            <CheckCircle className="h-3 w-3" /> Paid
-                                        </span>
-                                    ) : order.paymentStatus === 'AWAITING_CONFIRMATION' ? (
-                                        <span className="text-xs bg-amber-500/10 text-amber-500 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 animate-pulse">
-                                            <Loader2 className="h-3 w-3 animate-spin" /> Awaiting Verification
-                                        </span>
-                                    ) : (
-                                        <span className="text-xs bg-green-500/10 text-green-500 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
-                                            <CheckCircle className="h-3 w-3" /> Paid Online
-                                        </span>
-                                    )}
-                                </>
-                            ) : order.paymentMethod === 'Pay at Counter' ? (
-                                <>
-                                    <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-bold">Counter</span>
-                                    <span className="text-xs bg-blue-500/10 text-blue-600 px-2.5 py-0.5 rounded-full font-bold">Pay at Counter</span>
-                                </>
-                            ) : (
-                                <>
-                                    <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-bold">COD</span>
-                                    {(order.paymentStatus === 'CONFIRMED BY VENDOR' || order.paymentStatus === 'CONFIRMED BY RIDER' || order.paymentStatus === 'PAID') ? (
-                                        <span className="text-xs bg-green-500/10 text-green-500 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
-                                            <CheckCircle className="h-3 w-3" /> Paid
-                                        </span>
-                                    ) : (
-                                        <span className="text-xs bg-blue-500/10 text-blue-600 px-2.5 py-0.5 rounded-full font-bold">Pay on Delivery</span>
-                                    )}
-                                </>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                <Separator className="my-4 bg-primary/10" />
-
-                {/* Bill Breakdown */}
-                <div className="space-y-2 text-xs">
-                    <h4 className="font-bold text-foreground">Billing Breakdown</h4>
-                    <div className="space-y-1.5 pl-2">
-                        <div className="flex justify-between text-muted-foreground">
-                            <span>Subtotal</span>
-                            <span>₹{order.subtotal?.toFixed(2) || (order.totalPrice - (order.deliveryCharge || 0)).toFixed(2)}</span>
-                        </div>
-                        {order.deliveryCharge !== undefined && order.deliveryCharge > 0 && (
-                            <div className="flex justify-between text-muted-foreground">
-                                <span>Delivery Charges</span>
-                                <span>₹{order.deliveryCharge.toFixed(2)}</span>
-                            </div>
-                        )}
-
-                        {/* Fee Breakdown */}
-                        <div className="flex justify-between text-muted-foreground">
-                            <span>Platform Fee</span>
-                            <span className="text-xs font-medium text-foreground">
-                                ₹{(order.platformFee !== undefined ? order.platformFee : 5.0).toFixed(2)}
-                            </span>
-                        </div>
-
-                        {/* Backward-compatibility: only show if old historical order had PG fee and no platformFee */}
-                        {order.platformFee === 0 && order.paymentGatewayFee !== undefined && order.paymentGatewayFee > 0 && (
-                            <div className="flex justify-between text-muted-foreground">
-                                <span>Payment Gateway (2% + GST)</span>
-                                <span className="text-xs font-medium text-foreground">₹{order.paymentGatewayFee.toFixed(2)}</span>
-                            </div>
-                        )}
-
-                        {order.discountAmount !== undefined && order.discountAmount > 0 && (
-                            <div className="flex justify-between text-green-600 dark:text-green-400">
-                                <span>Points Discount</span>
-                                <span>- ₹{order.discountAmount.toFixed(2)}</span>
-                            </div>
-                        )}
-                        <div className="flex justify-between font-bold text-sm text-foreground pt-1 border-t border-dashed border-primary/10 mt-1">
-                            <span>Grand Total</span>
-                            <span className="text-purple-500 font-black">
-                                ₹{(order.amountPaid || order.totalPrice).toFixed(2)}
-                            </span>
-                        </div>
-
-                        {/* Real Order Savings Callout (Only shown when real discounts or free delivery apply) */}
-                        {((typeof order.discountAmount === 'number' && order.discountAmount > 0) || (order.deliveryOption === 'Home Delivery' && order.deliveryCharge === 0 && Boolean(order.deliveryDistanceKm && order.deliveryDistanceKm > 0))) && (
-                            <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-xl p-2 flex items-center justify-between gap-2 text-xs font-semibold mt-1">
-                                <div className="flex items-center gap-1.5">
-                                    <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                                    <span>
-                                        {(typeof order.discountAmount === 'number' && order.discountAmount > 0 && order.deliveryOption === 'Home Delivery' && order.deliveryCharge === 0) 
-                                            ? "Points & Free Delivery Applied" 
-                                            : (typeof order.discountAmount === 'number' && order.discountAmount > 0) 
-                                            ? "Points Discount Applied" 
-                                            : "Free Delivery Applied"}
-                                    </span>
-                                </div>
-                                <span className="bg-emerald-600 text-white dark:bg-emerald-500 dark:text-emerald-950 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                                    {(typeof order.discountAmount === 'number' && order.discountAmount > 0) 
-                                        ? `₹${order.discountAmount.toFixed(0)} Saved` 
-                                        : "FREE Delivery"}
-                                </span>
-                            </div>
-                        )}
-                    </div>
-                </div>
-          </CardContent>
-          <CardFooter className="flex flex-col sm:flex-row justify-end items-center gap-2">
-             <Button 
-                size="sm" 
-                variant="outline" 
-                className="h-auto px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 rounded-xl"
-                onClick={() => setIsHelpOpen(true)}
-             >
-                 <HelpCircle className="h-3 w-3 mr-1 text-primary" />
-                 Need Help?
-             </Button>
-             {isOrderCompleted && (
-                <>
-                  <Button size="sm" variant="ghost" className="h-auto px-2 py-1 text-xs" onClick={() => onOrderAgain(order)}>
-                      <ShoppingCart className="h-3 w-3 mr-1" />
-                      Order Again
-                  </Button>
-                  <Button size="sm" variant="ghost" className="h-auto px-2 py-1 text-xs" onClick={generatePdfReceipt}>
-                      <Download className="h-3 w-3 mr-1" />
-                      Bill
-                  </Button>
-                </>
+              </div>
             )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isOrderActive && (
+            <div className="space-y-3">
+              <Progress value={progress} className="h-2 bg-primary/20" />
+              <div className="flex justify-between text-muted-foreground">
+                {progressStatuses.map((status) => (
+                  <div key={status.name} className={cn("flex flex-col items-center transition-colors w-20 text-center", currentStatusIndex >= status.index ? 'text-primary' : 'text-muted-foreground')}>
+                    {status.icon}
+                    <p className="mt-1 text-[10px]">{status.name}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {order.status === 'Cancelled' && (
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-destructive/10 text-destructive">
+              <XCircle className="h-6 w-6" />
+              <div>
+                <h4 className="text-xs font-semibold">Order Cancelled</h4>
+                {order.cancellationReason && <p className="text-xs">Reason: {order.cancellationReason}</p>}
+              </div>
+            </div>
+          )}
+          {order.customNotes && (
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
+              <MessageSquare className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="text-xs font-semibold text-current">Your Notes</h4>
+                <p className="text-xs text-current/80 italic">"{order.customNotes}"</p>
+              </div>
+            </div>
+          )}
+          <Separator />
+          <div className="space-y-4">
+            {order.status === 'Delivered' || order.status === 'Picked Up' ? (
+              <>
+                <div className="flex justify-end items-start">
+                  <VendorRating order={order} vendor={vendor} />
+                </div>
+                <div className="text-muted-foreground space-y-4">
+                  {order.items.map((item, index) => (
+                    <OrderItemRating
+                      key={`${order.orderId}-${item.cartItemId || index}`}
+                      orderId={order.orderId}
+                      item={item}
+                      onRating={(rating) => handleRating(index, rating)}
+                      onFeedbackSubmit={(feedback) => handleFeedbackSubmit(index, feedback)}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <h4 className="text-xs">Items</h4>
+                <ul className="text-xs text-muted-foreground list-disc pl-5">
+                  {order.items.map((item, index) => (
+                    <li key={`${order.orderId}-item-${item.cartItemId || index}`} className="flex flex-col gap-0.5">
+                      <div className="flex justify-between">
+                        <span>{item.quantity}x {item.name}</span>
+                        <span className="text-muted-foreground italic">₹{(item.price * item.quantity).toFixed(0)}</span>
+                      </div>
+                      {(item.customizationDetails && Object.entries(item.customizationDetails).length > 0) ? (
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          {Object.entries(item.customizationDetails).map(([custId, value]) => {
+                            const group = item.customizations?.find(c => c.id === custId);
+                            if (!group) return null;
+                            const selectedNames = (Array.isArray(value) ? value : [value])
+                              .map(optId => group.options.find(o => o.id === optId)?.name)
+                              .filter(Boolean);
+                            if (selectedNames.length === 0) return null;
+                            return (
+                              <span key={custId} className="text-[10px] text-muted-foreground/70">
+                                • {selectedNames.join(', ')}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        item.customizations && item.customizations.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-0.5">
+                            {item.customizations.map((group: any) => (
+                              <span key={group.id} className="text-[10px] text-muted-foreground/70">
+                                • {group.options.map((o: any) => o.name).join(', ')}
+                              </span>
+                            ))}
+                          </div>
+                        )
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          <Separator className="my-4 bg-primary/10" />
+
+          {/* Delivery Option, Distance, and Payment Status Badges */}
+          <div className="flex flex-wrap items-center justify-between gap-4 py-2 bg-muted/5 rounded-2xl p-4 border border-purple-500/5">
+            <div className="space-y-1">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider block font-bold">Delivery Details</span>
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                {order.deliveryOption === 'Home Delivery' ? (
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <Bike className="h-4 w-4 text-purple-500" />
+                      <span>Home Delivery</span>
+                    </div>
+                    {order.assignedDeliveryBoyName && (
+                      <div className="text-[11px] text-muted-foreground font-normal flex items-center gap-1.5 pt-0.5">
+                        <span>Rider: <span className="font-semibold text-foreground">{order.assignedDeliveryBoyName}</span></span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1">
+                      <Home className="h-4 w-4 text-purple-500" />
+                      <span>Self Pickup</span>
+                    </div>
+                    {directionsUrl && (
+                      <a
+                        href={directionsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 text-[11px] font-bold transition-colors shadow-xs"
+                      >
+                        <Navigation className="h-3 w-3" />
+                        Directions
+                        <ExternalLink className="h-2.5 w-2.5 opacity-70" />
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1 text-right">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider block font-bold">Payment Method & Status</span>
+              <div className="flex items-center gap-2 justify-end">
+                {(order.paymentMethod === 'Pay Now' || order.paymentMethod === 'UPI' || order.paymentGateway === 'Razorpay') ? (
+                  <>
+                    <span className="text-xs bg-purple-500/10 text-purple-600 px-2 py-0.5 rounded-full font-bold">Online</span>
+                    {(order.paymentStatus === 'PAID' || order.paymentStatus === 'CONFIRMED BY VENDOR' || order.paymentStatus === 'CONFIRMED BY RIDER') ? (
+                      <span className="text-xs bg-green-500/10 text-green-500 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3" /> Paid
+                      </span>
+                    ) : order.paymentStatus === 'AWAITING_CONFIRMATION' ? (
+                      <span className="text-xs bg-amber-500/10 text-amber-500 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 animate-pulse">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Awaiting Verification
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-green-500/10 text-green-500 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3" /> Paid Online
+                      </span>
+                    )}
+                  </>
+                ) : order.paymentMethod === 'Pay at Counter' ? (
+                  <>
+                    <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-bold">Counter</span>
+                    <span className="text-xs bg-blue-500/10 text-blue-600 px-2.5 py-0.5 rounded-full font-bold">Pay at Counter</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-bold">COD</span>
+                    {(order.paymentStatus === 'CONFIRMED BY VENDOR' || order.paymentStatus === 'CONFIRMED BY RIDER' || order.paymentStatus === 'PAID') ? (
+                      <span className="text-xs bg-green-500/10 text-green-500 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3" /> Paid
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-blue-500/10 text-blue-600 px-2.5 py-0.5 rounded-full font-bold">Pay on Delivery</span>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <Separator className="my-4 bg-primary/10" />
+
+          {/* Bill Breakdown */}
+          <div className="space-y-2 text-xs">
+            <h4 className="font-bold text-foreground">Billing Breakdown</h4>
+            <div className="space-y-1.5 pl-2">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Subtotal</span>
+                <span>₹{order.subtotal?.toFixed(2) || (order.totalPrice - (order.deliveryCharge || 0)).toFixed(2)}</span>
+              </div>
+              {order.deliveryCharge !== undefined && order.deliveryCharge > 0 && (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Delivery Charges</span>
+                  <span>₹{order.deliveryCharge.toFixed(2)}</span>
+                </div>
+              )}
+
+              {/* Fee Breakdown */}
+              <div className="flex justify-between text-muted-foreground">
+                <span>Platform Fee</span>
+                <span className="text-xs font-medium text-foreground">
+                  ₹{(order.platformFee !== undefined ? order.platformFee : 5.0).toFixed(2)}
+                </span>
+              </div>
+
+              {/* Backward-compatibility: only show if old historical order had PG fee and no platformFee */}
+              {order.platformFee === 0 && order.paymentGatewayFee !== undefined && order.paymentGatewayFee > 0 && (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Payment Gateway (2% + GST)</span>
+                  <span className="text-xs font-medium text-foreground">₹{order.paymentGatewayFee.toFixed(2)}</span>
+                </div>
+              )}
+
+              {order.discountAmount !== undefined && order.discountAmount > 0 && (
+                <div className="flex justify-between text-green-600 dark:text-green-400">
+                  <span>Points Discount</span>
+                  <span>- ₹{order.discountAmount.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-bold text-sm text-foreground pt-1 border-t border-dashed border-primary/10 mt-1">
+                <span>Grand Total</span>
+                <span className="text-purple-500 font-black">
+                  ₹{(order.amountPaid || order.totalPrice).toFixed(2)}
+                </span>
+              </div>
+
+              {/* Real Order Savings Callout (Only shown when real discounts or free delivery apply) */}
+              {((typeof order.discountAmount === 'number' && order.discountAmount > 0) || (order.deliveryOption === 'Home Delivery' && order.deliveryCharge === 0 && Boolean(order.deliveryDistanceKm && order.deliveryDistanceKm > 0))) && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-xl p-2 flex items-center justify-between gap-2 text-xs font-semibold mt-1">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>
+                      {(typeof order.discountAmount === 'number' && order.discountAmount > 0 && order.deliveryOption === 'Home Delivery' && order.deliveryCharge === 0)
+                        ? "Points & Free Delivery Applied"
+                        : (typeof order.discountAmount === 'number' && order.discountAmount > 0)
+                          ? "Points Discount Applied"
+                          : "Free Delivery Applied"}
+                    </span>
+                  </div>
+                  <span className="bg-emerald-600 text-white dark:bg-emerald-500 dark:text-emerald-950 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                    {(typeof order.discountAmount === 'number' && order.discountAmount > 0)
+                      ? `₹${order.discountAmount.toFixed(0)} Saved`
+                      : "FREE Delivery"}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter className="flex flex-col sm:flex-row justify-end items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-auto px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 rounded-xl"
+            onClick={() => setIsHelpOpen(true)}
+          >
+            <HelpCircle className="h-3 w-3 mr-1 text-primary" />
+            Need Help?
+          </Button>
+          {isOrderCompleted && (
+            <>
+              <Button size="sm" variant="ghost" className="h-auto px-2 py-1 text-xs" onClick={() => onOrderAgain(order)}>
+                <ShoppingCart className="h-3 w-3 mr-1" />
+                Order Again
+              </Button>
+              <Button size="sm" variant="ghost" className="h-auto px-2 py-1 text-xs" onClick={generatePdfReceipt}>
+                <Download className="h-3 w-3 mr-1" />
+                Bill
+              </Button>
+            </>
+          )}
         </CardFooter>
       </Card>
 
@@ -919,7 +919,7 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
           <div className="space-y-3 pt-2">
             {/* Direct Rider Call Option if assigned */}
             {order.assignedDeliveryBoyContact && (
-              <a 
+              <a
                 href={`tel:${order.assignedDeliveryBoyContact}`}
                 className="flex items-center justify-between p-3 rounded-2xl bg-primary/10 hover:bg-primary/15 border border-primary/30 transition-all active:scale-[0.98]"
               >
@@ -932,7 +932,7 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
                       Call Delivery Partner ({order.assignedDeliveryBoyName || 'Rider'})
                     </div>
                     <div className="text-[11px] text-muted-foreground">
-                      {order.assignedDeliveryBoyContact.replace('+91','')}
+                      {order.assignedDeliveryBoyContact.replace('+91', '')}
                     </div>
                   </div>
                 </div>
@@ -941,7 +941,7 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
             )}
 
             {/* 1-Tap WhatsApp Support with pre-filled order context */}
-            <a 
+            <a
               href={whatsappSupportUrl}
               target="_blank"
               rel="noopener noreferrer"
@@ -961,7 +961,7 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
 
             {/* Direct Call Options */}
             <div className="grid grid-cols-2 gap-2">
-              <a 
+              <a
                 href="tel:+917083609020"
                 className="flex items-center gap-2 p-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/30 transition-all text-left"
               >
@@ -973,19 +973,19 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
               </a>
 
               {vendor?.contact ? (
-                <a 
+                <a
                   href={`tel:${vendor.contact}`}
                   className="flex items-center gap-2 p-2.5 rounded-xl bg-muted/60 hover:bg-muted border border-border/60 transition-all text-left"
                 >
                   <Building className="h-4 w-4 text-muted-foreground shrink-0" />
                   <div className="min-w-0">
                     <div className="text-[11px] font-bold text-foreground truncate">Call Kitchen</div>
-                    <div className="text-[10px] text-muted-foreground truncate">{vendor.contact.replace('+91','')}</div>
+                    <div className="text-[10px] text-muted-foreground truncate">{vendor.contact.replace('+91', '')}</div>
                   </div>
                 </a>
               ) : (
-                <a 
-                  href="mailto:hyperlabsupport@gmail.com"
+                <a
+                  href="mailto:support@hyperdelivery.in"
                   className="flex items-center gap-2 p-2.5 rounded-xl bg-muted/60 hover:bg-muted border border-border/60 transition-all text-left"
                 >
                   <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -1011,17 +1011,17 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
             </div>
 
             <div className="pt-1 flex items-center justify-between">
-              <Link 
-                href="/support" 
-                onClick={() => setIsHelpOpen(false)} 
+              <Link
+                href="/support"
+                onClick={() => setIsHelpOpen(false)}
                 className="text-xs text-primary font-semibold hover:underline flex items-center gap-1"
               >
                 View Support Guide <ChevronRight className="h-3 w-3" />
               </Link>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setIsHelpOpen(false)} 
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsHelpOpen(false)}
                 className="text-xs h-7 px-2"
               >
                 Close
@@ -1093,7 +1093,7 @@ const PortionSelectDialog = ({
                   <span className="font-semibold">{variation.charAt(0).toUpperCase() + variation.slice(1)}</span>
                   <div className="flex items-center gap-4">
                     <span className="text-muted-foreground text-sm">₹{price.toFixed(2)}</span>
-                    <RadioGroupItem value={item.id} id={item.id} disabled={!item.isAvailable}/>
+                    <RadioGroupItem value={item.id} id={item.id} disabled={!item.isAvailable} />
                   </div>
                 </Label>
               );
@@ -1101,14 +1101,14 @@ const PortionSelectDialog = ({
           </RadioGroup>
         </div>
         <DialogFooter className="sm:justify-between items-center gap-4">
-           <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setQuantity(q => Math.max(1, q - 1))}>
-                  <Minus className="h-4 w-4"/>
-              </Button>
-              <span className="font-bold text-lg w-10 text-center">{quantity}</span>
-              <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setQuantity(q => q + 1)}>
-                  <Plus className="h-4 w-4"/>
-              </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setQuantity(q => Math.max(1, q - 1))}>
+              <Minus className="h-4 w-4" />
+            </Button>
+            <span className="font-bold text-lg w-10 text-center">{quantity}</span>
+            <Button variant="outline" size="icon" className="h-10 w-10" onClick={() => setQuantity(q => q + 1)}>
+              <Plus className="h-4 w-4" />
+            </Button>
           </div>
           <Button onClick={handleConfirmClick} disabled={!selectedItemId}>
             Add to Order
@@ -1136,7 +1136,7 @@ export default function TrackPage() {
   const [completedPage, setCompletedPage] = useState(1);
   const { toast } = useToast();
   const pathname = usePathname();
-  
+
   useEffect(() => {
     setIsClient(true);
     fetchAllVendors();
@@ -1156,27 +1156,27 @@ export default function TrackPage() {
 
   useEffect(() => {
     if (customer?.username) {
-        const unsubscribe = loadUserOrders(customer.username, 'customer');
-        return () => {
-            if (unsubscribe) unsubscribe();
-        };
+      const unsubscribe = loadUserOrders(customer.username, 'customer');
+      return () => {
+        if (unsubscribe) unsubscribe();
+      };
     }
   }, [customer?.username, loadUserOrders]);
 
-  
+
   const customerOrders = useMemo(() => {
     if (!isClient || !customer) return [];
     return orders
-        .filter(order => order.customerUsername === customer.username)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .filter(order => order.customerUsername === customer.username)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [customer, orders, isClient]);
-  
+
   const allActiveOrders = useMemo(() => {
-      return customerOrders.filter(o => activeStatuses.includes(o.status));
+    return customerOrders.filter(o => activeStatuses.includes(o.status));
   }, [customerOrders]);
 
   const allCompletedOrders = useMemo(() => {
-      return customerOrders.filter(o => completedStatuses.includes(o.status));
+    return customerOrders.filter(o => completedStatuses.includes(o.status));
   }, [customerOrders]);
 
   const activeTotalPages = Math.ceil(allActiveOrders.length / ORDERS_PER_PAGE);
@@ -1184,34 +1184,34 @@ export default function TrackPage() {
     const startIndex = (activePage - 1) * ORDERS_PER_PAGE;
     return allActiveOrders.slice(startIndex, startIndex + ORDERS_PER_PAGE);
   }, [allActiveOrders, activePage]);
-  
+
   const filteredCompletedOrders = useMemo(() => {
     if (filter === 'latest' && !date) {
-        return allCompletedOrders.length > 0 ? [allCompletedOrders[0]] : [];
+      return allCompletedOrders.length > 0 ? [allCompletedOrders[0]] : [];
     }
     if (!date?.from) {
-        return allCompletedOrders;
+      return allCompletedOrders;
     }
     return allCompletedOrders.filter(order => {
-        const orderDate = new Date(order.createdAt);
-        const fromDate = new Date(date.from!);
-        fromDate.setHours(0,0,0,0);
-        const toDate = date.to ? new Date(date.to) : new Date(date.from!);
-        toDate.setHours(23,59,59,999);
-        return orderDate >= fromDate && orderDate <= toDate;
+      const orderDate = new Date(order.createdAt);
+      const fromDate = new Date(date.from!);
+      fromDate.setHours(0, 0, 0, 0);
+      const toDate = date.to ? new Date(date.to) : new Date(date.from!);
+      toDate.setHours(23, 59, 59, 999);
+      return orderDate >= fromDate && orderDate <= toDate;
     });
   }, [allCompletedOrders, date, filter]);
 
   const completedTotalPages = Math.ceil(filteredCompletedOrders.length / ORDERS_PER_PAGE);
   const paginatedCompletedOrders = useMemo(() => {
-      const startIndex = (completedPage - 1) * ORDERS_PER_PAGE;
-      return filteredCompletedOrders.slice(startIndex, startIndex + ORDERS_PER_PAGE);
+    const startIndex = (completedPage - 1) * ORDERS_PER_PAGE;
+    return filteredCompletedOrders.slice(startIndex, startIndex + ORDERS_PER_PAGE);
   }, [filteredCompletedOrders, completedPage]);
 
 
   const handleFilterChange = (value: string) => {
     setFilter(value);
-    setDate(undefined); 
+    setDate(undefined);
     setCompletedPage(1);
     const now = new Date();
     switch (value) {
@@ -1238,10 +1238,10 @@ export default function TrackPage() {
   const handleOrderAgain = (order: Order) => {
     let addedCount = 0;
     let unavailableCount = 0;
-    
+
     order.items.forEach(itemFromOrder => {
       const baseName = itemFromOrder.name.replace(/\s+\(Half\)|\s+\(Full\)/i, '').trim();
-      
+
       const vendor = vendors.find(v => v.username === itemFromOrder.vendorUsername);
       const availableMenuItems = menuItems.filter(mi =>
         mi.vendorUsername === itemFromOrder.vendorUsername &&
@@ -1264,17 +1264,17 @@ export default function TrackPage() {
         unavailableCount++;
       }
     });
-    
-    const messages = [];
-    if(addedCount > 0) messages.push(`${addedCount} items re-added to your cart.`);
-    if(unavailableCount > 0) messages.push(`${unavailableCount} items are currently unavailable.`);
-    if(portionSelectItems) messages.push("Please select portions for some items.");
 
-    if(messages.length > 0) {
-        toast({
-            title: "Reorder Processed",
-            description: messages.join(' '),
-        });
+    const messages = [];
+    if (addedCount > 0) messages.push(`${addedCount} items re-added to your cart.`);
+    if (unavailableCount > 0) messages.push(`${unavailableCount} items are currently unavailable.`);
+    if (portionSelectItems) messages.push("Please select portions for some items.");
+
+    if (messages.length > 0) {
+      toast({
+        title: "Reorder Processed",
+        description: messages.join(' '),
+      });
     }
   }
 
@@ -1288,36 +1288,36 @@ export default function TrackPage() {
       </div>
     );
   }
-  
+
   const findVendor = (order: Order) => {
     if (!vendors) return undefined;
     return vendors.find(v => v.username === order.vendorUsername);
   }
 
   const PaginationControls = ({ currentPage, totalPages, onPageChange }: { currentPage: number, totalPages: number, onPageChange: (page: number) => void }) => (
-     totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 py-4">
-            <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-            >
-                Previous
-            </Button>
-            <span className="text-sm font-medium">
-                Page {currentPage} of {totalPages}
-            </span>
-            <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
-            >
-                Next
-            </Button>
-        </div>
-      )
+    totalPages > 1 && (
+      <div className="flex items-center justify-center gap-2 py-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+        >
+          Previous
+        </Button>
+        <span className="text-sm font-medium">
+          Page {currentPage} of {totalPages}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+        >
+          Next
+        </Button>
+      </div>
+    )
   );
 
   return (
@@ -1326,9 +1326,9 @@ export default function TrackPage() {
       <main className="flex-1 container mx-auto px-4 py-8 md:py-12">
         <div className="max-w-4xl mx-auto mb-4 flex items-center justify-between">
           <Link href="/menu" passHref>
-            <Button 
-              variant="outline" 
-              size="icon" 
+            <Button
+              variant="outline"
+              size="icon"
               className="h-9 w-9 rounded-full border-border/70 hover:border-primary/50 hover:bg-primary/10 transition-all shadow-xs"
               aria-label="Back to Menu"
             >
@@ -1355,130 +1355,129 @@ export default function TrackPage() {
           </CardHeader>
           <CardContent>
             {(allActiveOrders.length === 0 && allCompletedOrders.length === 0) ? (
-                 <div className="text-center py-16 flex flex-col items-center gap-4 bg-card/50 rounded-lg">
-                    <PackageSearch className="h-16 w-16 text-muted-foreground" />
-                    <h3 className="text-xl font-semibold">No orders found.</h3>
-                    <p className="text-muted-foreground">Place an order from the menu to track it here.</p>
-                     <Link href="/" passHref>
-                        <Button variant="outline" size="lg" className="text-lg mt-4">
-                            <Utensils className="mr-2 h-5 w-5"/>
-                            Go to Menu
-                        </Button>
-                    </Link>
-                </div>
+              <div className="text-center py-16 flex flex-col items-center gap-4 bg-card/50 rounded-lg">
+                <PackageSearch className="h-16 w-16 text-muted-foreground" />
+                <h3 className="text-xl font-semibold">No orders found.</h3>
+                <p className="text-muted-foreground">Place an order from the menu to track it here.</p>
+                <Link href="/" passHref>
+                  <Button variant="outline" size="lg" className="text-lg mt-4">
+                    <Utensils className="mr-2 h-5 w-5" />
+                    Go to Menu
+                  </Button>
+                </Link>
+              </div>
             ) : (
-                <Tabs defaultValue="active" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 rounded-full">
-                        <TabsTrigger value="active" className="rounded-full">
-                            <Package className="mr-2 h-4 w-4"/>
-                            Active Orders ({allActiveOrders.length})
-                        </TabsTrigger>
-                        <TabsTrigger value="history" className="rounded-full">
-                            <History className="mr-2 h-4 w-4"/>
-                            Order History ({allCompletedOrders.length})
-                        </TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="active">
-                        <PaginationControls currentPage={activePage} totalPages={activeTotalPages} onPageChange={setActivePage} />
-                        <div className="space-y-4 mt-4">
-                        {paginatedActiveOrders.length > 0 ? (
-                            paginatedActiveOrders.map(order => <OrderCard key={order.orderId} order={order} vendor={findVendor(order)} onPayClick={setQrCodeOrder} onOrderAgain={handleOrderAgain} />)
-                        ) : (
-                            <p className="text-center text-muted-foreground py-8">No active orders.</p>
-                        )}
-                       </div>
-                       <PaginationControls currentPage={activePage} totalPages={activeTotalPages} onPageChange={setActivePage} />
-                    </TabsContent>
-                    <TabsContent value="history">
-                        <div className="mt-4 flex justify-end items-center gap-2">
-                             <Select value={filter} onValueChange={handleFilterChange}>
-                              <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Select date range" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="latest">Latest Order</SelectItem>
-                                <SelectItem value="today">Today</SelectItem>
-                                <SelectItem value="last7">Last 7 Days</SelectItem>
-                                <SelectItem value="thisMonth">This Month</SelectItem>
-                                <SelectItem value="thisYear">This Year</SelectItem>
-                                <SelectItem value="all">All Time</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                    id="date"
-                                    variant={"outline"}
-                                    className={cn(
-                                        "w-[300px] justify-start text-left font-normal",
-                                        !date && "text-muted-foreground"
-                                    )}
-                                    >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {date?.from ? (
-                                        date.to ? (
-                                        <>
-                                            {format(date.from, "LLL dd, y")} -{" "}
-                                            {format(date.to, "LLL dd, y")}
-                                        </>
-                                        ) : (
-                                        format(date.from, "LLL dd, y")
-                                        )
-                                    ) : (
-                                        <span>Pick a date range</span>
-                                    )}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="end">
-                                    <Calendar
-                                    initialFocus
-                                    mode="range"
-                                    defaultMonth={date?.from}
-                                    selected={date}
-                                    onSelect={(newDate) => {
-                                        setDate(newDate);
-                                        setCompletedPage(1);
-                                        setFilter('custom');
-                                    }}
-                                    numberOfMonths={2}
-                                    />
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                        <PaginationControls currentPage={completedPage} totalPages={completedTotalPages} onPageChange={setCompletedPage} />
-                         <div className="space-y-4 mt-4">
-                            {paginatedCompletedOrders.length > 0 ? (
-                                paginatedCompletedOrders.map(order => <OrderCard key={order.orderId} order={order} vendor={findVendor(order)} onPayClick={setQrCodeOrder} onOrderAgain={handleOrderAgain} />)
+              <Tabs defaultValue="active" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 rounded-full">
+                  <TabsTrigger value="active" className="rounded-full">
+                    <Package className="mr-2 h-4 w-4" />
+                    Active Orders ({allActiveOrders.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="history" className="rounded-full">
+                    <History className="mr-2 h-4 w-4" />
+                    Order History ({allCompletedOrders.length})
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="active">
+                  <PaginationControls currentPage={activePage} totalPages={activeTotalPages} onPageChange={setActivePage} />
+                  <div className="space-y-4 mt-4">
+                    {paginatedActiveOrders.length > 0 ? (
+                      paginatedActiveOrders.map(order => <OrderCard key={order.orderId} order={order} vendor={findVendor(order)} onPayClick={setQrCodeOrder} onOrderAgain={handleOrderAgain} />)
+                    ) : (
+                      <p className="text-center text-muted-foreground py-8">No active orders.</p>
+                    )}
+                  </div>
+                  <PaginationControls currentPage={activePage} totalPages={activeTotalPages} onPageChange={setActivePage} />
+                </TabsContent>
+                <TabsContent value="history">
+                  <div className="mt-4 flex justify-end items-center gap-2">
+                    <Select value={filter} onValueChange={handleFilterChange}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Select date range" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="latest">Latest Order</SelectItem>
+                        <SelectItem value="today">Today</SelectItem>
+                        <SelectItem value="last7">Last 7 Days</SelectItem>
+                        <SelectItem value="thisMonth">This Month</SelectItem>
+                        <SelectItem value="thisYear">This Year</SelectItem>
+                        <SelectItem value="all">All Time</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          id="date"
+                          variant={"outline"}
+                          className={cn(
+                            "w-[300px] justify-start text-left font-normal",
+                            !date && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {date?.from ? (
+                            date.to ? (
+                              <>
+                                {format(date.from, "LLL dd, y")} -{" "}
+                                {format(date.to, "LLL dd, y")}
+                              </>
                             ) : (
-                                <p className="text-center text-muted-foreground py-8">No past orders found for the selected period.</p>
-                            )}
-                        </div>
-                        <PaginationControls currentPage={completedPage} totalPages={completedTotalPages} onPageChange={setCompletedPage} />
-                    </TabsContent>
-                </Tabs>
+                              format(date.from, "LLL dd, y")
+                            )
+                          ) : (
+                            <span>Pick a date range</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="end">
+                        <Calendar
+                          initialFocus
+                          mode="range"
+                          defaultMonth={date?.from}
+                          selected={date}
+                          onSelect={(newDate) => {
+                            setDate(newDate);
+                            setCompletedPage(1);
+                            setFilter('custom');
+                          }}
+                          numberOfMonths={2}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <PaginationControls currentPage={completedPage} totalPages={completedTotalPages} onPageChange={setCompletedPage} />
+                  <div className="space-y-4 mt-4">
+                    {paginatedCompletedOrders.length > 0 ? (
+                      paginatedCompletedOrders.map(order => <OrderCard key={order.orderId} order={order} vendor={findVendor(order)} onPayClick={setQrCodeOrder} onOrderAgain={handleOrderAgain} />)
+                    ) : (
+                      <p className="text-center text-muted-foreground py-8">No past orders found for the selected period.</p>
+                    )}
+                  </div>
+                  <PaginationControls currentPage={completedPage} totalPages={completedTotalPages} onPageChange={setCompletedPage} />
+                </TabsContent>
+              </Tabs>
             )}
           </CardContent>
         </Card>
         {qrCodeOrder && (
           <QrCodeDialog
-              order={qrCodeOrder}
-              vendor={findVendor(qrCodeOrder)}
-              isOpen={!!qrCodeOrder}
-              onOpenChange={() => setQrCodeOrder(null)}
+            order={qrCodeOrder}
+            vendor={findVendor(qrCodeOrder)}
+            isOpen={!!qrCodeOrder}
+            onOpenChange={() => setQrCodeOrder(null)}
           />
         )}
-         <PortionSelectDialog
-            items={portionSelectItems}
-            open={!!portionSelectItems}
-            onOpenChange={() => setPortionSelectItems(null)}
-            onConfirm={(item, quantity) => {
-                addToCart(item, {}, quantity);
-                toast({ title: "Item Added!", description: `${quantity}x ${item.name} added to your cart.`});
-            }}
+        <PortionSelectDialog
+          items={portionSelectItems}
+          open={!!portionSelectItems}
+          onOpenChange={() => setPortionSelectItems(null)}
+          onConfirm={(item, quantity) => {
+            addToCart(item, {}, quantity);
+            toast({ title: "Item Added!", description: `${quantity}x ${item.name} added to your cart.` });
+          }}
         />
       </main>
     </>
   );
 }
 
-    

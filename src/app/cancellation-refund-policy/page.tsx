@@ -112,7 +112,7 @@ export default function CancellationRefundPolicyPage() {
 
             <h3 className="text-lg sm:text-xl font-bold mt-8 pt-4 border-t border-border/60">4. Contact Us</h3>
             <p>If you have any questions about our Cancellation and Refunds Policy, please contact us at:</p>
-            <p>Email: <a href="mailto:hyperlabsupport@gmail.com" className="text-primary hover:underline font-semibold">hyperlabsupport@gmail.com</a></p>
+            <p>Email: <a href="mailto:support@hyperdelivery.in" className="text-primary hover:underline font-semibold">support@hyperdelivery.in</a></p>
           </CardContent>
         </Card>
       </main>
