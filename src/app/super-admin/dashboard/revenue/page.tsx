@@ -36,6 +36,8 @@ import {
   Phone,
   MapPin,
   Receipt,
+  Trash2,
+  AlertCircle,
   X
 } from 'lucide-react';
 import {
@@ -132,7 +134,7 @@ interface VendorFinancialMetrics {
 }
 
 export default function SuperAdminRevenuePage() {
-  const { fetchAllOrders, orders: contextOrders } = useOrder();
+  const { fetchAllOrders, orders: contextOrders, removeOrder } = useOrder();
   const { fetchAllVendors, toggleVendorCommission, allVendors: contextVendors } = useVendor();
   const { toast } = useToast();
 
@@ -165,6 +167,10 @@ export default function SuperAdminRevenuePage() {
 
   const [channelOrderSearch, setChannelOrderSearch] = useState('');
 
+  // Inline Delete Order Confirmation State
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [isDeletingOrder, setIsDeletingOrder] = useState(false);
+
   // Quick Commission Edit Dialog
   const [commissionVendor, setCommissionVendor] = useState<Vendor | null>(null);
   const [isCommissionDialogOpen, setIsCommissionDialogOpen] = useState(false);
@@ -182,6 +188,13 @@ export default function SuperAdminRevenuePage() {
       setAllOrders(contextOrders);
     }
   }, [contextOrders, allOrders.length]);
+
+  // Safeguard: Ensure document.body pointer-events are always cleanly restored
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.body.style.pointerEvents = '';
+    }
+  }, [channelInspection, selectedVendorDetail, confirmDeleteId]);
 
   // Load latest data once on mount, preventing render loops
   const hasLoadedOnceRef = useRef(false);
@@ -214,6 +227,56 @@ export default function SuperAdminRevenuePage() {
       setIsRefreshing(false);
     }
   }, [fetchAllVendors, fetchAllOrders, allVendors.length, toast]);
+
+  const handleDeleteOrder = async (order: Order) => {
+    const targetId = order.orderId;
+    const targetDisplayId = order.displayId || order.orderId;
+    setIsDeletingOrder(true);
+
+    try {
+      await removeOrder(targetId);
+
+      // 1. Instantly update allOrders in dashboard memory so metrics auto-recalculate
+      setAllOrders(prev => prev.filter(o => o.orderId !== targetId));
+
+      // 2. Instantly update channelInspection dialog if open
+      setChannelInspection(prev => {
+        if (!prev) return null;
+        const updatedOrders = prev.orders.filter(o => o.orderId !== targetId);
+        const updatedTotalRevenue = updatedOrders.reduce((sum, o) => sum + Number(o.totalPrice || o.subtotal || 0), 0);
+        return {
+          ...prev,
+          orders: updatedOrders,
+          totalRevenue: updatedTotalRevenue,
+        };
+      });
+
+      // 3. Instantly update selectedVendorDetail dialog if open
+      setSelectedVendorDetail(prev => {
+        if (!prev) return null;
+        const updatedRecent = prev.recentOrders.filter(o => o.orderId !== targetId);
+        return {
+          ...prev,
+          recentOrders: updatedRecent,
+        };
+      });
+
+      toast({
+        title: 'Order Deleted',
+        description: `Order #${targetDisplayId} was permanently deleted. Metrics updated.`,
+      });
+    } catch (err) {
+      console.error('Error deleting order from revenue dashboard:', err);
+      toast({
+        title: 'Delete Failed',
+        description: 'Could not delete the order. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeletingOrder(false);
+      setConfirmDeleteId(null);
+    }
+  };
 
   useEffect(() => {
     if (hasLoadedOnceRef.current) return;
@@ -1194,6 +1257,10 @@ export default function SuperAdminRevenuePage() {
             if (!isOpen) {
               setChannelInspection(null);
               setChannelOrderSearch('');
+              setConfirmDeleteId(null);
+              if (typeof document !== 'undefined') {
+                document.body.style.pointerEvents = '';
+              }
             }
           }}
         >
@@ -1327,10 +1394,58 @@ export default function SuperAdminRevenuePage() {
                           </Badge>
                         </div>
 
-                        {/* Order Timestamp */}
-                        <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium">
-                          <Clock className="h-3 w-3" />
-                          {orderDate ? format(orderDate, 'dd MMM yyyy, hh:mm a') : 'Recent'}
+                        {/* Order Timestamp & Delete Action */}
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium">
+                            <Clock className="h-3 w-3" />
+                            {orderDate ? format(orderDate, 'dd MMM yyyy, hh:mm a') : 'Recent'}
+                          </div>
+
+                          {confirmDeleteId === ord.orderId ? (
+                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-destructive/10 border border-destructive/30 animate-in fade-in-50">
+                              <span className="text-[11px] font-bold text-destructive flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                Delete?
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                disabled={isDeletingOrder}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteOrder(ord);
+                                }}
+                                className="h-6 px-2 text-[10px] font-bold rounded-lg shadow-none"
+                              >
+                                {isDeletingOrder ? <Loader2 className="h-3 w-3 animate-spin" /> : "Yes"}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={isDeletingOrder}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setConfirmDeleteId(null);
+                                }}
+                                className="h-6 px-1.5 text-[10px] font-medium rounded-lg text-muted-foreground hover:text-foreground"
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmDeleteId(ord.orderId);
+                              }}
+                              title="Delete this order"
+                              className="h-7 w-7 rounded-lg text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         </div>
                       </div>
 
@@ -1426,7 +1541,15 @@ export default function SuperAdminRevenuePage() {
       {selectedVendorDetail && (
         <Dialog
           open={!!selectedVendorDetail}
-          onOpenChange={(isOpen) => !isOpen && setSelectedVendorDetail(null)}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) {
+              setSelectedVendorDetail(null);
+              setConfirmDeleteId(null);
+              if (typeof document !== 'undefined') {
+                document.body.style.pointerEvents = '';
+              }
+            }
+          }}
         >
           <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto rounded-3xl p-6">
             <DialogHeader className="border-b pb-4">
@@ -1556,11 +1679,55 @@ export default function SuperAdminRevenuePage() {
                               {ord.createdAt ? format(new Date(ord.createdAt), 'dd MMM, hh:mm a') : 'Recent'} · Status: {ord.status}
                             </p>
                           </div>
-                          <div className="text-right">
-                            <p className="font-bold text-foreground">₹{Number(ord.totalPrice || ord.subtotal || 0).toFixed(2)}</p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {isDineIn ? '₹0 App Cut' : `Cut: ₹${(ord.commissionAmount || 0) + (ord.platformFee || 5)}`}
-                            </p>
+                          <div className="flex items-center gap-2">
+                            <div className="text-right">
+                              <p className="font-bold text-foreground">₹{Number(ord.totalPrice || ord.subtotal || 0).toFixed(2)}</p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {isDineIn ? '₹0 App Cut' : `Cut: ₹${(ord.commissionAmount || 0) + (ord.platformFee || 5)}`}
+                              </p>
+                            </div>
+                            {confirmDeleteId === ord.orderId ? (
+                              <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-destructive/10 border border-destructive/30 animate-in fade-in-50">
+                                <span className="text-[10px] font-bold text-destructive">Del?</span>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  disabled={isDeletingOrder}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteOrder(ord);
+                                  }}
+                                  className="h-5 px-1.5 text-[9px] font-bold rounded shadow-none"
+                                >
+                                  {isDeletingOrder ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : "Yes"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={isDeletingOrder}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setConfirmDeleteId(null);
+                                  }}
+                                  className="h-5 px-1 text-[9px] font-medium rounded text-muted-foreground hover:text-foreground"
+                                >
+                                  No
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setConfirmDeleteId(ord.orderId);
+                                }}
+                                title="Delete this order"
+                                className="h-7 w-7 rounded-lg text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                       );
