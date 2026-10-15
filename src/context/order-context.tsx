@@ -442,8 +442,6 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
             discountAmount: discountAmount,
             totalPrice: orderTotalPrice,
             platformFee: orderPlatformFee,
-            paymentGateway: isOnlinePayment ? 'Razorpay' : 'None',
-            paymentGatewayFee: orderGatewayFee,
             amountPaid: orderTotalPrice,
             status: isDineInFlow ? initialStatus : 'Order Placed',
             vendorUsername: v.username,
@@ -451,9 +449,9 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
             paymentMethod,
             deliveryOption: vendorDeliveryOption,
             vendorContact: v.contact || '',
-            customNotes: (customNotes && customNotes[v.username]) ? customNotes[v.username] : '',
-            pointsEarned: pointsEarned > 0 ? pointsEarned : 0,
-            pointsRedeemed: shouldRedeemPoints ? redemption.pointsToRedeem : 0,
+            ...((customNotes && customNotes[v.username]?.trim()) ? { customNotes: customNotes[v.username].trim() } : {}),
+            ...(pointsEarned > 0 ? { pointsEarned } : {}),
+            ...(shouldRedeemPoints && redemption?.pointsToRedeem ? { pointsRedeemed: redemption.pointsToRedeem } : {}),
             ...(tableId ? {
               tableId: String(tableId),
               locationVerified: locationVerified ?? false,
@@ -462,23 +460,10 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
               orderRound: orderRound || 1,
               tableSessionId: tableSessionId || `${v.username}-table-${tableId}-${Date.now()}`,
             } : {}),
-            deliveryDistanceKm: deliveryDistanceKm > 0 ? deliveryDistanceKm : 0,
-            deliveryCharge: deliveryCharge > 0 ? deliveryCharge : 0,
-            distanceCalculationType: distanceCalculationType || "",
-            commissionPercentage,
-            commissionAmount,
-            adminSettlementStatus: commissionAmount > 0 ? 'pending' : 'none',
-            adminSettlementPaymentMode: '',
-            adminSettlementMarkedAt: '',
-            adminSettlementConfirmedAt: '',
-            paymentStatus: paymentDetails?.status === 'Success' ? 'PAID' : 'PENDING',
-            ...(paymentDetails ? {
-              razorpayOrderId: paymentDetails.razorpay_order_id,
-              razorpayPaymentId: paymentDetails.razorpay_payment_id,
-              paymentGateway: 'Razorpay',
-              paymentGatewayFee: orderGatewayFee,
-            } : {}),
             ...(isHomeDelivery ? {
+              deliveryDistanceKm: deliveryDistanceKm > 0 ? deliveryDistanceKm : 0,
+              deliveryCharge: deliveryCharge > 0 ? deliveryCharge : 0,
+              distanceCalculationType: distanceCalculationType || "",
               riderPayout: deliveryCharge,
               paymentConfirmedAt: "",
               paymentRequestedAt: "",
@@ -492,6 +477,20 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
               vendorLatitude: v.latitude ?? 0,
               vendorLongitude: v.longitude ?? 0,
               vendorShopName: v.shopName || v.name || ""
+            } : {}),
+            ...(commissionAmount > 0 ? {
+              commissionPercentage,
+              commissionAmount,
+              adminSettlementStatus: 'pending',
+            } : {}),
+            ...(isOnlinePayment ? {
+              paymentGateway: 'Razorpay',
+              ...(orderGatewayFee > 0 ? { paymentGatewayFee: orderGatewayFee } : {}),
+            } : {}),
+            paymentStatus: paymentDetails?.status === 'Success' ? 'PAID' : 'PENDING',
+            ...(paymentDetails ? {
+              razorpayOrderId: paymentDetails.razorpay_order_id,
+              razorpayPaymentId: paymentDetails.razorpay_payment_id,
             } : {})
           };
 
