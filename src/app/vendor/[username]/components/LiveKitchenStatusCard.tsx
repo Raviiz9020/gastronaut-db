@@ -12,6 +12,7 @@ import {
   MessageSquare,
   Plus,
   ShieldCheck,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Order } from '@/types';
@@ -23,6 +24,7 @@ export interface LiveKitchenStatusCardProps {
   isTableHost: boolean;
   onReduceItem: (itemIdKey: string) => void;
   onAddMoreItems: () => void;
+  onDownloadBill?: () => void;
 }
 
 const getOrderNotes = (notes: any, vendorUsername?: string): string => {
@@ -43,6 +45,7 @@ export function LiveKitchenStatusCard({
   isTableHost,
   onReduceItem,
   onAddMoreItems,
+  onDownloadBill,
 }: LiveKitchenStatusCardProps) {
   return (
     <div className="mb-4 max-w-5xl mx-auto">
@@ -172,20 +175,33 @@ export function LiveKitchenStatusCard({
               <span className="text-muted-foreground ml-2">(Pay at Counter)</span>
             </div>
 
-            {isTableHost ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-full text-xs font-bold border-primary text-primary hover:bg-primary hover:text-primary-foreground gap-1.5 shadow-2xs"
-                onClick={onAddMoreItems}
-              >
-                <Plus className="h-3.5 w-3.5" /> Add More Items (Round {(activeTableOrder.orderRound || 1) + 1})
-              </Button>
-            ) : (
-              <span className="text-[11px] font-medium text-muted-foreground bg-muted/60 px-3 py-1 rounded-full border border-border/40 flex items-center gap-1.5">
-                <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Managed by Table Host
-              </span>
-            )}
+            <div className="flex items-center gap-2 flex-wrap">
+              {isTableHost ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full text-xs font-bold border-primary text-primary hover:bg-primary hover:text-primary-foreground gap-1.5 shadow-2xs h-8 px-3"
+                  onClick={onAddMoreItems}
+                >
+                  <Plus className="h-3.5 w-3.5" /> Add (Round {(activeTableOrder.orderRound || 1) + 1})
+                </Button>
+              ) : (
+                <span className="text-[11px] font-medium text-muted-foreground bg-muted/60 px-3 py-1 rounded-full border border-border/40 flex items-center gap-1.5">
+                  <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Managed by Table Host
+                </span>
+              )}
+
+              {onDownloadBill && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-full text-xs font-bold border border-border/70 hover:bg-muted text-foreground gap-1.5 shadow-2xs h-8 px-3 cursor-pointer"
+                  onClick={onDownloadBill}
+                >
+                  <FileText className="h-3.5 w-3.5 text-muted-foreground" /> Download Bill
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

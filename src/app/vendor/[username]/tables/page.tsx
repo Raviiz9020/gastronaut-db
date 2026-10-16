@@ -36,7 +36,9 @@ import {
   ShoppingBag,
   MessageSquare,
   Clock,
+  Share2,
 } from 'lucide-react';
+import { generateDineInBillPdf, shareDineInBillPdf } from '@/lib/generateDineInBillPdf';
 import { useVendor } from '@/context/vendor-context';
 import { useOrder } from '@/context/order-context';
 import type { Vendor, Order, MenuItem, Category, OrderStatus } from '@/types';
@@ -759,82 +761,12 @@ const BillViewDialog = ({
 
   if (!order || !vendor) return null;
 
-  const generatePdfReceipt = () => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
+  const handleDownloadBill = () => {
+    generateDineInBillPdf(order, vendor);
+  };
 
-    // Header
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.text(vendor.shopName || 'Receipt', pageWidth / 2, 20, { align: 'center' });
-
-    if (vendor.address) {
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text(vendor.address, pageWidth / 2, 26, { align: 'center' });
-    }
-
-    doc.setFontSize(10);
-    doc.text(`Order: #${order.displayId}`, 15, 35);
-    doc.text(`Date: ${format(new Date(order.createdAt), 'dd/MM/yyyy hh:mm a')}`, pageWidth - 15, 35, { align: 'right' });
-
-    doc.line(15, 40, pageWidth - 15, 40);
-
-    // Table
-    autoTable(doc, {
-      startY: 42,
-      head: [['Qty', 'Item', 'Price']],
-      body: order.items.map(item => {
-        const custText = getCustomizationsText(item);
-        const itemName = custText ? `${item.name}\n(${custText})` : item.name;
-        return [
-          item.quantity.toString(),
-          itemName,
-          `Rs. ${(item.price * item.quantity).toFixed(2)}`
-        ];
-      }),
-      theme: 'grid',
-      headStyles: { fontStyle: 'bold', fillColor: [30, 144, 255] },
-      columnStyles: {
-        0: { halign: 'right', cellWidth: 15 },
-        1: { halign: 'left' },
-        2: { halign: 'right', cellWidth: 30 }
-      },
-      didDrawPage: (data) => {
-        // You can add page numbers or other content on each page if needed
-      }
-    });
-
-    // Total
-    const finalY = (doc as any).lastAutoTable.finalY || 100;
-    doc.line(15, finalY + 5, pageWidth - 15, finalY + 5);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('TOTAL', 15, finalY + 12);
-    doc.text(`${order.totalPrice.toFixed(2)}`, pageWidth - 15, finalY + 12, { align: 'right' });
-
-    // Optional QR Code on PDF receipt if available
-    let nextY = finalY + 18;
-    if (qrCodeUrl) {
-      try {
-        const qrSize = 35;
-        const qrX = (pageWidth - qrSize) / 2;
-        doc.addImage(qrCodeUrl, 'PNG', qrX, nextY, qrSize, qrSize);
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Scan & Pay Rs. ${order.totalPrice.toFixed(2)} via UPI`, pageWidth / 2, nextY + qrSize + 5, { align: 'center' });
-        nextY += qrSize + 12;
-      } catch (e) {
-        console.error('Failed adding QR code to PDF receipt:', e);
-      }
-    }
-
-    // Footer
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'italic');
-    doc.text('Thank you for your visit!', pageWidth / 2, nextY + 4, { align: 'center' });
-
-    doc.save(`receipt-${order.displayId}.pdf`);
+  const handleShareBill = () => {
+    shareDineInBillPdf(order, vendor);
   };
 
   const takeAwayIdentifier = order.customer.name.startsWith('Take Away') ? order.customer.name : undefined;
@@ -934,12 +866,27 @@ const BillViewDialog = ({
         <p className="text-xs text-center text-muted-foreground">Thank you for your visit!</p>
 
         <DialogFooter className="mt-2 flex-row justify-center gap-2">
-          <Button onClick={generatePdfReceipt} variant="outline" size="icon" title="Download PDF Receipt">
+          <Button
+            onClick={handleDownloadBill}
+            variant="outline"
+            size="icon"
+            title="Download PDF Bill"
+            className="h-9 w-9 shrink-0 rounded-xl"
+          >
             <Download className="h-4 w-4" />
           </Button>
           <Button
+            onClick={handleShareBill}
+            variant="outline"
+            size="icon"
+            title="Share Bill (PDF / WhatsApp)"
+            className="h-9 w-9 shrink-0 rounded-xl text-emerald-600 border-emerald-500/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+          >
+            <Share2 className="h-4 w-4" />
+          </Button>
+          <Button
             onClick={() => onComplete(order.orderId, takeAwayIdentifier)}
-            className="w-full flex-1 text-white bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600"
+            className="w-full flex-1 text-white bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 rounded-xl h-9"
           >
             <Check className="mr-2 h-4 w-4" />
             Complete

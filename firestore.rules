@@ -100,13 +100,13 @@ match /customers/{userId} {
 
   allow update: if isSignedIn() && (
          (resource.data.customerUsername == request.auth.uid && (
-           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vendorRating', 'vendorFeedback', 'items', 'subtotal', 'totalPrice', 'updatedAt', 'paymentStatus', 'paymentRequestedAt', 'paymentMethod', 'customNotes', 'orderRound']) ||
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vendorRating', 'vendorFeedback', 'items', 'subtotal', 'totalPrice', 'amountPaid', 'updatedAt', 'paymentStatus', 'paymentRequestedAt', 'paymentMethod', 'customNotes', 'orderRound']) ||
            (resource.data.deliveryOption == 'Dine-In' &&
             request.resource.data.status in ['Order Placed', 'Processing'] &&
-            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['items', 'subtotal', 'totalPrice', 'updatedAt', 'customNotes', 'orderRound', 'status'])) ||
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['items', 'subtotal', 'totalPrice', 'amountPaid', 'updatedAt', 'customNotes', 'orderRound', 'status'])) ||
            (resource.data.status == 'Order Placed' && 
             request.resource.data.status == 'Cancelled' && 
-            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancellationReason']))
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancellationReason', 'updatedAt']))
          )) ||
         (resource.data.vendorUsername == request.auth.uid &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'assignedDeliveryBoyId', 'assignedDeliveryBoyName', 'assignedDeliveryBoyContact', 'assignedDeliveryBoyAt','cancellationReason', 'subtotal','items', 'totalPrice', 'updatedAt','paymentStatus','paymentRequestedAt','paymentConfirmedAt','riderSettlementStatus', 'riderSettlementPaymentMode', 'riderSettlementMarkedAt', 'riderSettlementMarkedBy', 'orderRound', 'customNotes'])) ||
@@ -114,7 +114,12 @@ match /customers/{userId} {
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancellationReason','riderSettlementStatus', 'riderSettlementConfirmedAt'])) ||
         isSuperAdmin()
       );
-      allow delete: if isSuperAdmin();
+      allow delete: if isSuperAdmin() || (
+        isSignedIn() &&
+        resource.data.customerUsername == request.auth.uid &&
+        resource.data.deliveryOption == 'Dine-In' &&
+        resource.data.status == 'Order Placed'
+      );
     }
 
 
@@ -314,7 +319,7 @@ match /riders/{riderUid} {
       allow create, update, delete: if isSuperAdmin();
     }
 
-    // =========================
+  // =========================
     // Settlements
     // =========================
     match /settlements/{settlementId} {
@@ -327,5 +332,6 @@ match /riders/{riderUid} {
       // Only superadmin can create/update/delete settlements
       allow write: if isSuperAdmin();
     }
+
   }
 }

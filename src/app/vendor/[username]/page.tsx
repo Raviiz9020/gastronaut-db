@@ -65,6 +65,7 @@ import { collection, onSnapshot, query, where, getDoc, doc } from 'firebase/fire
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useToast } from '@/hooks/use-toast';
+import { generateDineInBillPdf } from '@/lib/generateDineInBillPdf';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -89,6 +90,7 @@ import {
   FloatingMenuChip,
   VendorSpecialsSection,
   useVendorSpecials,
+  DineInRound1SplashDialog,
   type TableOrderItem,
 } from './components';
 
@@ -148,6 +150,14 @@ function VendorMenuContent({
   const menuSectionsRef = useRef<HTMLDivElement>(null);
   const [portionSelectItems, setPortionSelectItems] = useState<MenuItemType[] | null>(null);
   const [isPlacingTableOrder, setIsPlacingTableOrder] = useState(false);
+  const [isRound1SplashOpen, setIsRound1SplashOpen] = useState(false);
+
+  // Open Discovery Modal when diner taps "Order at Home" in top header
+  useEffect(() => {
+    const handleOpenDiscovery = () => setIsRound1SplashOpen(true);
+    window.addEventListener('open-dinein-discovery', handleOpenDiscovery);
+    return () => window.removeEventListener('open-dinein-discovery', handleOpenDiscovery);
+  }, []);
 
   const [selfPickupDialogState, setSelfPickupDialogState] = useState<{
     open: boolean;
@@ -463,6 +473,9 @@ function VendorMenuContent({
             title: "Order Placed!",
             description: `Order for Table ${activeTableId} has been sent to the kitchen.`,
           });
+
+          // Display the Round 1 splash dialog to inform customers about home delivery & daily needs
+          setIsRound1SplashOpen(true);
         }
 
         setTableOrderItems([]);
@@ -1235,6 +1248,13 @@ function VendorMenuContent({
                 });
                 window.scrollBy({ top: 220, behavior: 'smooth' });
               }}
+              onDownloadBill={() => {
+                generateDineInBillPdf(activeTableOrder, vendor);
+                toast({
+                  title: "Bill Downloaded",
+                  description: `Receipt for Table ${activeTableId || 'Order'} has been saved.`,
+                });
+              }}
             />
           )}
 
@@ -1598,6 +1618,12 @@ function VendorMenuContent({
         items={selfPickupDialogState.items}
         minOrderAmount={vendor?.minOrderAmount || 0}
         onClose={handleSelfPickupDialogClose}
+      />
+      <DineInRound1SplashDialog
+        open={isRound1SplashOpen}
+        onOpenChange={setIsRound1SplashOpen}
+        vendorName={vendor?.shopName}
+        tableId={activeTableId}
       />
     </>
   );

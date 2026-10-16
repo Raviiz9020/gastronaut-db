@@ -14,4 +14,5 @@ export { VendorSpecialBanner, getSpecialIcon, getSpecialTheme } from './VendorSp
 export { VendorSpecialsSection } from './VendorSpecialsSection';
 export { useVendorSpecials } from './useVendorSpecials';
 export type { ActiveSpecialCategory } from './useVendorSpecials';
+export { DineInRound1SplashDialog } from './DineInRound1SplashDialog';
 export type { TableOrderItem, TableOrderThumbnail } from '../types';

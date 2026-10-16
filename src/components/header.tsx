@@ -36,9 +36,10 @@ const navLinks = [
 interface HeaderProps {
     pageVendor?: Vendor | null;
     tableId?: string | null;
+    onOpenOrderAtHome?: () => void;
 }
 
-export default function Header({ pageVendor, tableId }: HeaderProps) {
+export default function Header({ pageVendor, tableId, onOpenOrderAtHome }: HeaderProps) {
   const { totalItems, totalPrice } = useCart();
   const [isCartOpen, setIsCartOpen] = useState(false);
   const isTableMode = Boolean(tableId);
@@ -191,6 +192,25 @@ export default function Header({ pageVendor, tableId }: HeaderProps) {
         </div>
         
         <div className="flex items-center gap-4">
+            {isTableMode && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (onOpenOrderAtHome) {
+                    onOpenOrderAtHome();
+                  } else if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new Event('open-dinein-discovery'));
+                  }
+                }}
+                className="h-8 px-2.5 sm:px-3 rounded-full border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer"
+              >
+                <span className="text-xs">🏠</span>
+                <span>Order at Home</span>
+                <Sparkles className="w-3 h-3 text-primary shrink-0 animate-pulse" />
+              </Button>
+            )}
             {isVendorOwner && loggedInVendor && !isTableMode ? (
                 <div className="flex items-center gap-2">
                   {vendorTableUrl && (
