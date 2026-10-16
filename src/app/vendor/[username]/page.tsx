@@ -354,7 +354,9 @@ function VendorMenuContent({
       }
 
       await updateOrderItems(activeTableOrder.orderId, currentItems);
-      toast({ title: "Item Reduced", description: `${target.name} quantity updated.` });
+      if (currentItems.length > 0) {
+        toast({ title: "Item Reduced", description: `${target.name} quantity updated.` });
+      }
     } catch (err: any) {
       toast({ title: "Update Failed", description: err.message || "Failed to update item.", variant: "destructive" });
     }

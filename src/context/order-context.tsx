@@ -739,8 +739,8 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
       const user = await ensureAuthUser();
 
       if (newItems.length === 0) {
-        await removeOrder(orderId);
-        toast({ title: "Order Cleared", description: "The order was removed as it has no items." });
+        await updateOrderStatus(orderId, 'Cancelled', 'Customer cleared all items during grace window');
+        toast({ title: "Order Cancelled", description: "The order was cancelled as all items were removed." });
         return;
       }
 
