@@ -151,10 +151,14 @@ function VendorMenuContent({
   const [portionSelectItems, setPortionSelectItems] = useState<MenuItemType[] | null>(null);
   const [isPlacingTableOrder, setIsPlacingTableOrder] = useState(false);
   const [isRound1SplashOpen, setIsRound1SplashOpen] = useState(false);
+  const [splashMode, setSplashMode] = useState<'order-placed' | 'promo'>('order-placed');
 
   // Open Discovery Modal when diner taps "Order at Home" in top header
   useEffect(() => {
-    const handleOpenDiscovery = () => setIsRound1SplashOpen(true);
+    const handleOpenDiscovery = () => {
+      setSplashMode('promo');
+      setIsRound1SplashOpen(true);
+    };
     window.addEventListener('open-dinein-discovery', handleOpenDiscovery);
     return () => window.removeEventListener('open-dinein-discovery', handleOpenDiscovery);
   }, []);
@@ -477,6 +481,7 @@ function VendorMenuContent({
           });
 
           // Display the Round 1 splash dialog to inform customers about home delivery & daily needs
+          setSplashMode('order-placed');
           setIsRound1SplashOpen(true);
         }
 
@@ -1626,6 +1631,7 @@ function VendorMenuContent({
         onOpenChange={setIsRound1SplashOpen}
         vendorName={vendor?.shopName}
         tableId={activeTableId}
+        mode={splashMode}
       />
     </>
   );

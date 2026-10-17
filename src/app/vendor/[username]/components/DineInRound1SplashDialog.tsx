@@ -7,22 +7,39 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import {
-  ChefHat,
-  Clock,
+  CheckCircle2,
   Globe,
   ArrowRight,
-  Zap,
+  ChevronRight,
+  Flame,
+  ShoppingBasket,
+  Truck,
+  Share2,
+  Search,
+  ShoppingCart,
+  Home,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import Logo from '@/components/logo';
 
 interface DineInRound1SplashDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   vendorName?: string | null;
   tableId?: string | null;
+  /**
+   * 'order-placed' (default): shown right after Round 1, includes kitchen confirmation.
+   * 'promo': opened from the header "Order at Home" button, shows a How-it-works row instead.
+   */
+  mode?: 'order-placed' | 'promo';
 }
+
+const HOW_IT_WORKS_STEPS = [
+  { icon: Search, label: 'Browse menu' },
+  { icon: ShoppingCart, label: 'Order online' },
+  { icon: Home, label: 'Delivered home' },
+];
 
 const GooglePlayIcon = () => (
   <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none">
@@ -45,17 +62,12 @@ const GooglePlayIcon = () => (
   </svg>
 );
 
-const WhatsAppIcon = () => (
-  <svg className="w-3.5 h-3.5 shrink-0 fill-white" viewBox="0 0 24 24">
-    <path d="M12.04 2C6.58 2 2.13 6.45 2.13 12c0 1.78.46 3.45 1.28 4.93L2 22l5.25-1.38c1.45.77 3.09 1.18 4.79 1.18h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2zM12.04 20.15c-1.5 0-2.95-.39-4.23-1.09l-.3-.18-3.14.82.84-3.07-.2-.31a8.29 8.29 0 0 1-1.28-4.38c0-4.54 3.7-8.24 8.24-8.24s8.24 3.7 8.24 8.24-3.7 8.24-8.24 8.24zm4.49-6.17c-.24-.12-1.45-.71-1.67-.79s-.39-.12-.55.12-.63.79-.78.95c-.14.16-.28.18-.52.06s-1.03-.38-1.96-1.21c-.72-.64-1.2-1.43-1.34-1.67-.14-.24-.01-.37.11-.48.1-.11.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42s-.55-1.32-.76-1.81c-.2-.48-.4-.42-.55-.42h-.48c-.16 0-.42.06-.63.3s-.84.82-.84 2c0 1.18.86 2.32 1 2.48.13.16 1.69 2.59 4.1 3.6.58.24 1.04.39 1.4.5.52.17 1-.06 1.16-.36.16-.3.16-.55.11-.67s-.16-.18-.4-.3z" />
-  </svg>
-);
-
 export const DineInRound1SplashDialog: React.FC<DineInRound1SplashDialogProps> = ({
   open,
   onOpenChange,
   vendorName,
   tableId,
+  mode = 'order-placed',
 }) => {
   const safeVendorName = vendorName || 'this restaurant';
 
@@ -67,135 +79,143 @@ export const DineInRound1SplashDialog: React.FC<DineInRound1SplashDialogProps> =
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[92vw] sm:max-w-md rounded-3xl p-4 sm:p-5 overflow-hidden border-border/80 shadow-2xl bg-card">
-        {/* 1. Compact Header: Order Sent to Kitchen */}
-        <div className="flex items-center gap-3 pb-2.5 border-b border-border/50">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-            <ChefHat className="w-5 h-5" />
+      <DialogContent className="max-w-[92vw] sm:max-w-sm rounded-3xl p-0 gap-0 overflow-hidden border-border/80 shadow-2xl bg-card">
+        {/* 1. Brand bar: logo + wordmark (corner X is rendered by DialogContent) */}
+        <div className="flex items-center gap-2.5 px-4 pt-4 pb-3 pr-12 bg-gradient-to-b from-primary/10 to-transparent">
+          <div className="h-9 w-9 shrink-0 rounded-full overflow-hidden bg-background ring-1 ring-primary/20 shadow-sm text-primary">
+            <Logo className="h-full w-full text-primary" />
           </div>
-          <div className="text-left flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <DialogTitle className="font-headline text-base font-black text-foreground tracking-tight leading-tight">
-                Order Sent to Kitchen!
-              </DialogTitle>
-            </div>
-            <DialogDescription className="text-[11px] text-muted-foreground font-medium truncate mt-0.5">
-              Table {tableId || 'Order'} • Food is being freshly prepared
-            </DialogDescription>
+          <div className="flex flex-col min-w-0">
+            <span className="font-headline text-lg font-black tracking-tight text-foreground leading-none">
+              Hyper<span className="text-primary">Delivery</span>
+            </span>
+            <span className="text-[11px] font-semibold text-muted-foreground tracking-wide mt-1 leading-none">
+              hyperdelivery.in
+            </span>
           </div>
         </div>
 
-        {/* 2. The Moving Bike Journey (Slim & Cute) */}
-        <div className="my-2 p-2 rounded-xl bg-muted/50 border border-border/60">
-          <div className="flex items-center justify-between gap-1.5 text-[11px] font-bold">
-            <span className="flex items-center gap-1 bg-background px-2 py-1 rounded-lg border border-border shadow-2xs shrink-0 text-foreground">
-              🍽️ Table {tableId || '1'}
-            </span>
-            <div className="flex-1 flex flex-col items-center justify-center relative px-1">
-              <div className="w-full h-0.5 border-t border-dashed border-primary/40 relative flex items-center justify-center">
-                <motion.div
-                  animate={{ x: [-12, 12, -12] }}
-                  transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
-                  className="bg-card px-1 text-xs absolute -top-2.5 text-primary"
-                >
-                  🛵💨
-                </motion.div>
+        <div className="px-4 pb-4 space-y-3">
+          {mode === 'order-placed' ? (
+            /* 2a. Slim order confirmation (after Round 1) */
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/25">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <div className="min-w-0 text-left">
+                <DialogTitle className="text-xs font-extrabold text-foreground leading-tight">
+                  Order sent to kitchen
+                </DialogTitle>
+                <DialogDescription className="text-[11px] text-muted-foreground truncate">
+                  Table {tableId || 'Order'} • {safeVendorName}
+                </DialogDescription>
               </div>
-              <span className="text-[8px] font-extrabold text-primary uppercase tracking-wider mt-1.5">
-                HyperDelivery
+            </div>
+          ) : (
+            /* 2b. How it works (opened from header "Order at Home") */
+            <div>
+              <DialogTitle className="sr-only">Order at Home with HyperDelivery</DialogTitle>
+              <DialogDescription className="sr-only">
+                Browse the menu, order online and get it delivered to your home.
+              </DialogDescription>
+              <div className="flex items-start justify-between gap-1">
+                {HOW_IT_WORKS_STEPS.map((step, idx) => (
+                  <React.Fragment key={step.label}>
+                    <div className="flex-1 flex flex-col items-center gap-1.5 text-center">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 border border-primary/25 text-primary flex items-center justify-center">
+                        <step.icon className="w-4 h-4" />
+                      </div>
+                      <span className="text-[11px] font-bold text-foreground leading-tight">
+                        {step.label}
+                      </span>
+                    </div>
+                    {idx < HOW_IT_WORKS_STEPS.length - 1 && (
+                      <ChevronRight className="w-4 h-4 text-primary/40 shrink-0 mt-3" />
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 3. Headline + subtext */}
+          <div className="text-center space-y-1.5">
+            <h4 className="text-lg font-black text-foreground leading-snug tracking-tight">
+              Start ordering food at home with{' '}
+              <span className="text-primary">HyperDelivery</span>
+            </h4>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Get <span className="font-semibold text-foreground">{safeVendorName}</span> and more
+              delivered to your doorstep.
+            </p>
+
+            {/* Subtle motion line */}
+            <div className="relative mx-auto w-3/4 h-4">
+              <div className="absolute inset-x-0 top-1/2 border-t border-dashed border-primary/30" />
+              <motion.div
+                animate={{ x: ['-45%', '45%', '-45%'] }}
+                transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+                className="absolute left-1/2 top-0 -translate-x-1/2 bg-card px-1 text-primary"
+              >
+                <Truck className="w-4 h-4" />
+              </motion.div>
+            </div>
+
+            {/* Feature chips (no time claims) */}
+            <div className="flex items-center justify-center gap-1.5 flex-wrap">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-muted/60 border border-border/60 text-[10px] font-semibold text-foreground">
+                <Flame className="w-3 h-3 text-primary" /> Hot Food
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-muted/60 border border-border/60 text-[10px] font-semibold text-foreground">
+                <ShoppingBasket className="w-3 h-3 text-primary" /> Daily Groceries
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-muted/60 border border-border/60 text-[10px] font-semibold text-foreground">
+                <Truck className="w-3 h-3 text-primary" /> Doorstep Delivery
               </span>
             </div>
-            <span className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded-lg border border-primary/30 shrink-0">
-              🏠 Your Doorstep
-            </span>
           </div>
-        </div>
 
-        {/* 3. The Bold & Open Doorstep Hook (No extra fluff) */}
-        <div className="p-3 rounded-2xl bg-gradient-to-br from-primary/15 via-primary/5 to-transparent border border-primary/25 text-center">
-          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-black uppercase tracking-wider mb-1.5">
-            <Zap className="w-2.5 h-2.5 fill-primary" />
-            Doorstep Delivery Across Town
-          </div>
-          <h4 className="text-sm font-black text-foreground leading-snug">
-            Do you know <span className="text-primary font-black">HyperDelivery</span> delivers{' '}
-            <span className="underline decoration-primary decoration-2 underline-offset-2">{safeVendorName}</span>{' '}
-            right to your doorstep?
-          </h4>
-
-          {/* Clean 3-pill feature line (Zero scroll, instant readability) */}
-          <div className="flex items-center justify-center gap-1.5 mt-2.5 flex-wrap">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-background/80 border border-border/60 text-[10px] font-semibold text-foreground">
-              🍲 Hot Food
-            </span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-background/80 border border-border/60 text-[10px] font-semibold text-foreground">
-              🥦 Daily Groceries
-            </span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-background/80 border border-border/60 text-[10px] font-semibold text-foreground">
-              ⚡ 20m Delivery
-            </span>
-          </div>
-        </div>
-
-        {/* 4. Action Buttons (All in one view) */}
-        <div className="space-y-1.5 mt-1">
-          {/* Google Play Store button */}
-          <a
-            href="https://play.google.com/store/apps/details?id=com.hyperdelivery.app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-between px-3 py-2 rounded-xl bg-foreground text-background hover:opacity-95 transition-all shadow-sm group h-11"
-          >
-            <div className="flex items-center gap-2.5">
-              <GooglePlayIcon />
-              <div className="text-left">
-                <div className="text-[8px] uppercase tracking-wider opacity-75 font-semibold leading-none">
-                  Get It On
-                </div>
-                <div className="text-xs font-black tracking-tight leading-tight">
-                  Google Play Store
-                </div>
-              </div>
-            </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-background/20 group-hover:bg-background/30 transition-colors flex items-center gap-1">
-              Install App <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-            </span>
-          </a>
-
-          {/* HyperDelivery.in + WhatsApp side-by-side */}
-          <div className="grid grid-cols-2 gap-1.5">
+          {/* 4. Actions: primary Play Store, secondary website + share */}
+          <div className="space-y-1.5">
             <a
-              href="https://hyperdelivery.in"
+              href="https://play.google.com/store/apps/details?id=com.hyperdelivery.app"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl border border-border/80 bg-background hover:bg-muted/50 transition-all text-[11px] font-bold text-foreground shadow-2xs h-9"
+              className="flex items-center justify-between px-3 py-2 rounded-xl bg-foreground text-background hover:opacity-95 transition-all shadow-sm group h-12"
             >
-              <Globe className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span className="truncate">HyperDelivery.in</span>
+              <div className="flex items-center gap-2.5">
+                <GooglePlayIcon />
+                <div className="text-left">
+                  <div className="text-[8px] uppercase tracking-wider opacity-75 font-semibold leading-none">
+                    Get it on
+                  </div>
+                  <div className="text-sm font-black tracking-tight leading-tight">
+                    Google Play
+                  </div>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </a>
 
-            <button
-              type="button"
-              onClick={handleWhatsAppShare}
-              className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-all text-[11px] font-bold shadow-2xs cursor-pointer h-9"
-            >
-              <WhatsAppIcon />
-              <span className="truncate">Save on WhatsApp</span>
-            </button>
-          </div>
-        </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              <a
+                href="https://hyperdelivery.in"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl border border-border/80 bg-background hover:bg-muted/50 transition-all text-[11px] font-bold text-foreground h-9"
+              >
+                <Globe className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span className="truncate">hyperdelivery.in</span>
+              </a>
 
-        {/* 5. Dismissal Link */}
-        <div className="pt-1 text-center">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => onOpenChange(false)}
-            className="w-full text-[11px] text-muted-foreground hover:text-foreground h-7 rounded-lg font-medium p-0"
-          >
-            <Clock className="w-3 h-3 mr-1" /> Back to Live Kitchen Status
-          </Button>
+              <button
+                type="button"
+                onClick={handleWhatsAppShare}
+                className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl border border-emerald-600/40 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 transition-all text-[11px] font-bold cursor-pointer h-9"
+              >
+                <Share2 className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Share</span>
+              </button>
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
