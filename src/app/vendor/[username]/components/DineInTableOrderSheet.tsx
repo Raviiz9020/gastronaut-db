@@ -47,6 +47,32 @@ export interface DineInTableOrderSheetProps {
   isPlacingTableOrder: boolean;
 }
 
+const QUICK_NOTE_CHIPS = [
+  { label: '🌶️ Less Spicy', value: 'Less Spicy', conflictsWith: 'Extra Spicy' },
+  { label: '🔥 Extra Spicy', value: 'Extra Spicy', conflictsWith: 'Less Spicy' },
+  { label: '🧅 No Onion/Garlic', value: 'No Onion/Garlic' },
+  { label: '🍲 Starters First', value: 'Serve Starters First' },
+  { label: '🥣 Soup 1-by-2', value: 'Soup 1-by-2' },
+];
+
+const toggleQuickNote = (currentNotes: string, targetValue: string, conflictsWith?: string): string => {
+  const parts = currentNotes
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  const exists = parts.some((p) => p.toLowerCase() === targetValue.toLowerCase());
+  if (exists) {
+    return parts.filter((p) => p.toLowerCase() !== targetValue.toLowerCase()).join(', ');
+  }
+
+  const filtered = conflictsWith
+    ? parts.filter((p) => p.toLowerCase() !== conflictsWith.toLowerCase())
+    : parts;
+
+  return [...filtered, targetValue].join(', ');
+};
+
 export function DineInTableOrderSheet({
   isOpen,
   onClose,
@@ -144,8 +170,35 @@ export function DineInTableOrderSheet({
                   </div>
                 </div>
               )}
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <Label htmlFor="dine-in-notes" className="text-xs font-semibold">Special Instructions for Chef</Label>
+                <div className="flex flex-wrap gap-1">
+                  {[
+                    ...QUICK_NOTE_CHIPS,
+                    ...(activeTableOrder ? [{ label: '🥡 Pack This Round', value: 'Pack / Parcel This Round', conflictsWith: undefined }] : []),
+                  ].map((chip) => {
+                    const isActive = dineInNotes
+                      .split(',')
+                      .map((p) => p.trim().toLowerCase())
+                      .includes(chip.value.toLowerCase());
+
+                    return (
+                      <button
+                        key={chip.value}
+                        type="button"
+                        onClick={() => onDineInNotesChange(toggleQuickNote(dineInNotes, chip.value, chip.conflictsWith))}
+                        className={cn(
+                          "px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all cursor-pointer select-none",
+                          isActive
+                            ? "bg-primary text-primary-foreground border-primary shadow-2xs"
+                            : "bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border-border/60"
+                        )}
+                      >
+                        {chip.label}
+                      </button>
+                    );
+                  })}
+                </div>
                 <Textarea
                   id="dine-in-notes"
                   placeholder="e.g., extra spicy, no onions, serve hot..."

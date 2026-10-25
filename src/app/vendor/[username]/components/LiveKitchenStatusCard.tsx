@@ -151,12 +151,33 @@ export function LiveKitchenStatusCard({
           {(() => {
             const notesText = getOrderNotes(activeTableOrder.customNotes, vendorUsername);
             if (!notesText) return null;
+            const noteSegments = notesText.split('|').map((s) => s.trim()).filter(Boolean);
             return (
               <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2 shadow-2xs">
                 <MessageSquare className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 space-y-1">
                   <span className="font-extrabold text-[11px] uppercase tracking-wider block text-amber-700 dark:text-amber-300">Special Instructions for Chef</span>
-                  <span className="break-words font-medium">{notesText}</span>
+                  {noteSegments.length <= 1 ? (
+                    <span className="break-words font-medium block">{notesText}</span>
+                  ) : (
+                    <div className="space-y-1">
+                      {noteSegments.map((seg, i) => {
+                        const match = seg.match(/^\[R(\d+)\]:\s*(.*)$/i);
+                        const roundLabel = match ? `R${match[1]}` : i === 0 ? 'R1' : null;
+                        const content = match ? match[2] : seg;
+                        return (
+                          <div key={i} className="flex items-start gap-1.5 leading-snug">
+                            {roundLabel && (
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 shrink-0 mt-0.5">
+                                {roundLabel}
+                              </span>
+                            )}
+                            <span className="break-words font-medium">{content}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             );

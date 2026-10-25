@@ -37,6 +37,7 @@ import {
   MessageSquare,
   Clock,
   Share2,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { generateDineInBillPdf, shareDineInBillPdf } from '@/lib/generateDineInBillPdf';
 import { useVendor } from '@/context/vendor-context';
@@ -182,6 +183,33 @@ type SelectedItem = {
   price: number;
 };
 
+const POS_QUICK_NOTE_CHIPS = [
+  { label: '🌶️ Less Spicy', value: 'Less Spicy', conflictsWith: 'Extra Spicy' },
+  { label: '🔥 Extra Spicy', value: 'Extra Spicy', conflictsWith: 'Less Spicy' },
+  { label: '🧅 No Onion/Garlic', value: 'No Onion/Garlic' },
+  { label: '🍲 Starters First', value: 'Serve Starters First' },
+  { label: '🥣 Soup 1-by-2', value: 'Soup 1-by-2' },
+  { label: '🥡 Pack / Parcel', value: 'Pack / Parcel' },
+];
+
+const togglePosQuickNote = (currentNotes: string, targetValue: string, conflictsWith?: string): string => {
+  const parts = currentNotes
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  const exists = parts.some((p) => p.toLowerCase() === targetValue.toLowerCase());
+  if (exists) {
+    return parts.filter((p) => p.toLowerCase() !== targetValue.toLowerCase()).join(', ');
+  }
+
+  const filtered = conflictsWith
+    ? parts.filter((p) => p.toLowerCase() !== conflictsWith.toLowerCase())
+    : parts;
+
+  return [...filtered, targetValue].join(', ');
+};
+
 const AddItemDialog = ({
   open,
   onOpenChange,
@@ -192,7 +220,10 @@ const AddItemDialog = ({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddItems: (items: { menuItem: MenuItem; quantity: number, customizationDetails?: Record<string, string | string[]>, price?: number }[]) => void;
+  onAddItems: (
+    items: { menuItem: MenuItem; quantity: number; customizationDetails?: Record<string, string | string[]>; price?: number }[],
+    notes?: string
+  ) => void;
   menuItems: MenuItem[];
   categories: string[];
   vendor?: Vendor | null;
@@ -200,6 +231,7 @@ const AddItemDialog = ({
   const [selectedCategory, setSelectedCategory] = useState(categories[0] || 'All');
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [posNotes, setPosNotes] = useState('');
   const [customizingItem, setCustomizingItem] = useState<MenuItem | null>(null);
   const categoryScrollRef = useRef<HTMLDivElement>(null);
 
@@ -224,6 +256,7 @@ const AddItemDialog = ({
       setSelectedItems([]);
       setSelectedCategory('All');
       setSearchQuery('');
+      setPosNotes('');
       setCustomizingItem(null);
     }
   }, [open]);
@@ -338,7 +371,7 @@ const AddItemDialog = ({
 
   const handleAddClick = () => {
     if (selectedItems.length > 0) {
-      onAddItems(selectedItems);
+      onAddItems(selectedItems, posNotes.trim() || undefined);
     }
     onOpenChange(false);
   };
@@ -596,6 +629,39 @@ const AddItemDialog = ({
           {/* Bottom Floating Order Summary & Action Bar */}
           <DialogFooter className="p-3 sm:p-4 border-t border-border/50 bg-muted/20">
             <Collapsible className="w-full space-y-2">
+              {selectedItems.length > 0 && (
+                <div className="space-y-1.5 pb-1">
+                  <div className="flex flex-wrap gap-1">
+                    {POS_QUICK_NOTE_CHIPS.map((chip) => {
+                      const isActive = posNotes
+                        .split(',')
+                        .map((p) => p.trim().toLowerCase())
+                        .includes(chip.value.toLowerCase());
+                      return (
+                        <button
+                          key={chip.value}
+                          type="button"
+                          onClick={() => setPosNotes(togglePosQuickNote(posNotes, chip.value, chip.conflictsWith))}
+                          className={cn(
+                            "px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all cursor-pointer select-none",
+                            isActive
+                              ? "bg-primary text-primary-foreground border-primary shadow-2xs"
+                              : "bg-card hover:bg-muted text-muted-foreground hover:text-foreground border-border/60"
+                          )}
+                        >
+                          {chip.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <Input
+                    placeholder="Chef instructions (e.g., Less spicy, Serve starters first...)"
+                    value={posNotes}
+                    onChange={(e) => setPosNotes(e.target.value)}
+                    className="h-8 text-xs rounded-xl bg-background border-border/70"
+                  />
+                </div>
+              )}
               <div className="flex items-center justify-between gap-2">
                 <CollapsibleTrigger asChild>
                   <Button
@@ -822,12 +888,33 @@ const BillViewDialog = ({
         {(() => {
           const notesText = getOrderNotes(order.customNotes, order.vendorUsername);
           if (!notesText) return null;
+          const noteSegments = notesText.split('|').map((s) => s.trim()).filter(Boolean);
           return (
             <div className="my-2 p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs flex items-start gap-1.5">
               <MessageSquare className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 space-y-1">
                 <span className="font-bold text-[10px] uppercase tracking-wider block text-amber-700 dark:text-amber-400">Special Instructions</span>
-                <span className="text-foreground font-medium break-words">{notesText}</span>
+                {noteSegments.length <= 1 ? (
+                  <span className="text-foreground font-medium break-words block">{notesText}</span>
+                ) : (
+                  <div className="space-y-1">
+                    {noteSegments.map((seg, i) => {
+                      const match = seg.match(/^\[R(\d+)\]:\s*(.*)$/i);
+                      const roundLabel = match ? `R${match[1]}` : i === 0 ? 'R1' : null;
+                      const content = match ? match[2] : seg;
+                      return (
+                        <div key={i} className="flex items-start gap-1.5 leading-snug">
+                          {roundLabel && (
+                            <span className="text-[9px] font-extrabold px-1 rounded bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 shrink-0 mt-0.5">
+                              {roundLabel}
+                            </span>
+                          )}
+                          <span className="text-foreground font-medium break-words">{content}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -1151,6 +1238,141 @@ const TableElapsedTimer = ({ createdAt, isTakeAway }: { createdAt: string; isTak
   );
 };
 
+const TransferTableDialog = ({
+  open,
+  onOpenChange,
+  sourceTable,
+  order,
+  tableCount,
+  tableOrders,
+  onConfirmTransfer,
+  isTransferring,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  sourceTable: number | string | null;
+  order: Order | null;
+  tableCount: number;
+  tableOrders: Record<string, Order | null>;
+  onConfirmTransfer: (targetTable: string) => Promise<void>;
+  isTransferring: boolean;
+}) => {
+  const [selectedTarget, setSelectedTarget] = useState<string>('');
+
+  useEffect(() => {
+    if (open) {
+      setSelectedTarget('');
+    }
+  }, [open, sourceTable]);
+
+  if (!open || !sourceTable || !order) return null;
+
+  const vacantTablesCount = Array.from({ length: tableCount }, (_, i) => String(i + 1)).filter(
+    (t) => t !== String(sourceTable) && !tableOrders[t]
+  ).length;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md rounded-3xl">
+        <DialogHeader>
+          <DialogTitle className="font-headline text-lg sm:text-xl flex items-center justify-center gap-2">
+            <ArrowLeftRight className="h-5 w-5 text-primary" />
+            <span>Move Table {sourceTable}</span>
+          </DialogTitle>
+          <DialogDescription className="text-center text-xs">
+            Select a vacant table to move Order #{order.displayId || order.orderId?.slice(-6)} (₹{order.totalPrice.toFixed(0)}).
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="py-3">
+          {vacantTablesCount === 0 ? (
+            <div className="text-center py-6 px-4 rounded-2xl bg-muted/40 border border-dashed border-border">
+              <p className="text-xs font-bold text-foreground">No Vacant Tables Available</p>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                All other tables are currently occupied. Complete or clear a table first to move this order.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5 max-h-64 overflow-y-auto p-1">
+              {Array.from({ length: tableCount }, (_, i) => i + 1).map((num) => {
+                const tableStr = String(num);
+                const isCurrent = tableStr === String(sourceTable);
+                const isOccupied = Boolean(tableOrders[tableStr]) && !isCurrent;
+                const isSelected = selectedTarget === tableStr;
+                const isDisabled = isCurrent || isOccupied || isTransferring;
+
+                return (
+                  <Button
+                    key={num}
+                    type="button"
+                    disabled={isDisabled}
+                    variant={isSelected ? 'default' : isCurrent || isOccupied ? 'secondary' : 'outline'}
+                    className={cn(
+                      "h-14 text-sm font-extrabold rounded-2xl flex flex-col items-center justify-center transition-all relative p-1",
+                      isSelected && "shadow-md scale-105 border-primary ring-2 ring-primary/30",
+                      isCurrent && "opacity-70 cursor-not-allowed border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+                      isOccupied && "opacity-45 cursor-not-allowed bg-muted/60 border-dashed text-muted-foreground",
+                      !isDisabled && !isSelected && "border-emerald-500/40 bg-emerald-500/5 hover:bg-emerald-500/15 hover:border-emerald-500 text-foreground"
+                    )}
+                    onClick={() => {
+                      if (!isDisabled) setSelectedTarget(tableStr);
+                    }}
+                  >
+                    <span className="text-xs font-black">T{num}</span>
+                    <span
+                      className={cn(
+                        "text-[9px] font-bold uppercase tracking-wider scale-90",
+                        isSelected
+                          ? "text-primary-foreground"
+                          : isCurrent
+                          ? "text-amber-600 dark:text-amber-400"
+                          : isOccupied
+                          ? "text-rose-500"
+                          : "text-emerald-600 dark:text-emerald-400"
+                      )}
+                    >
+                      {isCurrent ? 'Current' : isOccupied ? 'Busy' : 'Vacant'}
+                    </span>
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="flex-row gap-2 sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1 sm:flex-initial rounded-full text-xs font-bold h-9"
+            onClick={() => onOpenChange(false)}
+            disabled={isTransferring}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            className="flex-1 sm:flex-initial rounded-full text-xs font-extrabold h-9 px-5"
+            disabled={!selectedTarget || isTransferring}
+            onClick={() => selectedTarget && onConfirmTransfer(selectedTarget)}
+          >
+            {isTransferring ? (
+              <>
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                Moving...
+              </>
+            ) : selectedTarget ? (
+              `Move to Table ${selectedTarget}`
+            ) : (
+              'Select a Table'
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const TableCard = ({
   tableNumber,
   order,
@@ -1160,6 +1382,7 @@ const TableCard = ({
   onAddItem,
   onViewBill,
   onShowQrCode,
+  onTransferTable,
   onItemQuantityChange,
   onRemoveItem,
   onToggleItemServed,
@@ -1174,6 +1397,7 @@ const TableCard = ({
   onAddItem: (tableIdentifier: number | string) => void;
   onViewBill: (order: Order) => void;
   onShowQrCode: (order: Order) => void;
+  onTransferTable?: (sourceTable: number | string, order: Order) => void;
   onItemQuantityChange: (orderId: string, cartItemId: string, change: number) => void;
   onRemoveItem: (orderId: string, cartItemId: string) => void;
   onToggleItemServed?: (orderId: string, cartItemId: string, served: boolean) => void;
@@ -1424,12 +1648,33 @@ const TableCard = ({
         {isOccupied && (() => {
           const notesText = getOrderNotes(order.customNotes, order.vendorUsername);
           if (!notesText) return null;
+          const noteSegments = notesText.split('|').map((s) => s.trim()).filter(Boolean);
           return (
             <div className="mt-2.5 p-2 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-1.5 shadow-2xs">
               <MessageSquare className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 space-y-1">
                 <span className="font-extrabold text-[10px] uppercase tracking-wider block text-amber-700 dark:text-amber-300">Chef Instructions</span>
-                <span className="break-words font-medium text-xs leading-tight">{notesText}</span>
+                {noteSegments.length <= 1 ? (
+                  <span className="break-words font-medium text-xs leading-tight block">{notesText}</span>
+                ) : (
+                  <div className="space-y-1">
+                    {noteSegments.map((seg, i) => {
+                      const match = seg.match(/^\[R(\d+)\]:\s*(.*)$/i);
+                      const roundLabel = match ? `R${match[1]}` : i === 0 ? 'R1' : null;
+                      const content = match ? match[2] : seg;
+                      return (
+                        <div key={i} className="flex items-start gap-1 leading-tight">
+                          {roundLabel && (
+                            <span className="text-[9px] font-extrabold px-1 rounded bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 shrink-0 mt-0.5">
+                              {roundLabel}
+                            </span>
+                          )}
+                          <span className="break-words font-medium text-xs">{content}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -1479,6 +1724,17 @@ const TableCard = ({
                 <Check className="h-3 w-3 mr-1" /> All Served
               </Button>
             )}
+            {!isTakeAway && onTransferTable && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2.5 rounded-full text-xs font-bold shrink-0 text-foreground"
+                onClick={() => onTransferTable(tableNumber, order)}
+                title="Move / Transfer to another vacant table"
+              >
+                <ArrowLeftRight className="h-3.5 w-3.5" />
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -1510,7 +1766,7 @@ export default function TableViewPage() {
   const identifier = params.username as string;
 
   const { vendor: loggedInVendor, isAuthLoading: isVendorLoading, vendors, fetchAllVendors } = useVendor();
-  const { addOrder, addRoundToOrder, updateOrderItems, updateOrderStatus, removeOrder, toggleItemServed } = useOrder();
+  const { addOrder, addRoundToOrder, updateOrderItems, updateOrderStatus, removeOrder, toggleItemServed, transferOrderTable } = useOrder();
   const { toast } = useToast();
 
   const [vendorMenuItems, setVendorMenuItems] = useState<MenuItem[]>([]);
@@ -1520,6 +1776,12 @@ export default function TableViewPage() {
   const [billOrder, setBillOrder] = useState<Order | null>(null);
   const [qrCodeOrder, setQrCodeOrder] = useState<Order | null>(null);
   const [addItemDialogState, setAddItemDialogState] = useState<{ open: boolean; tableNumber: number | string | null }>({ open: false, tableNumber: null });
+  const [transferDialogState, setTransferDialogState] = useState<{ open: boolean; sourceTable: number | string | null; order: Order | null }>({
+    open: false,
+    sourceTable: null,
+    order: null,
+  });
+  const [isTransferringTable, setIsTransferringTable] = useState(false);
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [customerOrderToCancel, setCustomerOrderToCancel] = useState<Order | null>(null);
@@ -1828,6 +2090,59 @@ export default function TableViewPage() {
     setAddItemDialogState({ open: true, tableNumber: tableIdentifier });
   };
 
+  const handleOpenTransferDialog = (sourceTable: number | string, order: Order) => {
+    setTransferDialogState({ open: true, sourceTable, order });
+  };
+
+  const handleConfirmTransferTable = async (targetTable: string) => {
+    const { sourceTable, order } = transferDialogState;
+    if (!sourceTable || !order) return;
+
+    const sourceKey = String(sourceTable);
+    const targetKey = String(targetTable);
+    if (sourceKey === targetKey) return;
+
+    if (tableOrders[targetKey]) {
+      toast({
+        title: `Table ${targetKey} is Occupied`,
+        description: 'Please select a vacant table.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsTransferringTable(true);
+    try {
+      // Seed snapshot for targetKey before Firestore listener fires so it doesn't trigger a false "New Order" chime
+      const existingSnap = prevDineInSnapshots.current[sourceKey] || {
+        round: order.orderRound || 1,
+        itemCount: order.items?.length || 0,
+      };
+      prevDineInSnapshots.current[targetKey] = existingSnap;
+      delete prevDineInSnapshots.current[sourceKey];
+
+      const mergedIds = (order as any)._mergedOrderIds as string[] | undefined;
+      const orderIdsToMove = mergedIds && mergedIds.length > 0 ? mergedIds : [order.orderId];
+
+      await transferOrderTable(orderIdsToMove, targetKey);
+
+      setRecentlyAlertedTables((prev) => {
+        const updated = { ...prev };
+        if (updated[sourceKey]) {
+          updated[targetKey] = updated[sourceKey];
+          delete updated[sourceKey];
+        }
+        return updated;
+      });
+
+      setTransferDialogState({ open: false, sourceTable: null, order: null });
+    } catch {
+      // Error toast is already handled inside transferOrderTable
+    } finally {
+      setIsTransferringTable(false);
+    }
+  };
+
   const handleToggleItemServed = async (orderId: string, cartItemId: string, served: boolean) => {
     try {
       await toggleItemServed(orderId, cartItemId, served);
@@ -1902,7 +2217,10 @@ export default function TableViewPage() {
     }
   };
 
-  const handleAddItemsToTable = async (itemsToAdd: { menuItem: MenuItem; quantity: number, customizationDetails?: Record<string, string | string[]>, price?: number }[]) => {
+  const handleAddItemsToTable = async (
+    itemsToAdd: { menuItem: MenuItem; quantity: number; customizationDetails?: Record<string, string | string[]>; price?: number }[],
+    notes?: string
+  ) => {
     if (!vendor || addItemDialogState.tableNumber === null) return;
     const tableIdentifier = String(addItemDialogState.tableNumber);
     const isTakeAway = tableIdentifier.startsWith('Take Away');
@@ -1924,7 +2242,7 @@ export default function TableViewPage() {
     if (existingOrder) {
       try {
         const nextRound = (existingOrder.orderRound || 1) + 1;
-        await addRoundToOrder(existingOrder.orderId, cartItems as any);
+        await addRoundToOrder(existingOrder.orderId, cartItems as any, notes);
         toast({ title: `⚡ Round ${nextRound} Added!`, description: `Added items to ${customerName}.` });
       } catch (e: any) {
         toast({ title: "Error", description: e.message, variant: "destructive" });
@@ -1938,6 +2256,7 @@ export default function TableViewPage() {
           paymentMethod: 'Pay at Counter',
           deliveryOptions: { [vendor.username]: isTakeAway ? 'Self Pickup' : 'Dine-In' },
           tableId: isTakeAway ? undefined : String(tableIdentifier),
+          customNotes: notes?.trim() ? { [vendor.username]: notes.trim() } : undefined,
         });
         toast({ title: "Order Started", description: `${customerName} is now occupied.` });
       } catch (e: any) {
@@ -2149,6 +2468,7 @@ export default function TableViewPage() {
                 onAddItem={handleOpenAddItemDialog}
                 onViewBill={setBillOrder}
                 onShowQrCode={setQrCodeOrder}
+                onTransferTable={handleOpenTransferDialog}
                 onItemQuantityChange={handleItemQuantityChange}
                 onRemoveItem={onRemoveItem}
                 onToggleItemServed={handleToggleItemServed}
@@ -2167,6 +2487,7 @@ export default function TableViewPage() {
                 onAddItem={handleOpenAddItemDialog}
                 onViewBill={setBillOrder}
                 onShowQrCode={setQrCodeOrder}
+                onTransferTable={handleOpenTransferDialog}
                 onItemQuantityChange={handleItemQuantityChange}
                 onRemoveItem={onRemoveItem}
                 onToggleItemServed={handleToggleItemServed}
@@ -2203,6 +2524,19 @@ export default function TableViewPage() {
         menuItems={vendorMenuItems}
         categories={vendorCategories}
         vendor={vendor}
+      />
+      <TransferTableDialog
+        open={transferDialogState.open}
+        onOpenChange={(open) =>
+          !isTransferringTable &&
+          setTransferDialogState((prev) => ({ ...prev, open }))
+        }
+        sourceTable={transferDialogState.sourceTable}
+        order={transferDialogState.order}
+        tableCount={tableCount}
+        tableOrders={tableOrders}
+        onConfirmTransfer={handleConfirmTransferTable}
+        isTransferring={isTransferringTable}
       />
       <CancellationReasonDialog
         isOpen={!!customerOrderToCancel}

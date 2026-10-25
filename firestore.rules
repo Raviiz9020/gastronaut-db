@@ -109,7 +109,7 @@ match /customers/{userId} {
             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancellationReason', 'updatedAt']))
          )) ||
         (resource.data.vendorUsername == request.auth.uid &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'assignedDeliveryBoyId', 'assignedDeliveryBoyName', 'assignedDeliveryBoyContact', 'assignedDeliveryBoyAt','cancellationReason', 'subtotal','items', 'totalPrice', 'updatedAt','paymentStatus','paymentRequestedAt','paymentConfirmedAt','riderSettlementStatus', 'riderSettlementPaymentMode', 'riderSettlementMarkedAt', 'riderSettlementMarkedBy', 'orderRound', 'customNotes'])) ||
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'assignedDeliveryBoyId', 'assignedDeliveryBoyName', 'assignedDeliveryBoyContact', 'assignedDeliveryBoyAt','cancellationReason', 'subtotal','items', 'totalPrice', 'updatedAt','paymentStatus','paymentRequestedAt','paymentConfirmedAt','riderSettlementStatus', 'riderSettlementPaymentMode', 'riderSettlementMarkedAt', 'riderSettlementMarkedBy', 'orderRound', 'customNotes', 'tableId', 'customer'])) ||
         (resource.data.assignedDeliveryBoyId == request.auth.uid &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancellationReason','riderSettlementStatus', 'riderSettlementConfirmedAt'])) ||
         isSuperAdmin()

@@ -57,6 +57,7 @@ interface OrderContextType {
   }) => Promise<string[]>;
   toggleItemServed: (orderId: string, itemCartItemId: string, served: boolean) => Promise<void>;
   markRoundServed: (orderId: string, roundNumber: number) => Promise<void>;
+  transferOrderTable: (orderIds: string | string[], newTableId: string) => Promise<void>;
   updateOrderStatus: (orderId: string, status: OrderStatus, reason?: string) => Promise<void>;
   updateOrderItems: (orderId: string, newItems: CartItem[], customNotes?: string) => Promise<void>;
   addRoundToOrder: (orderId: string, newItems: CartItem[], customNotes?: string) => Promise<void>;
@@ -1220,6 +1221,59 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
     }
   };
 
+  const transferOrderTable: OrderContextType['transferOrderTable'] = async (orderIds, newTableId) => {
+    const targetIds = Array.isArray(orderIds) ? orderIds.filter(Boolean) : [orderIds].filter(Boolean);
+    const cleanNewTable = String(newTableId).trim();
+    if (targetIds.length === 0 || !cleanNewTable) {
+      throw new Error('Valid order and target table number are required.');
+    }
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const snapshots = await Promise.all(
+          targetIds.map((id) => transaction.get(doc(db, 'orders', id)))
+        );
+
+        const nowIso = new Date().toISOString();
+
+        snapshots.forEach((orderSnap, idx) => {
+          if (!orderSnap.exists()) {
+            throw new Error(`Order ${targetIds[idx]} not found.`);
+          }
+          const orderData = orderSnap.data() as Order;
+          const prevCustomer = orderData.customer || ({} as Customer);
+          const prevName = prevCustomer.name || '';
+          const shouldReplaceName = !prevName || prevName === 'Unknown' || /^Table\s+\d+$/i.test(prevName.trim());
+
+          const updatedCustomer = {
+            ...prevCustomer,
+            name: shouldReplaceName ? `Table ${cleanNewTable}` : prevName,
+            address: `Table ${cleanNewTable} (Dine-In)`,
+          };
+
+          transaction.update(doc(db, 'orders', targetIds[idx]), {
+            tableId: cleanNewTable,
+            customer: updatedCustomer,
+            updatedAt: nowIso,
+          });
+        });
+      });
+
+      toast({
+        title: `Moved to Table ${cleanNewTable}`,
+        description: `Active order has been transferred to Table ${cleanNewTable}.`,
+      });
+    } catch (err: any) {
+      console.error('Failed to transfer table:', err);
+      toast({
+        title: 'Table Transfer Failed',
+        description: err.message || 'Could not move order to the selected table.',
+        variant: 'destructive',
+      });
+      throw err;
+    }
+  };
+
   const value = useMemo(() => ({
     orders,
     setOrders,
@@ -1227,6 +1281,7 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
     addOrder,
     toggleItemServed,
     markRoundServed,
+    transferOrderTable,
     updateOrderStatus,
     updateOrderItems,
     addRoundToOrder,

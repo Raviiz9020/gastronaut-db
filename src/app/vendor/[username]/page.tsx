@@ -60,7 +60,7 @@ import OrderCustomizationSheet from '@/components/order-customization-sheet';
 import { useCart } from '@/context/cart-context';
 import CartSheet from '@/components/cart-sheet';
 import { createSlug, cn } from '@/lib/utils';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { collection, onSnapshot, query, where, getDoc, doc } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -274,12 +274,47 @@ function VendorMenuContent({
     return activeDineInOrders.find(o => String(o.tableId) === String(activeTableId)) || null;
   }, [activeDineInOrders, activeTableId]);
 
-  // Clean up localStorage when active order on this table is completed or cancelled
+  // Automatically follow if staff transfers this diner's order to another table, or clean up when completed
   useEffect(() => {
-    if (isDineInOrdersLoaded && vendor && activeTableId && !activeTableOrder) {
+    if (!isDineInOrdersLoaded || !vendor || !activeTableId) return;
+    if (activeTableOrder) return;
+
+    const savedTableOrderId = localStorage.getItem(`dineInActiveOrderId_${vendor.username}_table_${activeTableId}`);
+    const savedLastOrderId = localStorage.getItem(`dineInLastOrderId_${vendor.username}`);
+    const savedSessId = sessionStorage.getItem(`dineInSession_${vendor.username}_${activeTableId}`);
+
+    // Check if the order that was started on THIS table (activeTableId) was moved to a different table by staff
+    const movedOrder = (savedTableOrderId || savedSessId)
+      ? activeDineInOrders.find((o) => {
+          if (!o.tableId || String(o.tableId) === String(activeTableId)) return false;
+          if (savedTableOrderId && o.orderId === savedTableOrderId) return true;
+          if (savedSessId && o.tableSessionId && o.tableSessionId === savedSessId) return true;
+          return false;
+        })
+      : undefined;
+
+    if (movedOrder && movedOrder.tableId) {
+      const newTable = String(movedOrder.tableId);
       localStorage.removeItem(`dineInActiveOrderId_${vendor.username}_table_${activeTableId}`);
+      localStorage.setItem(`dineInActiveOrderId_${vendor.username}_table_${newTable}`, movedOrder.orderId);
+      localStorage.setItem(`dineInLastOrderId_${vendor.username}`, movedOrder.orderId);
+      if (movedOrder.tableSessionId) {
+        sessionStorage.setItem(`dineInSession_${vendor.username}_${newTable}`, movedOrder.tableSessionId);
+      }
+      setTableId(newTable);
+      toast({
+        title: `Moved to Table ${newTable}`,
+        description: `Your active order has been transferred to Table ${newTable}.`,
+      });
+      return;
     }
-  }, [isDineInOrdersLoaded, vendor, activeTableId, activeTableOrder]);
+
+    // Order is genuinely completed or cancelled — clean up stored keys
+    localStorage.removeItem(`dineInActiveOrderId_${vendor.username}_table_${activeTableId}`);
+    if (savedLastOrderId && !activeDineInOrders.some((o) => o.orderId === savedLastOrderId)) {
+      localStorage.removeItem(`dineInLastOrderId_${vendor.username}`);
+    }
+  }, [isDineInOrdersLoaded, vendor, activeTableId, activeTableOrder, activeDineInOrders, setTableId, toast]);
 
   // Derive occupied table IDs (all active tables for this vendor)
   const occupiedTableIds = useMemo(() => {
@@ -300,8 +335,15 @@ function VendorMenuContent({
     if (savedOrderId && (savedOrderId === activeTableOrder.orderId || savedOrderId === (activeTableOrder as any).id)) {
       return true;
     }
+    const savedLastOrderId = typeof window !== 'undefined' ? localStorage.getItem(`dineInLastOrderId_${vendor.username}`) : null;
+    if (savedLastOrderId && (savedLastOrderId === activeTableOrder.orderId || savedLastOrderId === (activeTableOrder as any).id)) {
+      return true;
+    }
     const savedSessionId = typeof window !== 'undefined' ? sessionStorage.getItem(`dineInSession_${vendor.username}_${activeTableId}`) : null;
     if (savedSessionId && activeTableOrder.tableSessionId && savedSessionId === activeTableOrder.tableSessionId) {
+      return true;
+    }
+    if (auth.currentUser?.uid && activeTableOrder.customerUsername === auth.currentUser.uid) {
       return true;
     }
     return false;
@@ -473,6 +515,7 @@ function VendorMenuContent({
           if (createdOrderIds && createdOrderIds.length > 0) {
             const newId = createdOrderIds[0];
             localStorage.setItem(`dineInActiveOrderId_${vendor.username}_table_${activeTableId}`, newId);
+            localStorage.setItem(`dineInLastOrderId_${vendor.username}`, newId);
           }
 
           toast({
