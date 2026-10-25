@@ -6,7 +6,7 @@ import Header from '@/components/header';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle, Cpu, Home, Loader2, Rocket, Utensils, PackageSearch, Package, History, Bike, Star, Building, MessageSquareReply, Calendar as CalendarIcon, Phone, XCircle, ArrowLeft, ClipboardCheck, ShoppingCart, MessageSquare, Award, Download, Minus, Plus, Sparkles, Navigation, MapPin, ExternalLink, HelpCircle, MessageCircle, Mail, Clock, ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getOrderNotes } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useOrder } from '@/context/order-context';
@@ -654,12 +654,12 @@ const OrderCard = ({ order, vendor, onPayClick, onOrderAgain }: { order: Order; 
               </div>
             </div>
           )}
-          {order.customNotes && (
+          {getOrderNotes(order.customNotes, order.vendorUsername) && (
             <div className="flex items-start gap-3 p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
               <MessageSquare className="h-4 w-4 mt-0.5 flex-shrink-0" />
               <div>
                 <h4 className="text-xs font-semibold text-current">Your Notes</h4>
-                <p className="text-xs text-current/80 italic">"{order.customNotes}"</p>
+                <p className="text-xs text-current/80 italic">"{getOrderNotes(order.customNotes, order.vendorUsername)}"</p>
               </div>
             </div>
           )}

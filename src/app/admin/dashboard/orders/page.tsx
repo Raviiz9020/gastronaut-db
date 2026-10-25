@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { Order, OrderStatus, CartItem, PaymentMethod, DeliveryOption, DeliveryBoy } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, getOrderNotes } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useState, useMemo, useEffect, useRef, memo } from 'react';
 import type { DateRange } from 'react-day-picker';
@@ -223,10 +223,10 @@ const OrderTable = memo(({ ordersToShow, isCompletedTab = false, onStatusChange,
                       )}
                   </TableCell>
                   <TableCell className="text-xs">
-                    {order.customNotes && (
+                    {getOrderNotes(order.customNotes, order.vendorUsername) && (
                         <div className="mb-2 p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-500/30 dark:text-yellow-300 text-xs flex items-start gap-2">
                             <MessageSquare className="h-4 w-4 mt-0.5 flex-shrink-0"/>
-                            <p className="italic">"{order.customNotes}"</p>
+                            <p className="italic">"{getOrderNotes(order.customNotes, order.vendorUsername)}"</p>
                         </div>
                     )}
                     {order.items.map((item, index) => (

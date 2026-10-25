@@ -59,7 +59,7 @@ import { useOrder } from '@/context/order-context';
 import OrderCustomizationSheet from '@/components/order-customization-sheet';
 import { useCart } from '@/context/cart-context';
 import CartSheet from '@/components/cart-sheet';
-import { createSlug, cn } from '@/lib/utils';
+import { createSlug, cn, getOrderNotes } from '@/lib/utils';
 import { auth, db } from '@/lib/firebase';
 import { collection, onSnapshot, query, where, getDoc, doc } from 'firebase/firestore';
 import jsPDF from 'jspdf';
@@ -421,7 +421,7 @@ function VendorMenuContent({
             finalPrice: item.price,
           }));
           setTableOrderItems(itemsFromOrder);
-          setDineInNotes(orderData.customNotes || ''); // Load existing notes
+          setDineInNotes(getOrderNotes(orderData.customNotes, orderData.vendorUsername)); // Load existing notes
           setIsTableOrderSheetVisible(true);
         } else {
           toast({ title: "Order not found", variant: "destructive" });

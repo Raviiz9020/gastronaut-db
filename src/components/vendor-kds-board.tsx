@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { useDelivery } from '@/context/delivery-context';
 import { useVendor } from '@/context/vendor-context';
-import { cn } from '@/lib/utils';
+import { cn, getOrderNotes } from '@/lib/utils';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 
 interface VendorKdsBoardProps {
@@ -181,10 +181,10 @@ export default function VendorKdsBoard({
         </div>
 
         {/* Custom Cooking Notes Callout */}
-        {order.customNotes && (
+        {getOrderNotes(order.customNotes, order.vendorUsername) && (
           <div className="mx-3.5 mt-2.5 p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-[11px] flex items-start gap-1.5 font-medium">
             <MessageSquare className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-500" />
-            <p className="italic">"{order.customNotes}"</p>
+            <p className="italic">"{getOrderNotes(order.customNotes, order.vendorUsername)}"</p>
           </div>
         )}
 

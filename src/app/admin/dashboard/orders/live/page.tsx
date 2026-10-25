@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useOrder } from '@/context/order-context';
 import type { Order, OrderStatus, CartItem, DeliveryOption, DeliveryBoy, Vendor } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, getOrderNotes } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -188,10 +188,10 @@ const LiveOrderCard = ({
 
       {/* Ticket Body: Items & Notes */}
       <CardContent className="p-3.5 sm:p-4 flex-1 space-y-2.5">
-        {order.customNotes && (
+        {getOrderNotes(order.customNotes, order.vendorUsername) && (
           <div className="p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2 shadow-2xs">
             <MessageSquare className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-500" />
-            <p className="italic font-medium">"{order.customNotes}"</p>
+            <p className="italic font-medium">"{getOrderNotes(order.customNotes, order.vendorUsername)}"</p>
           </div>
         )}
 

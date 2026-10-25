@@ -24,6 +24,7 @@ import { sendOrderModifiedEmail } from '@/ai/flows/send-order-modified-email';
 import { ensureAuthUser } from '@/lib/ensureAuth';
 import { sendTelegramNotification } from '@/ai/flows/send-telegram-notification';
 import { calculateDistanceInKm } from '@/lib/location-utils';
+import { getOrderNotes } from '@/lib/utils';
 
 interface OrderContextType {
   orders: Order[];
@@ -154,7 +155,14 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
     const q = query(collection(db, 'orders'), where(userField, '==', username));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const userOrders = snapshot.docs.map(doc => ({ orderId: doc.id, ...doc.data() } as Order));
+      const userOrders = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          orderId: doc.id,
+          ...data,
+          customNotes: getOrderNotes(data.customNotes, data.vendorUsername),
+        } as Order;
+      });
       setOrders(userOrders);
 
     }, (error) => {
@@ -895,12 +903,11 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
           updatedAt: new Date().toISOString(),
         };
 
-        // If custom cooking notes provided for this round, append them
+        // If custom cooking notes provided for this round, append them as a flat string
         if (customNotes?.trim()) {
-          const prevNotes: any = orderData.customNotes || {};
-          const prevVendorNote = typeof prevNotes === 'object' ? (prevNotes[orderData.vendorUsername] || '') : (typeof prevNotes === 'string' ? prevNotes : '');
+          const prevVendorNote = getOrderNotes(orderData.customNotes, orderData.vendorUsername);
           const newNote = prevVendorNote ? `${prevVendorNote} | [R${nextRound}]: ${customNotes.trim()}` : `[R${nextRound}]: ${customNotes.trim()}`;
-          updatePayload.customNotes = typeof prevNotes === 'object' ? { ...prevNotes, [orderData.vendorUsername]: newNote } : { [orderData.vendorUsername]: newNote };
+          updatePayload.customNotes = newNote;
         }
 
         // If kitchen had already marked previous items 'Order Ready' or if it was 'Order Placed', transition to 'Processing' so kitchen sees active cooking
@@ -1073,7 +1080,14 @@ export const OrderProvider = ({ children, setCurrentCustomer }: { children: Reac
     try {
       const q = collection(db, 'orders');
       const snap = await getDocs(q);
-      const all = snap.docs.map(d => ({ orderId: d.id, ...d.data() } as Order));
+      const all = snap.docs.map(d => {
+        const data = d.data();
+        return {
+          orderId: d.id,
+          ...data,
+          customNotes: getOrderNotes(data.customNotes, data.vendorUsername),
+        } as Order;
+      });
       setOrders(all);
       return all;
     } catch (e) {

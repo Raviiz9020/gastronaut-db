@@ -31,3 +31,15 @@ export const createSlug = (str: string) => {
         .replace(/^-+/, '') // Trim - from start of text
         .replace(/-+$/, ''); // Trim - from end of text
 };
+
+// Safely extracts customNotes whether stored as a string or a legacy vendor-keyed object
+export const getOrderNotes = (notes: any, vendorUsername?: string): string => {
+    if (!notes) return '';
+    if (typeof notes === 'string') return notes.trim();
+    if (typeof notes === 'object') {
+        if (vendorUsername && notes[vendorUsername]) return String(notes[vendorUsername]).trim();
+        const vals = Object.values(notes).filter((v) => typeof v === 'string' && v.trim());
+        return vals.join(' | ').trim();
+    }
+    return String(notes).trim();
+};

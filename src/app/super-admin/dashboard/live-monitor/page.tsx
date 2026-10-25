@@ -47,7 +47,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { format } from 'date-fns';
 import type { Order, OrderStatus } from '@/types';
 import { useVendor } from '@/context/vendor-context';
-import { cn } from '@/lib/utils';
+import { cn, getOrderNotes } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRiderManagement } from '@/context/rider-management-context';
@@ -884,9 +884,9 @@ export default function LiveMonitorPage() {
                             {item.quantity}x {item.name}
                           </span>
                         ))}
-                        {order.customNotes && (
+                        {getOrderNotes(order.customNotes, order.vendorUsername) && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
-                            💬 "{order.customNotes}"
+                            💬 "{getOrderNotes(order.customNotes, order.vendorUsername)}"
                           </span>
                         )}
                       </div>
@@ -926,12 +926,12 @@ export default function LiveMonitorPage() {
                               ))}
                             </div>
 
-                            {order.customNotes && (
+                            {getOrderNotes(order.customNotes, order.vendorUsername) && (
                               <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs space-y-0.5">
                                 <span className="font-bold text-amber-700 dark:text-amber-400 block text-[10px] uppercase">
                                   Cooking Notes
                                 </span>
-                                <p className="text-foreground italic">"{order.customNotes}"</p>
+                                <p className="text-foreground italic">"{getOrderNotes(order.customNotes, order.vendorUsername)}"</p>
                               </div>
                             )}
 

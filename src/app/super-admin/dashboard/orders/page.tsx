@@ -52,6 +52,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { motion } from 'framer-motion';
+import { getOrderNotes } from '@/lib/utils';
 
 const formatTableDisplay = (tableId?: string, customerName?: string) => {
   const val = (tableId || customerName || '').trim();
@@ -795,15 +796,44 @@ export default function SuperAdminOrdersPage() {
                           </div>
 
                           {/* 4. Special Notes & Cancellation Details (if any) */}
-                          {order.customNotes && (
-                            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 flex items-start gap-3">
-                              <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                              <div className="space-y-0.5">
-                                <p className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">Customer Note / Instructions</p>
-                                <p className="text-sm font-medium italic">"{order.customNotes}"</p>
+                          {(() => {
+                            const notesText = getOrderNotes(order.customNotes, order.vendorUsername);
+                            if (!notesText) return null;
+                            const segments = notesText.split('|').map(s => s.trim()).filter(Boolean);
+                            return (
+                              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 flex items-start gap-3">
+                                <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                                <div className="space-y-1">
+                                  <p className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">Customer Note / Instructions</p>
+                                  <div className="space-y-1">
+                                    {segments.map((seg, idx) => {
+                                      const roundMatch = seg.match(/^\[R(\d+)\]:\s*(.*)$/i);
+                                      if (roundMatch) {
+                                        return (
+                                          <p key={idx} className="text-sm font-medium flex items-center gap-1.5 flex-wrap">
+                                            <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-800 dark:text-amber-200 not-italic">
+                                              Round {roundMatch[1]}
+                                            </span>
+                                            <span className="italic">"{roundMatch[2]}"</span>
+                                          </p>
+                                        );
+                                      }
+                                      return (
+                                        <p key={idx} className="text-sm font-medium flex items-center gap-1.5 flex-wrap">
+                                          {segments.length > 1 && idx === 0 && (
+                                            <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-800 dark:text-amber-200 not-italic">
+                                              Round 1
+                                            </span>
+                                          )}
+                                          <span className="italic">"{seg}"</span>
+                                        </p>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            );
+                          })()}
 
                           {order.cancellationReason && (
                             <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive flex items-start gap-3">
